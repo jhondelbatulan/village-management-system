@@ -57,6 +57,7 @@
                 <?php if($pinnedSessions->count() > 0): ?>
                 <div class="list-group list-group-flush">
                     <?php $__currentLoopData = $pinnedSessions; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $session): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                    <?php if($session->targetUser): ?>
                     <div class="list-group-item d-flex justify-content-between align-items-center py-3">
                         <div class="d-flex align-items-center">
                             <img src="<?php echo e(asset($session->targetUser->profile_picture ?? config('app_settings.assets.default_profile'))); ?>"
@@ -96,6 +97,7 @@
                             </form>
                         </div>
                     </div>
+                    <?php endif; ?>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
                 </div>
                 <?php else: ?>

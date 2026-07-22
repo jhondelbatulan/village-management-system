@@ -206,7 +206,7 @@
                             <div class="list-group-item d-flex align-items-center justify-content-between px-3 py-2 border-start border-info border-3">
                                 <div>
                                     <span class="fw-semibold small">Resident: <?php echo e($resident->full_name); ?></span>
-                                    <br><small class="text-muted">Household: <?php echo e($resident->household->lot_number ?? 'N/A'); ?></small>
+                                    <br><small class="text-muted">Household: <?php echo e($resident->household?->lot_number ?? 'N/A'); ?></small>
                                 </div>
                                 <span class="badge bg-<?php echo e($resident->approval_status === 'admin_approved' ? 'info' : 'warning'); ?>">
                                     <?php echo e(ucfirst(str_replace('_', ' ', $resident->approval_status))); ?>

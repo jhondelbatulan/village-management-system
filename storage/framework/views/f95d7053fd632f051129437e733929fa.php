@@ -1,8 +1,9 @@
 <?php $__env->startSection('title', $village->village_name . ' — GIS Dashboard'); ?>
+<?php $__env->startSection('bodyClasses', 'dashboard-body gis-page'); ?>
 
 <?php $__env->startSection('content'); ?>
-<div id="gis-layout" style="height: calc(100vh - var(--mvms-navbar-height) - 3rem - var(--mvms-footer-height)); display: flex; flex-direction: column; overflow: hidden;">
-    <div class="d-flex justify-content-between align-items-center mb-2 flex-shrink-0">
+<div id="gis-layout" style="height: calc(100vh - var(--mvms-navbar-height) - var(--mvms-footer-height)); display: flex; flex-direction: column; overflow: hidden;">
+    <div class="d-flex justify-content-between align-items-center mb-1 flex-shrink-0">
         <div>
             <h1 class="page-title mb-1"><?php echo e($village->village_name); ?> <small class="text-muted fs-6">GIS Dashboard</small></h1>
             <p class="page-subtitle text-muted"><?php echo e($village->village_code); ?> — <?php echo e($village->address); ?></p>
@@ -17,7 +18,7 @@
         </div>
     </div>
 
-    <div class="row g-1 mb-2 align-items-center flex-shrink-0" id="search-filter-bar">
+    <div class="row g-1 mb-1 align-items-center flex-shrink-0" id="search-filter-bar">
         <div class="col">
             <div class="input-group input-group-sm">
                 <input type="text" id="search-input" class="form-control" placeholder="Name, block, lot, resident...">
@@ -212,6 +213,7 @@
 <?php $__env->startPush('styles'); ?>
 <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <style>
+    .gis-page .app-content { padding: 0 !important; padding-top: var(--mvms-navbar-height) !important; }
     #stats-panel { transition: width 0.3s ease; }
     #stats-panel.collapsed-panel { width: 48px !important; overflow: hidden; }
     #stats-panel.collapsed-panel #stats-body, #stats-panel.collapsed-panel .bg-success h6 { display: none; }
@@ -225,27 +227,37 @@
     .stat-section-title { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: var(--mvms-primary); font-weight: 700; margin-bottom: 6px; }
     .payment-badge { font-size: 0.7rem; padding: 2px 6px; }
     @media (max-width: 767.98px) {
-        #gis-layout { height: calc(100vh - var(--mvms-navbar-height) - 3rem - var(--mvms-footer-height)) !important; }
-        #gis-layout > .row.flex-grow-1 { flex-direction: column !important; }
-        #gis-layout > .row.flex-grow-1 > .col-auto { width: 100% !important; flex: 0 0 auto !important; max-height: 50vh; }
-        #gis-layout > .row.flex-grow-1 > .col { flex: 1 1 auto !important; min-height: 0; }
-        #gis-layout > .row.flex-grow-1 > .col-auto:has(#stats-panel.collapsed-panel) { max-height: none !important; }
+        #gis-layout {
+            height: calc(100vh - var(--mvms-navbar-height) - 1rem) !important;
+        }
+        #gis-layout > .d-flex.mb-1 { flex-wrap: wrap; gap: 4px !important; }
+        #gis-layout > .d-flex.mb-1 > div { flex: 1 1 auto !important; min-width: 0; }
+        #gis-layout > .d-flex.mb-1 h1 { font-size: 1rem !important; margin-bottom: 0 !important; }
+        #gis-layout > .d-flex.mb-1 .page-subtitle { display: none !important; }
+        #gis-layout > .d-flex.mb-1 .btn { flex: 0 0 auto; }
+        #search-filter-bar { flex-wrap: wrap; gap: 2px !important; margin-bottom: 4px !important; }
         #search-filter-bar .col,
-        #search-filter-bar .col-auto { width: 100% !important; }
+        #search-filter-bar .col-auto { flex: 1 1 auto !important; width: auto !important; min-width: 0; }
+        #search-filter-bar .col { min-width: 120px; }
         #search-filter-bar .col-auto .form-select,
-        #search-filter-bar .col-auto .form-control { width: 100% !important; }
+        #search-filter-bar .col-auto .form-control { width: 100% !important; font-size: 0.78rem !important; }
         #search-filter-bar .input-group { width: 100% !important; }
+        #gis-layout > .row { flex-direction: column !important; }
+        #gis-layout > .row > .col-auto { width: 100% !important; flex: 0 0 auto !important; max-height: 35vh; overflow: hidden; }
+        #gis-layout > .row > .col { flex: 1 1 auto !important; min-height: 0; }
+        #gis-layout > .row > .col-auto:has(#stats-panel.collapsed-panel) { max-height: none !important; }
         #stats-panel.collapsed-panel { width: 100% !important; }
         #stats-panel.collapsed-panel .bg-success h6,
         #stats-panel.collapsed-panel #stats-body { display: none !important; }
         #stats-panel.collapsed-panel .bg-success { padding: 4px 8px !important; }
         #stats-panel { border-radius: 0 !important; }
-        #stats-panel .p-3 { padding: 0.4rem !important; }
-        .stat-section { margin-bottom: 6px !important; }
-        .stat-section-title { font-size: 0.65rem !important; margin-bottom: 3px !important; }
-        .stat-row { padding: 2px 0 !important; }
-        .stat-label { font-size: 0.68rem !important; }
-        .stat-value { font-size: 0.75rem !important; }
+        #stats-panel .p-3 { padding: 0.35rem !important; }
+        #stats-body { max-height: calc(35vh - 44px) !important; overflow-y: auto !important; }
+        .stat-section { margin-bottom: 4px !important; }
+        .stat-section-title { font-size: 0.62rem !important; margin-bottom: 2px !important; }
+        .stat-row { padding: 1px 0 !important; }
+        .stat-label { font-size: 0.65rem !important; }
+        .stat-value { font-size: 0.7rem !important; }
     }
 </style>
 <?php $__env->stopPush(); ?>
