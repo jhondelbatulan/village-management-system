@@ -1,0 +1,127 @@
+/**
+ * Multi-Village Management System — Authentication Styles
+ * Government-inspired login page design
+ */
+
+:root {
+    --auth-primary: #1a4b8c;
+    --auth-primary-dark: #0f3460;
+    --auth-overlay: rgba(15, 52, 96, 0.75);
+}
+
+body.auth-body {
+    margin: 0;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+}
+
+.auth-wrapper {
+    position: relative;
+    min-height: 100vh;
+    overflow: hidden;
+}
+
+.auth-background {
+    position: fixed;
+    inset: 0;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+    z-index: 0;
+}
+
+.auth-overlay {
+    position: fixed;
+    inset: 0;
+    background: var(--auth-overlay);
+    z-index: 1;
+}
+
+.auth-wrapper .container {
+    position: relative;
+    z-index: 2;
+}
+
+.auth-card {
+    border-radius: 16px;
+    backdrop-filter: blur(4px);
+    background: rgba(255, 255, 255, 0.98);
+}
+
+.auth-logo {
+    width: 90px;
+    height: 90px;
+    object-fit: contain;
+}
+
+.auth-title {
+    color: var(--auth-primary);
+    font-size: 1.15rem;
+    line-height: 1.4;
+}
+
+.auth-subtitle {
+    font-size: 0.8rem;
+}
+
+.auth-form .form-control {
+    border-radius: 8px;
+    border-color: #dee2e6;
+    font-size: 0.95rem;
+}
+
+.auth-form .form-control:focus {
+    border-color: var(--auth-primary);
+    box-shadow: 0 0 0 0.2rem rgba(26, 75, 140, 0.15);
+}
+
+.auth-form .form-label {
+    font-size: 0.875rem;
+    color: #495057;
+}
+
+.login-btn {
+    background: linear-gradient(135deg, var(--auth-primary) 0%, var(--auth-primary-dark) 100%);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    padding: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.login-btn:hover {
+    background: linear-gradient(135deg, var(--auth-primary-dark) 0%, #0a2540 100%);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(26, 75, 140, 0.35);
+}
+
+.forgot-link {
+    color: var(--auth-primary);
+}
+
+.forgot-link:hover {
+    color: var(--auth-primary-dark);
+    text-decoration: underline !important;
+}
+
+.auth-footer p {
+    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+}
+
+.toggle-password {
+    border-radius: 0 8px 8px 0 !important;
+}
+
+@media (max-width: 575.98px) {
+    .auth-card .card-body {
+        padding: 1.5rem !important;
+    }
+
+    .auth-logo {
+        width: 70px;
+        height: 70px;
+    }
+
+    .auth-title {
+        font-size: 1rem;
+    }
+}
