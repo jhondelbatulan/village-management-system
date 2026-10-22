@@ -8,5 +8,5 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');
 
-Schedule::command('payments:process-overdue --apply-penalties')->daily();
+Schedule::command('payments:process-overdue')->daily();
 Schedule::command('payments:recalculate-predictions')->daily();

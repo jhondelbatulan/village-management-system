@@ -16,8 +16,14 @@
             <a href="{{ route('billings.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Back
             </a>
+            @if($canPayOnline)
+            <a href="{{ route('billings.pay-online', $billing) }}" class="btn btn-success btn-sm">
+                <i class="bi bi-phone me-1"></i>Pay Online (GCash)
+            </a>
+            @endif
             @if($canRecordPayment && in_array($billing->status, ['pending', 'overdue', 'partially_paid']))
-            <a href="{{ route('payments.create') }}?billing_id={{ $billing->id }}" class="btn btn-success btn-sm">
+            <a href="{{ route('payments.create') }}?billing_id={{ $billing->id }}@if($activeOnlinePayment && $activeOnlinePayment->status === 'approved')&online_payment={{ $activeOnlinePayment->id }}@endif"
+               class="btn btn-success btn-sm">
                 <i class="bi bi-plus-circle me-1"></i>Record Payment
             </a>
             @endif
@@ -29,6 +35,28 @@
     <div class="alert alert-success alert-dismissible fade show" role="alert">
         <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+@if(session('error'))
+    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        <i class="bi bi-exclamation-triangle me-2"></i>{{ session('error') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
+@if($activeOnlinePayment)
+    <div class="alert alert-info border-start border-4 border-info" role="alert">
+        @if($activeOnlinePayment->status === 'pending')
+            <i class="bi bi-hourglass-split me-2"></i>
+            An online GCash payment request of <strong>₱{{ number_format($activeOnlinePayment->amount, 2) }}</strong>
+            (txn #{{ $activeOnlinePayment->transaction_number }}) submitted on
+            {{ $activeOnlinePayment->created_at->format('M d, Y') }} is <strong>awaiting treasurer approval</strong>.
+        @else
+            <i class="bi bi-check-circle me-2"></i>
+            An approved online GCash payment of <strong>₱{{ number_format($activeOnlinePayment->amount, 2) }}</strong>
+            is <strong>awaiting recording</strong> by the treasurer.
+        @endif
     </div>
 @endif
 
@@ -135,40 +163,6 @@
                 @endif
             </div>
         </div>
-
-        @if($billing->penalties->count() > 0)
-        <div class="card border-0 shadow-sm mb-4">
-            <div class="card-header bg-white border-0 pt-4 px-4">
-                <h6 class="mb-0 fw-semibold"><i class="bi bi-exclamation-triangle me-2 text-warning"></i>Penalties</h6>
-            </div>
-            <div class="card-body p-0">
-                <div class="table-responsive">
-                    <table class="table table-hover align-middle mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Date</th>
-                                <th class="text-end">Amount</th>
-                                <th>Reason</th>
-                                <th>Imposed By</th>
-                                <th>Status</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @foreach($billing->penalties as $penalty)
-                            <tr>
-                                <td>{{ $penalty->imposed_date->format('M d, Y') }}</td>
-                                <td class="text-end">₱{{ number_format($penalty->amount, 2) }}</td>
-                                <td>{{ $penalty->reason ?? '—' }}</td>
-                                <td>{{ $penalty->imposedByUser?->full_name ?? '—' }}</td>
-                                <td><span class="badge {{ $penalty->status_badge }}">{{ $penalty->status_label }}</span></td>
-                            </tr>
-                            @endforeach
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        @endif
     </div>
 
     <div class="col-lg-4">
@@ -180,10 +174,6 @@
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Base Amount</span>
                     <span class="fw-semibold">₱{{ number_format($billing->amount, 2) }}</span>
-                </div>
-                <div class="d-flex justify-content-between mb-2">
-                    <span class="text-muted">Penalty</span>
-                    <span class="fw-semibold text-danger">₱{{ number_format($billing->penalty, 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-2">
                     <span class="text-muted">Discount</span>

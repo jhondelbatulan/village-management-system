@@ -3,6 +3,8 @@
 namespace App\Services\Analytics;
 
 use App\Models\Resident;
+use App\Models\Village;
+use App\Support\SqlHelper;
 use Illuminate\Database\Eloquent\Builder;
 
 class OccupationAnalyticsService
@@ -12,7 +14,10 @@ class OccupationAnalyticsService
     protected function baseQuery(?int $villageId = null): Builder
     {
         $query = Resident::query()->where('status', 'active');
-        if ($villageId) $query->where('village_id', $villageId);
+        if ($villageId) {
+            $query->where('village_id', $villageId);
+        }
+
         return $query;
     }
 
@@ -41,6 +46,7 @@ class OccupationAnalyticsService
             ->whereNotNull('occupation')->where('occupation', '!=', '')
             ->groupBy('occupation')->orderByDesc('count')
             ->pluck('count', 'occupation')->toArray();
+
         return $this->stats->frequencyCount($counts);
     }
 
@@ -75,12 +81,13 @@ class OccupationAnalyticsService
         foreach ($rows as $row) {
             $result[$row->occupation][$row->gender] = $row->count;
         }
+
         return $result;
     }
 
     public function getVillageComparison(): array
     {
-        $villages = \App\Models\Village::where('status', 'active')->get();
+        $villages = Village::where('status', 'active')->get();
         $result = [];
         foreach ($villages as $v) {
             $stats = $this->getSummaryStats($v->id);
@@ -92,6 +99,7 @@ class OccupationAnalyticsService
                 'top_3' => $top,
             ];
         }
+
         return $result;
     }
 
@@ -103,13 +111,14 @@ class OccupationAnalyticsService
         foreach ($dist as $occ => $data) {
             $result[] = ['rank' => $rank++, 'occupation' => $occ, 'count' => $data['count'], 'percentage' => $data['percentage']];
         }
+
         return $result;
     }
 
     public function getOccupationTrend(?int $villageId = null, int $months = 12): array
     {
         $rows = $this->baseQuery($villageId)
-            ->selectRaw("strftime('%Y-%m', created_at) as month, occupation, COUNT(*) as count")
+            ->selectRaw(SqlHelper::dateFormat('created_at', '%Y-%m').' as month, occupation, COUNT(*) as count')
             ->whereNotNull('occupation')->where('occupation', '!=', '')
             ->where('created_at', '>=', now()->subMonths($months))
             ->groupBy('month', 'occupation')->orderBy('month')
@@ -121,6 +130,7 @@ class OccupationAnalyticsService
                 $result[$month][$e->occupation] = $e->count;
             }
         }
+
         return $result;
     }
 
@@ -139,6 +149,7 @@ class OccupationAnalyticsService
                 $insights[] = ['type' => 'info', 'message' => "\"{$topOcc}\" is the most common occupation with {$top[$topOcc]} residents ({$pct}%)."];
             }
         }
+
         return $insights;
     }
 }

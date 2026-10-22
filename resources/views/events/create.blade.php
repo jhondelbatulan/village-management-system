@@ -94,15 +94,6 @@
                     <input type="number" name="max_participants" class="form-control" value="{{ old('max_participants') }}" min="1">
                 </div>
 
-                <div class="col-md-3">
-                    <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select name="status" class="form-select" required>
-                        <option value="draft" {{ old('status', 'draft') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="upcoming" {{ old('status') == 'upcoming' ? 'selected' : '' }}>Upcoming</option>
-                        <option value="ongoing" {{ old('status') == 'ongoing' ? 'selected' : '' }}>Ongoing</option>
-                    </select>
-                </div>
-
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Cover Image</label>
                     <input type="file" name="cover_image" class="form-control" accept="image/*">

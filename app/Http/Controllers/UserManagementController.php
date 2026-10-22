@@ -10,6 +10,8 @@ use App\Models\User;
 use App\Models\Village;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class UserManagementController extends Controller
@@ -66,14 +68,15 @@ class UserManagementController extends Controller
             $villages = Village::orderBy('village_name')->get();
         }
 
-        $households = Household::where('status', 'active')
+        $householdsQuery = Household::query()
             ->orderBy('block_number')
-            ->orderBy('lot_number')
-            ->get();
+            ->orderBy('lot_number');
 
         if ($isAdmin) {
-            $households = $households->where('village_id', $user->village_id);
+            $householdsQuery->where('village_id', $user->village_id);
         }
+
+        $households = $householdsQuery->get();
 
         $residentRoleId = Role::where('role_slug', 'resident')->first()?->id;
 
@@ -129,14 +132,15 @@ class UserManagementController extends Controller
             $villages = Village::orderBy('village_name')->get();
         }
 
-        $households = Household::where('status', 'active')
+        $householdsQuery = Household::query()
             ->orderBy('block_number')
-            ->orderBy('lot_number')
-            ->get();
+            ->orderBy('lot_number');
 
         if ($isAdmin) {
-            $households = $households->where('village_id', $currentUser->village_id);
+            $householdsQuery->where('village_id', $currentUser->village_id);
         }
+
+        $households = $householdsQuery->get();
 
         $residentRoleId = Role::where('role_slug', 'resident')->first()?->id;
 
@@ -205,7 +209,7 @@ class UserManagementController extends Controller
         $user->update(['status' => $newStatus]);
 
         if ($newStatus === 'inactive') {
-            \Illuminate\Support\Facades\Session::where('user_id', $user->id)->update(['user_id' => null]);
+            $this->invalidateUserAccess($user);
         }
 
         $label = $newStatus === 'active' ? 'activated' : 'deactivated';
@@ -232,9 +236,17 @@ class UserManagementController extends Controller
         }
 
         $username = $user->username;
-        $user->update(['status' => 'inactive']);
-        \Illuminate\Support\Facades\Session::where('user_id', $user->id)->update(['user_id' => null]);
-        $user->delete();
+
+        try {
+            DB::transaction(function () use ($user): void {
+                $this->invalidateUserAccess($user);
+                $user->forceDelete();
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', "User \"{$username}\" could not be deleted because related records still reference it.");
+        }
 
         AuditLogService::log(
             'Delete User',
@@ -243,6 +255,15 @@ class UserManagementController extends Controller
         );
 
         return redirect()->route('users.index')->with('success', "User \"{$username}\" has been deleted.");
+    }
+
+    private function invalidateUserAccess(User $user): void
+    {
+        if (config('session.driver') === 'database') {
+            DB::table('sessions')->where('user_id', $user->id)->delete();
+        }
+
+        $user->forceFill(['remember_token' => Str::random(60)])->save();
     }
 
     private function getAssignableRoles(User $currentUser): \Illuminate\Support\Collection

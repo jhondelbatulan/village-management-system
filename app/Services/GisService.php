@@ -20,6 +20,9 @@ class GisService
                 'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
                 'address', 'purok', 'village_id', 'created_at', 'approved_at',
             ])
+            ->withCount(['residents as member_count' => function ($q) {
+                $q->where('status', 'active');
+            }])
             ->orderBy('household_number')
             ->get();
     }
@@ -34,9 +37,33 @@ class GisService
                 'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
                 'village_id',
             ])
+            ->withCount(['residents as member_count' => function ($q) {
+                $q->where('status', 'active');
+            }])
             ->orderBy('village_id')
             ->orderBy('household_number')
             ->get();
+    }
+
+    public function getLatestMappedHouseholds(?int $villageId = null, int $limit = 10)
+    {
+        $builder = Household::whereNotNull('latitude')
+            ->whereNotNull('longitude')
+            ->with('village:id,village_name,village_code,latitude,longitude')
+            ->select([
+                'id', 'household_number', 'household_head_name', 'latitude', 'longitude',
+                'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
+                'village_id', 'address', 'purok', 'created_at',
+            ])
+            ->withCount(['residents as member_count' => function ($q) {
+                $q->where('status', 'active');
+            }]);
+
+        if ($villageId) {
+            $builder->where('village_id', $villageId);
+        }
+
+        return $builder->latest('created_at')->limit($limit)->get();
     }
 
     public function getVillagesWithCoords()
@@ -87,7 +114,9 @@ class GisService
             'id', 'household_number', 'household_head_name', 'latitude', 'longitude',
             'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
             'village_id', 'address', 'purok',
-        ])->get();
+        ])->withCount(['residents as member_count' => function ($q) {
+            $q->where('status', 'active');
+        }])->get();
     }
 
     public function searchResidents(string $query, ?int $villageId = null)
@@ -96,7 +125,15 @@ class GisService
             ->whereHas('household', function ($q) {
                 $q->whereNotNull('latitude')->whereNotNull('longitude');
             })
-            ->with('household:id,household_number,village_id,latitude,longitude');
+            ->with(['household' => function ($q) {
+                $q->select([
+                    'id', 'household_number', 'household_head_name', 'latitude', 'longitude',
+                    'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
+                    'village_id', 'address', 'purok',
+                ])->withCount(['residents as member_count' => function ($qq) {
+                    $qq->where('status', 'active');
+                }]);
+            }]);
 
         if ($villageId) {
             $builder->where('village_id', $villageId);
@@ -151,7 +188,9 @@ class GisService
             'id', 'household_number', 'household_head_name', 'latitude', 'longitude',
             'block_number', 'lot_number', 'household_type', 'status', 'approval_status',
             'village_id', 'address', 'purok',
-        ])->get();
+        ])->withCount(['residents as member_count' => function ($q) {
+            $q->where('status', 'active');
+        }])->get();
     }
 
     public function getVillageStatistics(int $villageId): array

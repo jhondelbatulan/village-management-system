@@ -1,13 +1,13 @@
 @extends('layouts.app')
 
-@section('title', 'Household Participation - ' . $household->family_name)
+@section('title', 'Household Participation - Block ' . ($household->block_number ?? 'N/A') . ' - Lot ' . ($household->lot_number ?? 'N/A'))
 
 @section('content')
 <div class="container-fluid">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <div>
             <h1 class="h3 mb-0 text-gray-800">
-                <i class="bi bi-house me-2"></i>{{ $household->family_name }} Household
+                <i class="bi bi-house me-2"></i>Block {{ $household->block_number ?? 'N/A' }} - Lot {{ $household->lot_number ?? 'N/A' }}
             </h1>
             <p class="text-muted mb-0">{{ $household->village->village_name }} - Participation History</p>
         </div>
@@ -99,7 +99,7 @@
                         <tr>
                             <th width="20%">Event</th>
                             <th width="15%">Date</th>
-                            <th width="15%">Resident</th>
+                            <th width="15%">Block / Lot</th>
                             <th width="12%">Status</th>
                             <th width="18%">Remarks</th>
                             <th width="20%">Recorded By</th>
@@ -116,7 +116,7 @@
                                 <small class="text-muted">{{ $participation->event->category ?? '' }}</small>
                             </td>
                             <td>{{ $participation->event?->event_date ? \Carbon\Carbon::parse($participation->event->event_date)->format('M d, Y') : 'N/A' }}</td>
-                            <td>{{ $participation->resident?->full_name ?? 'N/A' }}</td>
+                            <td>Block {{ $household->block_number ?? 'N/A' }} - Lot {{ $household->lot_number ?? 'N/A' }}</td>
                             <td>
                                 @if($participation->status === 'present')
                                     <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Present</span>

@@ -9,6 +9,7 @@ use App\Models\Village;
 use App\Models\Household;
 use App\Services\AnnouncementService;
 use App\Services\AuditLogService;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -65,18 +66,15 @@ class AnnouncementController extends Controller
         $user = auth()->user();
         $role = $user->role?->role_slug;
 
-        if ($role === 'treasurer') {
-            $allowedTypes = ['payment_reminder', 'general'];
-            if (!in_array($data['announcement_type'] ?? 'general', $allowedTypes)) {
-                return back()->withErrors(['announcement_type' => 'Treasurers can only create payment-related announcements.'])->withInput();
-            }
-        }
-
         if ($role !== 'super_admin' && !$data['village_id']) {
             $data['village_id'] = $user->village_id;
         }
 
         $announcement = $this->announcementService->create($data);
+
+        if ($announcement->status === 'published') {
+            $this->notifyAnnouncementAudience($announcement);
+        }
 
         AuditLogService::log('Create Announcement', 'Announcements', "Created announcement: {$announcement->title}");
 
@@ -85,6 +83,8 @@ class AnnouncementController extends Controller
 
     public function show(Announcement $announcement): View
     {
+        $this->ensureVisible($announcement);
+
         $announcement->load('village', 'creator', 'responses.resident', 'responses.household');
 
         $role = auth()->user()->role?->role_slug;
@@ -94,6 +94,9 @@ class AnnouncementController extends Controller
 
     public function edit(Announcement $announcement): View
     {
+        $this->ensureVisible($announcement);
+        abort_unless($announcement->isManagedBy(auth()->user()), 403, 'Only the creator of this announcement can manage it.');
+
         $user = auth()->user();
         $role = $user->role?->role_slug;
         $villageId = $announcement->village_id;
@@ -109,19 +112,18 @@ class AnnouncementController extends Controller
 
     public function update(UpdateAnnouncementRequest $request, Announcement $announcement): RedirectResponse
     {
+        $this->ensureVisible($announcement);
+        abort_unless($announcement->isManagedBy(auth()->user()), 403, 'Only the creator of this announcement can manage it.');
+
         $data = $request->validated();
 
-        $user = auth()->user();
-        $role = $user->role?->role_slug;
-
-        if ($role === 'treasurer') {
-            $allowedTypes = ['payment_reminder', 'general'];
-            if (!in_array($data['announcement_type'] ?? 'general', $allowedTypes)) {
-                return back()->withErrors(['announcement_type' => 'Treasurers can only create payment-related announcements.'])->withInput();
-            }
-        }
+        $wasPublished = $announcement->status === 'published';
 
         $announcement = $this->announcementService->update($announcement, $data);
+
+        if (! $wasPublished && $announcement->status === 'published') {
+            $this->notifyAnnouncementAudience($announcement);
+        }
 
         AuditLogService::log('Update Announcement', 'Announcements', "Updated announcement: {$announcement->title}");
 
@@ -130,6 +132,9 @@ class AnnouncementController extends Controller
 
     public function destroy(Announcement $announcement): RedirectResponse
     {
+        $this->ensureVisible($announcement);
+        abort_unless($announcement->isManagedBy(auth()->user()), 403, 'Only the creator of this announcement can manage it.');
+
         $title = $announcement->title;
         $this->announcementService->delete($announcement);
 
@@ -140,7 +145,16 @@ class AnnouncementController extends Controller
 
     public function publish(Announcement $announcement): RedirectResponse
     {
+        $this->ensureVisible($announcement);
+        abort_unless($announcement->isManagedBy(auth()->user()), 403, 'Only the creator of this announcement can manage it.');
+
+        $wasPublished = $announcement->status === 'published';
+
         $this->announcementService->publish($announcement);
+
+        if (! $wasPublished) {
+            $this->notifyAnnouncementAudience($announcement);
+        }
 
         AuditLogService::log('Publish Announcement', 'Announcements', "Published announcement: {$announcement->title}");
 
@@ -149,6 +163,9 @@ class AnnouncementController extends Controller
 
     public function archive(Announcement $announcement): RedirectResponse
     {
+        $this->ensureVisible($announcement);
+        abort_unless($announcement->isManagedBy(auth()->user()), 403, 'Only the creator of this announcement can manage it.');
+
         $this->announcementService->archive($announcement);
 
         AuditLogService::log('Archive Announcement', 'Announcements', "Archived announcement: {$announcement->title}");
@@ -158,23 +175,24 @@ class AnnouncementController extends Controller
 
     public function respond(Announcement $announcement, Request $request): RedirectResponse
     {
+        $this->ensureVisible($announcement);
+
         $request->validate([
             'response' => 'required|in:going,maybe,not_going',
         ]);
 
-        $user = auth()->user();
-        $resident = $user->household?->residents()->first();
+        $household = auth()->user()->household;
 
-        if (!$resident) {
-            return back()->with('error', 'No resident profile linked to your account.');
+        if (!$household) {
+            return back()->with('error', 'Your account is not linked to a household yet. Please contact the administration.');
         }
 
         $announcement->responses()->updateOrCreate(
-            ['resident_id' => $resident->id],
+            ['household_id' => $household->id],
             [
                 'response' => $request->input('response'),
                 'note' => $request->input('note'),
-                'household_id' => $resident->household_id,
+                'resident_id' => null,
             ]
         );
 
@@ -186,6 +204,30 @@ class AnnouncementController extends Controller
     private function getCategories(): array
     {
         return ['General', 'Community', 'Health & Safety', 'Infrastructure', 'Events', 'Emergency', 'Government', 'Education', 'Environment', 'Other'];
+    }
+
+    private function ensureVisible(Announcement $announcement): void
+    {
+        $user = auth()->user();
+
+        abort_unless(
+            $announcement->isVisibleToRole($user->role?->role_slug, $user->id),
+            403
+        );
+    }
+
+    private function notifyAnnouncementAudience(Announcement $announcement): void
+    {
+        app(NotificationService::class)->notifyAnnouncementResidents($announcement);
+
+        app(NotificationService::class)->notifyVillageStaff(
+            $announcement->village_id,
+            'announcement',
+            'New Announcement',
+            "New announcement published: {$announcement->title}",
+            route('announcements.show', $announcement),
+            auth()->id()
+        );
     }
 
     private function getTypes(): array

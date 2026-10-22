@@ -5,10 +5,16 @@ namespace App\Services;
 use App\Models\Event;
 use App\Models\Participation;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Storage;
 
 class EventService
 {
+    /**
+     * Remarks used on participation rows created automatically from a "Going" RSVP.
+     */
+    public const AUTO_GENERATED_REMARK = 'Auto-generated from Going response';
+
     public function getEventsForUser($user, ?string $search = null, ?string $status = null, ?string $category = null, ?string $sort = null)
     {
         $query = Event::with('village', 'creator');
@@ -94,6 +100,7 @@ class EventService
             $data['attachment'] = $data['attachment']->store('events', 'public');
         }
 
+        $data['status'] = $this->computeAutomaticStatus($data);
         $data['created_by'] = auth()->id();
 
         return Event::create($data);
@@ -119,7 +126,65 @@ class EventService
             unset($data['attachment']);
         }
 
+        // Recompute the status from the schedule unless the event was
+        // manually cancelled or completed (both stick until changed through
+        // the dedicated button flow).
+        if (! isset($data['status']) && ! in_array($event->status, ['cancelled', 'completed'], true)) {
+            $data['status'] = $this->computeAutomaticStatus(array_merge([
+                'event_date' => $event->event_date,
+                'start_time' => $event->start_time,
+                'end_time' => $event->end_time,
+            ], $data));
+        }
+
         $event->update($data);
+
+        if (($data['status'] ?? null) === 'completed' && $event->wasChanged('status')) {
+            $this->autoGenerateParticipations($event);
+        }
+
+        return $event;
+    }
+
+    /**
+     * Compute the status from the event schedule: future date (or today
+     * before start_time) => upcoming. Once start_time has arrived (or the
+     * date has passed) the event stays ongoing until the creator manually
+     * marks it completed.
+     */
+    public function computeAutomaticStatus(array $data): string
+    {
+        $date = Carbon::parse($data['event_date'])->startOfDay();
+        $today = Carbon::today();
+        $now = Carbon::now();
+
+        if ($date->gt($today)) {
+            return 'upcoming';
+        }
+
+        if ($date->eq($today)
+            && ! empty($data['start_time'])
+            && $now->lt(Carbon::parse($data['start_time']))
+        ) {
+            return 'upcoming';
+        }
+
+        return 'ongoing';
+    }
+
+    public function markCompleted(Event $event): Event
+    {
+        if ($event->status !== 'completed') {
+            $event->update(['status' => 'completed']);
+            $this->autoGenerateParticipations($event);
+        }
+
+        return $event;
+    }
+
+    public function cancel(Event $event): Event
+    {
+        $event->update(['status' => 'cancelled']);
 
         return $event;
     }
@@ -136,36 +201,77 @@ class EventService
         $event->delete();
     }
 
-    public function recordParticipation(Event $event, int $residentId, string $status, ?string $remarks = null): Participation
+    /**
+     * Participation is tracked per household: one record per household per
+     * event, regardless of how many members attend or RSVP.
+     */
+    public function recordParticipation(Event $event, int $householdId, string $status, ?string $remarks = null): Participation
     {
-        $resident = \App\Models\Resident::find($residentId);
+        return Participation::updateOrCreate(
+            ['event_id' => $event->id, 'household_id' => $householdId],
+            [
+                'resident_id' => null,
+                'status' => $status,
+                'remarks' => $remarks,
+                'recorded_by' => auth()->id(),
+            ]
+        );
+    }
 
-        return Participation::create([
-            'event_id' => $event->id,
-            'resident_id' => $residentId,
-            'household_id' => $resident?->household_id,
-            'status' => $status,
-            'remarks' => $remarks,
-            'recorded_by' => auth()->id(),
-        ]);
+    /**
+     * Keep the household participation record in sync with a household's RSVP so
+     * participation monitoring always reflects "Going" responses. The whole
+     * household participates as soon as it responds "Going".
+     */
+    public function syncParticipationWithResponse(Event $event, int $householdId, string $response): void
+    {
+        $participation = Participation::where('event_id', $event->id)
+            ->where('household_id', $householdId)
+            ->first();
+
+        if ($response === 'going') {
+            if ($participation !== null) {
+                return;
+            }
+
+            Participation::create([
+                'event_id' => $event->id,
+                'household_id' => $householdId,
+                'resident_id' => null,
+                'status' => 'present',
+                'remarks' => self::AUTO_GENERATED_REMARK,
+                'recorded_by' => auth()->id(),
+            ]);
+
+            return;
+        }
+
+        // Only drop the auto-generated record; manually recorded attendance stays.
+        if ($participation === null || $participation->remarks !== self::AUTO_GENERATED_REMARK) {
+            return;
+        }
+
+        $participation->delete();
     }
 
     public function autoGenerateParticipations(Event $event): void
     {
-        $goingResponses = $event->responses()->where('response', 'going')->with('resident')->get();
+        $goingResponses = $event->responses()->where('response', 'going')->get()
+            ->filter(fn ($response) => $response->household_id)
+            ->groupBy(fn ($response) => $response->household_id);
 
-        foreach ($goingResponses as $response) {
+        foreach ($goingResponses as $householdId => $responses) {
             $exists = Participation::where('event_id', $event->id)
-                ->where('resident_id', $response->resident_id)
+                ->where('household_id', $householdId)
                 ->exists();
 
             if (!$exists) {
                 Participation::create([
                     'event_id' => $event->id,
-                    'resident_id' => $response->resident_id,
-                    'household_id' => $response->resident?->household_id,
+                    'household_id' => $householdId,
+                    'resident_id' => null,
                     'status' => 'present',
-                    'remarks' => 'Auto-generated from Going response',
+                    'remarks' => self::AUTO_GENERATED_REMARK,
                     'recorded_by' => auth()->id(),
                 ]);
             }
@@ -218,17 +324,16 @@ class EventService
         $stats = [];
         foreach ($households as $household) {
             $memberCount = $household->residents()->where('status', 'active')->count();
-            $residentIds = $household->residents->pluck('id');
-            $participatedCount = Participation::whereIn('resident_id', $residentIds)
+            $participatedCount = Participation::where('household_id', $household->id)
                 ->where('status', 'present')
                 ->distinct('event_id')
                 ->count('event_id');
-            $lastAttendance = Participation::whereIn('resident_id', $residentIds)
+            $lastAttendance = Participation::where('household_id', $household->id)
                 ->where('status', 'present')
                 ->latest()
                 ->first();
 
-            $participationPct = $totalEvents > 0 && $memberCount > 0
+            $participationPct = $totalEvents > 0
                 ? round(($participatedCount / $totalEvents) * 100, 1)
                 : 0;
 
@@ -246,9 +351,21 @@ class EventService
         return collect($stats)->sortByDesc('participation_pct')->values()->all();
     }
 
+    /**
+     * Participation belongs to the household, so a member's history is the
+     * household's participation history.
+     */
     public function getResidentParticipationHistory(int $residentId)
     {
-        return Participation::where('resident_id', $residentId)
+        $householdId = \App\Models\Resident::find($residentId)?->household_id;
+
+        if (! $householdId) {
+            return Participation::whereNull('id')
+                ->with(['event', 'event.village'])
+                ->paginate(15);
+        }
+
+        return Participation::where('household_id', $householdId)
             ->with(['event', 'event.village'])
             ->latest()
             ->paginate(15);

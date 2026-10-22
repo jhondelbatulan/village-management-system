@@ -94,7 +94,8 @@
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Sort</label>
                     <select name="sort" class="form-select">
-                        <option value="">Newest First</option>
+                        <option value="" <?php echo e(request('sort') == '' ? 'selected' : ''); ?>>Block / Lot</option>
+                        <option value="newest" <?php echo e(request('sort') == 'newest' ? 'selected' : ''); ?>>Newest First</option>
                         <option value="az" <?php echo e(request('sort') == 'az' ? 'selected' : ''); ?>>A – Z (Head Name)</option>
                         <option value="za" <?php echo e(request('sort') == 'za' ? 'selected' : ''); ?>>Z – A (Head Name)</option>
                     </select>
@@ -207,7 +208,7 @@
                                             </a>
                                         <?php endif; ?>
                                         <?php if($household->approval_status === 'active'): ?>
-                                            <form action="<?php echo e(route('households.destroy', $household)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Archive this household?')">
+                                            <form action="<?php echo e(route('households.destroy', $household)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Archive this household? All of its residents will be archived as well.')">
                                                 <?php echo csrf_field(); ?>
                                                 <?php echo method_field('DELETE'); ?>
                                                 <button type="submit" class="btn btn-outline-danger" title="Archive">
@@ -215,6 +216,15 @@
                                                 </button>
                                             </form>
                                         <?php endif; ?>
+                                    <?php endif; ?>
+                                    <?php if(auth()->user()->role?->role_slug === 'super_admin'): ?>
+                                        <form action="<?php echo e(route('households.force-delete', $household)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household <?php echo e($household->household_number); ?> and all of its residents? This cannot be undone.')">
+                                            <?php echo csrf_field(); ?>
+                                            <?php echo method_field('DELETE'); ?>
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete Permanently">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </div>
                             </td>
@@ -281,6 +291,15 @@
                                             <?php echo csrf_field(); ?>
                                             <button type="submit" class="btn btn-sm btn-outline-success" title="Restore">
                                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
+                                            </button>
+                                        </form>
+                                    <?php endif; ?>
+                                    <?php if(auth()->user()->role?->role_slug === 'super_admin'): ?>
+                                        <form action="<?php echo e(route('households.force-delete', $archived)); ?>" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household <?php echo e($archived->household_number); ?> and all of its residents? This cannot be undone.')">
+                                            <?php echo csrf_field(); ?>
+                                            <?php echo method_field('DELETE'); ?>
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Permanently">
+                                                <i class="bi bi-trash me-1"></i> Delete Permanently
                                             </button>
                                         </form>
                                     <?php endif; ?>

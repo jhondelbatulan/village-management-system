@@ -16,9 +16,9 @@
                             <img src="{{ asset(config('app_settings.assets.logo')) }}"
                                  alt="System Logo"
                                  class="auth-logo mb-3">
-                            <h4 class="auth-title fw-bold text-primary mb-1">Reset Password</h4>
+                            <h4 class="auth-title fw-bold text-primary mb-1">Forgot Password</h4>
                             <p class="auth-subtitle text-muted small mb-0">
-                                Enter your email address and we'll send you a link to reset your password.
+                                Enter your account email and we'll send your username and a new password to sign in with.
                             </p>
                         </div>
 
@@ -55,7 +55,7 @@
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-lg w-100 login-btn">
-                                <i class="bi bi-send me-2"></i>Send Reset Link
+                                <i class="bi bi-send me-2"></i>Send Login Credentials
                             </button>
                         </form>
 

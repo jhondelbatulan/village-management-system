@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
             'track.activity' => \App\Http\Middleware\TrackUserActivity::class,
+            'guest' => \App\Http\Middleware\RedirectIfAuthenticated::class,
         ]);
 
         $middleware->web(append: [

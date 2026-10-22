@@ -20,6 +20,9 @@
                     @endforeach
                 </select>
             </div>
+            <button id="btn-latest" class="btn btn-outline-primary btn-sm" title="Show pinpoint of latest saved households">
+                <i class="bi bi-clock-history me-1"></i> Latest Saved
+            </button>
             <a href="{{ route('gis.export') }}" class="btn btn-outline-success btn-sm">
                 <i class="bi bi-download me-1"></i> Export
             </a>
@@ -29,8 +32,8 @@
     <div class="row g-1 mb-1 align-items-center flex-shrink-0" id="search-filter-bar">
         <div class="col">
             <div class="input-group input-group-sm">
-                <input type="text" id="search-input" class="form-control" placeholder="Name, block, lot, resident...">
-                <button id="btn-search" class="btn btn-primary"><i class="bi bi-search"></i></button>
+                <input type="text" id="search-input" class="form-control" placeholder="Name, block, lot, address, resident...">
+                <button id="btn-search" class="btn btn-primary" title="Search"><i class="bi bi-search"></i></button>
             </div>
         </div>
         <div class="col-auto">
@@ -234,8 +237,38 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var householdLayer = L.layerGroup().addTo(map);
     var villageLayer = L.layerGroup().addTo(map);
+    var geocodeLayer = L.layerGroup().addTo(map);
+    var latestLayer = L.layerGroup().addTo(map);
     var allMarkers = [];
     var selectedHouseholdMarker = null;
+
+    var searchPinIcon = L.divIcon({
+        className: 'gis-marker',
+        html: '<div style="width:16px;height:16px;background:#fd7e14;border:3px solid #fff;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
+        iconSize: [22, 22], iconAnchor: [11, 11],
+    });
+
+    var latestPinIcon = L.divIcon({
+        className: 'gis-marker',
+        html: '<div style="width:18px;height:18px;background:#0dcaf0;border:4px solid #0d6efd;border-radius:50%;box-shadow:0 1px 4px rgba(0,0,0,.5);"></div>',
+        iconSize: [26, 26], iconAnchor: [13, 13],
+    });
+
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function geocodeAddress(q) {
+        return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (Array.isArray(json) && json.length > 0) {
+                    return { lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon), label: json[0].display_name || '' };
+                }
+                return null;
+            })
+            .catch(function() { return null; });
+    }
 
     function getHouseholdColor(h) {
         if (h.payment_status === 'paid') return '#28a745';
@@ -314,6 +347,8 @@ document.addEventListener('DOMContentLoaded', function() {
     function renderAll() {
         householdLayer.clearLayers();
         villageLayer.clearLayers();
+        geocodeLayer.clearLayers();
+        latestLayer.clearLayers();
         allMarkers = [];
 
         villageMarkersData.forEach(function(v) {
@@ -391,6 +426,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
                 householdLayer.clearLayers();
                 villageLayer.clearLayers();
+                geocodeLayer.clearLayers();
+                latestLayer.clearLayers();
                 allMarkers = [];
 
                 var sv = villageMarkersData.find(function(v) { return v.id == vid; });
@@ -577,13 +614,15 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('stats-content').innerHTML += html;
     }
 
-    document.getElementById('btn-search').addEventListener('click', function() {
+    function runSearch() {
         var q = document.getElementById('search-input').value.trim();
         if (!q) return;
-        var vid = focusSelect.value;
+        var vid = document.getElementById('focus-village').value;
         var url = '/gis/search?q=' + encodeURIComponent(q);
         if (vid) url += '&village_id=' + vid;
         fetch(url).then(function(r) { return r.json(); }).then(function(res) {
+            geocodeLayer.clearLayers();
+            latestLayer.clearLayers();
             if (res.success && res.data.length > 0) {
                 householdLayer.clearLayers();
                 allMarkers = [];
@@ -598,6 +637,45 @@ document.addEventListener('DOMContentLoaded', function() {
                     fitToMarkers(allMarkers);
                     if (allMarkers.length === 1) allMarkers[0].marker.openPopup();
                 }
+                return;
+            }
+            geocodeAddress(q).then(function(loc) {
+                if (!loc) return;
+                var m = L.marker([loc.lat, loc.lng], { icon: searchPinIcon })
+                    .bindPopup('<div class="gis-popup"><span class="badge bg-warning text-dark">Searched address</span><br><strong>' + escHtml(q) + '</strong><br><small>' + escHtml(loc.label) + '</small></div>')
+                    .addTo(geocodeLayer);
+                map.setView([loc.lat, loc.lng], 16);
+                m.openPopup();
+            });
+        });
+    }
+
+    document.getElementById('btn-search').addEventListener('click', runSearch);
+
+    var searchTimer = null;
+    document.getElementById('search-input').addEventListener('input', function() {
+        clearTimeout(searchTimer);
+        var q = this.value.trim();
+        if (q.length < 2) return;
+        searchTimer = setTimeout(runSearch, 500);
+    });
+
+    document.getElementById('btn-latest').addEventListener('click', function() {
+        fetch('/gis/latest?limit=10').then(function(r) { return r.json(); }).then(function(res) {
+            if (!res.success || !res.data || res.data.length === 0) return;
+            geocodeLayer.clearLayers();
+            latestLayer.clearLayers();
+            var items = [];
+            res.data.forEach(function(h) {
+                if (!h.latitude || !h.longitude) return;
+                var m = L.marker([h.latitude, h.longitude], { icon: latestPinIcon })
+                    .bindPopup('<div class="gis-popup"><span class="badge bg-info">Latest saved</span><br><strong>' + escHtml(h.household_number) + '</strong><br><small>' + escHtml(h.household_head_name || '') + '</small><br><small>' + escHtml(h.village ? h.village.village_name : '') + '</small></div>')
+                    .addTo(latestLayer);
+                items.push({ type: 'household', marker: m, data: h });
+            });
+            if (items.length > 0) {
+                fitToMarkers(items);
+                if (items.length === 1) items[0].marker.openPopup();
             }
         });
     });
@@ -618,6 +696,8 @@ document.addEventListener('DOMContentLoaded', function() {
         fetch('/gis/filter?' + params.toString()).then(function(r) { return r.json(); }).then(function(res) {
             if (res.success) {
                 householdLayer.clearLayers();
+                geocodeLayer.clearLayers();
+                latestLayer.clearLayers();
                 allMarkers = [];
                 res.data.forEach(function(h) {
                     if (h.latitude && h.longitude) {

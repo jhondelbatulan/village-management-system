@@ -188,7 +188,7 @@
                                         <option value="">Select Household</option>
                                         @foreach($households as $household)
                                             <option value="{{ $household->id }}" {{ old('household_id', $resident->household_id) == $household->id ? 'selected' : '' }}>
-                                                Blk {{ $household->block_number ?? '—' }}, Lot {{ $household->lot_number ?? '—' }} - {{ $household->household_number }}
+                                                Blk {{ $household->block_number ?? '—' }}, Lot {{ $household->lot_number ?? '—' }} - {{ $household->household_number }}@if($household->approval_status !== 'approved') &middot; {{ $household->approval_status_label }}@endif
                                             </option>
                                         @endforeach
                                     </select>

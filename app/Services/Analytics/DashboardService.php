@@ -82,11 +82,12 @@ class DashboardService
     public function getSystemOverview(): array
     {
         $totalVillages = Village::where('status', 'active')->count();
-        $totalResidents = Resident::where('status', 'active')->count();
+        $totalResidents = Resident::where('status', 'active')->where('approval_status', 'approved')->count();
         $totalHouseholds = Household::count();
         $totalUsers = \App\Models\User::where('status', 'active')->count();
 
         $prevMonthResidents = Resident::where('status', 'active')
+            ->where('approval_status', 'approved')
             ->where('created_at', '<=', now()->subMonth()->endOfMonth())
             ->count();
         $prevMonthHouseholds = Household::where('created_at', '<=', now()->subMonth()->endOfMonth())->count();

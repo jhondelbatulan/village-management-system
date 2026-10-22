@@ -21,7 +21,7 @@
 @include('partials.village-photos-slideshow')
 
 <div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Total Residents"
             :value="number_format($populationStats['total'] ?? 0)"
@@ -33,7 +33,7 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Active Households"
             :value="number_format($householdStats['active'] ?? 0)"
@@ -45,7 +45,7 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Collection This Month"
             :value="number_format($paymentStats['collected'] ?? 0)"
@@ -57,7 +57,19 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
+        <x-analytics.summary-card
+            title="Monthly Dues Collected"
+            :value="'₱'.number_format($monthlyDues['collected'] ?? 0, 2)"
+            icon="bi-calendar-check"
+            color="warning"
+            :change="$monthlyDues['change'] ?? null"
+            subtitle="Monthly dues · {{ $monthlyDues['label'] ?? now()->format('F Y') }}"
+            :large="true"
+            :route="route('billings.index')"
+        />
+    </div>
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Pending Approvals"
             :value="number_format(($approvalStats['pending_households'] ?? 0) + ($approvalStats['pending_residents'] ?? 0))"

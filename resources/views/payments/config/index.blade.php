@@ -28,7 +28,6 @@
                         <th>Village</th>
                         <th class="text-center">Payment Module</th>
                         <th>Manager</th>
-                        <th class="text-center">Penalty Rate</th>
                         <th class="text-center">Grace Period</th>
                         <th>Billing Prefix</th>
                         <th class="text-end">Actions</th>
@@ -52,17 +51,16 @@
                                 @endif
                             </td>
                             <td>{{ ucfirst($setting->payment_manager_role ?? '—') }}</td>
-                            <td class="text-center">{{ $setting->penalty_rate ?? 0 }}%</td>
                             <td class="text-center">{{ $setting->grace_period_days ?? 0 }} days</td>
                             <td>{{ $setting->billing_prefix ?? 'BILL' }}</td>
                             <td class="text-end">
                                 <a href="{{ route('payment-config.show', $village) }}" class="btn btn-sm btn-outline-primary" title="View">
                                     <i class="bi bi-eye"></i>
                                 </a>
+                                @if(auth()->user()->role?->role_slug === 'treasurer')
                                 <a href="{{ route('payment-config.edit', $village) }}" class="btn btn-sm btn-outline-warning" title="Edit">
                                     <i class="bi bi-pencil"></i>
                                 </a>
-                                @if($setting && $setting->payment_manager_role === 'super_admin')
                                 <a href="{{ route('household-amounts.index', $village) }}" class="btn btn-sm btn-outline-success" title="Household Amounts">
                                     <i class="bi bi-house-door"></i>
                                 </a>

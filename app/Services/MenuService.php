@@ -62,6 +62,10 @@ class MenuService
                 $item['route'] = 'villages.documents.index';
                 $item['route_params'] = ['village' => $villageId];
             }
+            if (isset($item['route']) && $item['route'] === 'payment-config.edit__VILLAGE_ID__') {
+                $item['route'] = 'payment-config.edit';
+                $item['route_params'] = ['village' => $villageId];
+            }
         }
         unset($item);
 

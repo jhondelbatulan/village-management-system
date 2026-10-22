@@ -38,6 +38,16 @@
                             </div>
                         @endif
 
+                        @if(($lockSeconds ?? 0) > 0)
+                            <div class="alert alert-warning py-2 small mb-3" id="lockoutTimer"
+                                 role="alert"
+                                 data-until="{{ now()->addSeconds($lockSeconds)->timestamp }}">
+                                <i class="bi bi-hourglass-split me-1"></i>
+                                Too many failed attempts. Please try again in
+                                <strong><span id="lockoutSeconds">{{ $lockSeconds }}</span>s</strong>.
+                            </div>
+                        @endif
+
                         <form action="{{ route('login.submit') }}" method="POST" class="auth-form" novalidate>
                             @csrf
 
@@ -80,7 +90,8 @@
                                 <a href="{{ route('password.request') }}" class="small text-decoration-none forgot-link">Forgot Password?</a>
                             </div>
 
-                            <button type="submit" class="btn btn-primary btn-lg w-100 login-btn">
+                            <button type="submit" class="btn btn-primary btn-lg w-100 login-btn" id="loginBtn"
+                                    {{ ($lockSeconds ?? 0) > 0 ? 'disabled' : '' }}>
                                 <i class="bi bi-box-arrow-in-right me-2"></i>Login
                             </button>
                         </form>
@@ -107,5 +118,32 @@
         icon.classList.toggle('bi-eye', !isPassword);
         icon.classList.toggle('bi-eye-slash', isPassword);
     });
+
+    (function () {
+        const timer = document.getElementById('lockoutTimer');
+        const loginBtn = document.getElementById('loginBtn');
+        if (!timer || !loginBtn) return;
+
+        const until = parseInt(timer.dataset.until, 10) * 1000;
+
+        function tick() {
+            const remaining = Math.ceil((until - Date.now()) / 1000);
+            const secondsEl = document.getElementById('lockoutSeconds');
+
+            if (remaining > 0) {
+                loginBtn.disabled = true;
+                if (secondsEl) secondsEl.textContent = remaining;
+                return;
+            }
+
+            loginBtn.disabled = false;
+            timer.classList.remove('alert-warning');
+            timer.classList.add('alert-success');
+            timer.innerHTML = '<i class="bi bi-unlock me-1"></i>You can try logging in again.';
+        }
+
+        tick();
+        setInterval(tick, 1000);
+    })();
 </script>
 @endpush

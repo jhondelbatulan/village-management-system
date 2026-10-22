@@ -16,15 +16,27 @@
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
             @forelse(array_slice($items, 0, $maxItems) as $item)
-                <div class="list-group-item d-flex align-items-center justify-content-between px-3 py-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-{{ $loop->iteration <= 3 ? $color : 'secondary' }} rounded-circle" style="width:24px;height:24px;line-height:18px;">
-                            {{ $loop->iteration }}
-                        </span>
-                        <span class="small fw-semibold">{{ $item['name'] ?? '' }}</span>
+                @if(!empty($item['url']))
+                    <a href="{{ $item['url'] }}" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-3 py-2 text-decoration-none">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-{{ $loop->iteration <= 3 ? $color : 'secondary' }} rounded-circle" style="width:24px;height:24px;line-height:18px;">
+                                {{ $loop->iteration }}
+                            </span>
+                            <span class="small fw-semibold text-body">{{ $item['name'] ?? '' }}</span>
+                        </div>
+                        <span class="small fw-bold text-{{ $color }}">{{ $item['value'] ?? '' }}</span>
+                    </a>
+                @else
+                    <div class="list-group-item d-flex align-items-center justify-content-between px-3 py-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-{{ $loop->iteration <= 3 ? $color : 'secondary' }} rounded-circle" style="width:24px;height:24px;line-height:18px;">
+                                {{ $loop->iteration }}
+                            </span>
+                            <span class="small fw-semibold">{{ $item['name'] ?? '' }}</span>
+                        </div>
+                        <span class="small fw-bold text-{{ $color }}">{{ $item['value'] ?? '' }}</span>
                     </div>
-                    <span class="small fw-bold text-{{ $color }}">{{ $item['value'] ?? '' }}</span>
-                </div>
+                @endif
             @empty
                 <div class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-gray-300"></i>

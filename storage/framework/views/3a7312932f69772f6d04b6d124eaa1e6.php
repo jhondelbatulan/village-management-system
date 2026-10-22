@@ -31,7 +31,8 @@
 <?php endif; ?>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <?php if($role === 'admin' || $role === 'secretary'): ?>
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'pending' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.residents', ['status' => 'pending'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-warning"><?php echo e($counts['pendingCount']); ?></div>
@@ -39,17 +40,17 @@
             </a>
         </div>
     </div>
-    <?php if($role === 'super_admin'): ?>
-    <div class="col-md-3">
+    <?php else: ?>
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'admin_approved' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.residents', ['status' => 'admin_approved'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-info"><?php echo e($counts['adminApprovedCount']); ?></div>
-                <div class="text-muted small">Admin Approved</div>
+                <div class="text-muted small">Awaiting Final Approval</div>
             </a>
         </div>
     </div>
     <?php endif; ?>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'approved' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.residents', ['status' => 'approved'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success"><?php echo e($counts['approvedCount']); ?></div>
@@ -57,7 +58,7 @@
             </a>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'rejected' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.residents', ['status' => 'rejected'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-danger"><?php echo e($counts['rejectedCount']); ?></div>
@@ -114,7 +115,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Gender</th>
-                        <th>Household</th>
+                        <th>Block / Lot</th>
                         <th>Village</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -140,7 +141,7 @@
 
                                 <?php endif; ?>
                             </td>
-                            <td><?php echo e($resident->household?->household_number ?? '—'); ?></td>
+                            <td><?php echo e($resident->household ? 'Block ' . ($resident->household->block_number ?? '—') . ' - Lot ' . ($resident->household->lot_number ?? '—') : '—'); ?></td>
                             <td><?php echo e($resident->village?->village_name ?? '—'); ?></td>
                             <td>
                                 <?php if($resident->approval_status === 'approved'): ?>
@@ -160,8 +161,8 @@
                                     <a href="<?php echo e(route('residents.show', $resident)); ?>" class="btn btn-outline-primary btn-sm" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if((in_array($role, ['admin', 'secretary']) && $resident->approval_status === 'pending') ||
-                                        ($role === 'super_admin' && in_array($resident->approval_status, ['pending', 'admin_approved']))): ?>
+                                    <?php if(($role === 'admin' && $resident->approval_status === 'pending') ||
+                                        ($role === 'super_admin' && $resident->approval_status === 'admin_approved')): ?>
                                         <button type="button" class="btn btn-success btn-sm" title="Approve"
                                             data-bs-toggle="modal" data-bs-target="#approveResident<?php echo e($resident->id); ?>">
                                             <i class="bi bi-check-lg"></i>
@@ -201,14 +202,13 @@
 </div>
 
 <?php $__currentLoopData = $residents; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $resident): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-    <?php if((in_array($role, ['admin', 'secretary']) && $resident->approval_status === 'pending') ||
-        ($role === 'super_admin' && in_array($resident->approval_status, ['pending', 'admin_approved']))): ?>
+    <?php if(($role === 'admin' && $resident->approval_status === 'pending') ||
+        ($role === 'super_admin' && $resident->approval_status === 'admin_approved')): ?>
 
     <div class="modal fade" id="approveResident<?php echo e($resident->id); ?>" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="<?php echo e(route($role === 'secretary' ? 'approvals.approve-resident-secretary' : 'approvals.approve-resident', $resident)); ?>" method="POST">
-                <?php echo csrf_field(); ?>
+                <form action="<?php echo e(route('approvals.approve-resident', $resident)); ?>" method="POST">
                     <?php echo csrf_field(); ?>
                     <div class="modal-header bg-success text-white">
                         <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Approve Resident</h5>
@@ -217,10 +217,13 @@
                     <div class="modal-body">
                         <p>Approve resident <strong><?php echo e($resident->full_name); ?></strong>?</p>
                         <p class="text-muted small"><?php echo e($resident->resident_code); ?> — <?php echo e($resident->village?->village_name); ?></p>
-                        <?php if(in_array($role, ['admin', 'secretary'])): ?>
+                        <?php if($role === 'admin'): ?>
                             <div class="alert alert-info small mb-0">
-                                <i class="bi bi-info-circle me-1"></i><?php echo e($role === 'secretary' ? 'This will approve the resident immediately.' : 'This will mark the resident as "Admin Approved". Super Admin will need to finalize the approval.'); ?>
-
+                                <i class="bi bi-info-circle me-1"></i>This will mark the resident as "Admin Approved". Super Admin will need to finalize the approval.
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-success small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>This is the final approval. The resident will be officially registered.
                             </div>
                         <?php endif; ?>
                     </div>
@@ -236,7 +239,7 @@
     <div class="modal fade" id="rejectResident<?php echo e($resident->id); ?>" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="<?php echo e(route($role === 'secretary' ? 'approvals.reject-resident-secretary' : 'approvals.reject-resident', $resident)); ?>" method="POST">
+                <form action="<?php echo e(route('approvals.reject-resident', $resident)); ?>" method="POST">
                     <?php echo csrf_field(); ?>
                     <div class="modal-header bg-danger text-white">
                         <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Reject Resident</h5>

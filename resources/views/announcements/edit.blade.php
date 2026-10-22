@@ -91,6 +91,27 @@
                         <label class="form-check-label fw-semibold">Pin this announcement</label>
                     </div>
                 </div>
+
+                @php
+                    $selectedRoles = old('visible_roles', $announcement->visible_roles);
+                    $isPublic = ! is_array($selectedRoles) || $selectedRoles === [] || in_array('public', $selectedRoles, true);
+                @endphp
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Who Can View <span class="text-danger">*</span></label>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="visible_roles[]" value="public" id="visible_public" {{ $isPublic ? 'checked' : '' }}>
+                            <label class="form-check-label" for="visible_public"><i class="bi bi-globe2 me-1"></i>Public (all roles)</label>
+                        </div>
+                        @foreach(['admin', 'secretary', 'treasurer', 'resident'] as $roleSlug)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="visible_roles[]" value="{{ $roleSlug }}" id="visible_{{ $roleSlug }}" {{ is_array($selectedRoles) && in_array($roleSlug, $selectedRoles, true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="visible_{{ $roleSlug }}">{{ ucfirst($roleSlug) }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                    <small class="text-muted">Leave "Public" checked to show this announcement to everyone. Uncheck it and tick only the roles allowed to view it.</small>
+                </div>
             </div>
 
             <hr class="my-4">

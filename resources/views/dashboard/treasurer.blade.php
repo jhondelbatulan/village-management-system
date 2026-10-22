@@ -21,7 +21,7 @@
 @include('partials.village-photos-slideshow')
 
 <div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Collected This Month"
             :value="'₱'.number_format($paymentStats['collected'] ?? 0, 2)"
@@ -33,7 +33,19 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
+        <x-analytics.summary-card
+            title="Monthly Dues Collected"
+            :value="'₱'.number_format($monthlyDues['collected'] ?? 0, 2)"
+            icon="bi-calendar-check"
+            color="warning"
+            :change="$monthlyDues['change'] ?? null"
+            subtitle="Monthly dues · {{ $monthlyDues['label'] ?? now()->format('F Y') }}"
+            :large="true"
+            :route="route('billings.index')"
+        />
+    </div>
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Outstanding Balance"
             :value="'₱'.number_format($paymentStats['outstanding'] ?? 0, 2)"
@@ -43,7 +55,7 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Total Billings"
             :value="number_format($paymentStats['total_billings'] ?? 0)"
@@ -53,7 +65,7 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Collection Rate"
             :value="($paymentStats['collection_rate'] ?? 0).'%'"
@@ -64,6 +76,35 @@
         />
     </div>
 </div>
+
+@if(($dashboardWidgets['announcements'] ?? true) || ($dashboardWidgets['calendar'] ?? true))
+<div class="row g-4 mb-4">
+    @if($dashboardWidgets['announcements'] ?? true)
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Recent Announcements"
+            icon="bi-megaphone"
+            color="primary"
+            valueLabel="Date"
+            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d')])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+    @endif
+    @if($dashboardWidgets['calendar'] ?? true)
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Upcoming Events"
+            icon="bi-calendar-event"
+            color="success"
+            valueLabel="Date"
+            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+    @endif
+</div>
+@endif
 
 @if($dashboardWidgets['analytics_summary'] ?? true)
 <div class="row g-4 mb-4">
@@ -91,7 +132,7 @@
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
         <x-analytics.recent-activity
-            title="Recent Activity"
+            title="My Recent Activity"
             icon="bi-activity"
             color="success"
             :activities="$recentActivity"

@@ -11,6 +11,22 @@ class UpdateHouseholdRequest extends FormRequest
         return true;
     }
 
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        foreach (['block_number', 'lot_number'] as $field) {
+            $value = $this->input($field);
+
+            if (is_string($value)) {
+                $normalized = ltrim(trim($value), '0');
+                $merge[$field] = $normalized === '' ? '0' : $normalized;
+            }
+        }
+
+        $this->merge($merge);
+    }
+
     public function rules(): array
     {
         $household = $this->route('household');
@@ -24,9 +40,9 @@ class UpdateHouseholdRequest extends FormRequest
             'latitude' => ['nullable', 'numeric', 'between:-90,90'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180'],
             'contact_number' => ['nullable', 'string', 'max:20'],
-            'household_type' => ['nullable', 'string', 'max:100'],
-            'house_ownership' => ['nullable', 'string', 'max:100'],
-            'house_status' => ['required', 'in:owned,rented,leased,inherited,other'],
+            'household_type' => ['nullable', 'string', 'in:1,2,3,4,5'],
+            'house_ownership' => ['nullable', 'string', 'in:Owned,Leased'],
+            'house_status' => ['required', 'in:concrete,wood_timber,steel,brick_blocks,stone,mixed,other'],
             'registration_date' => ['nullable', 'date'],
             'status' => ['required', 'in:active,inactive,relocated'],
         ];
@@ -40,7 +56,8 @@ class UpdateHouseholdRequest extends FormRequest
             $lotNumber = $this->input('lot_number');
 
             if ($household && $blockNumber && $lotNumber) {
-                $exists = \App\Models\Household::where('village_id', $household->village_id)
+                $exists = \App\Models\Household::withTrashed()
+                    ->where('village_id', $household->village_id)
                     ->where('block_number', $blockNumber)
                     ->where('lot_number', $lotNumber)
                     ->where('id', '!=', $household->id)
@@ -59,7 +76,8 @@ class UpdateHouseholdRequest extends FormRequest
             'block_number.required' => 'Block number is required.',
             'lot_number.required' => 'Lot number is required.',
             'address.required' => 'Address is required.',
-            'house_status.required' => 'House status is required.',
+            'house_status.required' => 'House material is required.',
+            'house_status.in' => 'The selected house material is invalid.',
         ];
     }
 }

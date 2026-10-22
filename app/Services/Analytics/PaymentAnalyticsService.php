@@ -5,16 +5,18 @@ namespace App\Services\Analytics;
 use App\Models\Billing;
 use App\Models\HouseholdPayment;
 use App\Models\Village;
-use Illuminate\Support\Facades\DB;
+use App\Support\SqlHelper;
 
 class PaymentAnalyticsService
 {
     public function getSystemStats(): array
     {
-        $totalCollected = (float) HouseholdPayment::sum('total_paid');
-        $thisMonthCollected = (float) HouseholdPayment::where('created_at', '>=', now()->startOfMonth())->sum('total_paid');
-        $previousMonthCollected = (float) HouseholdPayment::where('created_at', '>=', now()->subMonth()->startOfMonth())
-            ->where('created_at', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
+        $totalCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')->sum('total_paid');
+        $thisMonthCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')
+            ->where('payment_date', '>=', now()->startOfMonth())->sum('total_paid');
+        $previousMonthCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')
+            ->where('payment_date', '>=', now()->subMonth()->startOfMonth())
+            ->where('payment_date', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
 
         $totalOutstanding = (float) Billing::whereIn('status', ['pending', 'overdue', 'partially_paid'])->sum('total_amount');
         $overdueCount = Billing::where('status', 'overdue')->count();
@@ -38,12 +40,15 @@ class PaymentAnalyticsService
 
     public function getVillageStats(int $villageId): array
     {
-        $totalCollected = (float) HouseholdPayment::where('village_id', $villageId)->sum('total_paid');
+        $totalCollected = (float) HouseholdPayment::where('village_id', $villageId)
+            ->where('payment_status', '!=', 'cancelled')->sum('total_paid');
         $thisMonthCollected = (float) HouseholdPayment::where('village_id', $villageId)
-            ->where('created_at', '>=', now()->startOfMonth())->sum('total_paid');
+            ->where('payment_status', '!=', 'cancelled')
+            ->where('payment_date', '>=', now()->startOfMonth())->sum('total_paid');
         $previousMonthCollected = (float) HouseholdPayment::where('village_id', $villageId)
-            ->where('created_at', '>=', now()->subMonth()->startOfMonth())
-            ->where('created_at', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
+            ->where('payment_status', '!=', 'cancelled')
+            ->where('payment_date', '>=', now()->subMonth()->startOfMonth())
+            ->where('payment_date', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
 
         $totalOutstanding = (float) Billing::where('village_id', $villageId)
             ->whereIn('status', ['pending', 'overdue', 'partially_paid'])->sum('total_amount');
@@ -81,10 +86,9 @@ class PaymentAnalyticsService
             $query->where('village_id', $villageId);
         }
 
-        $data = $query->selectRaw('
-            strftime(\'%Y-%m\', created_at) as month,
-            SUM(total_paid) as total
-        ')->groupBy('month')->pluck('total', 'month')->toArray();
+        $data = $query->selectRaw(
+            SqlHelper::dateFormat('created_at', '%Y-%m').' as month, SUM(total_paid) as total'
+        )->groupBy('month')->pluck('total', 'month')->toArray();
 
         $result = [];
         for ($i = $months - 1; $i >= 0; $i--) {
@@ -101,6 +105,7 @@ class PaymentAnalyticsService
 
         return $villages->map(function ($village) {
             $stats = $this->getVillageStats($village->id);
+
             return [
                 'village' => $village,
                 'collected' => $stats['total_collected'],

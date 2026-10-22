@@ -10,6 +10,7 @@ use App\Models\Resident;
 use App\Models\Village;
 use App\Services\EventService;
 use App\Services\AuditLogService;
+use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -74,6 +75,25 @@ class EventController extends Controller
 
         $event = $this->eventService->create($data);
 
+        if (in_array($event->status, ['upcoming', 'ongoing'])) {
+            app(NotificationService::class)->notifyResidents(
+                $event->village_id,
+                'event',
+                'New Event',
+                "New event: {$event->title} on {$event->event_date->format('M d, Y')}.",
+                route('events.show', $event)
+            );
+
+            app(NotificationService::class)->notifyVillageStaff(
+                $event->village_id,
+                'event',
+                'New Event',
+                "New event created: {$event->title} on {$event->event_date->format('M d, Y')}.",
+                route('events.show', $event),
+                auth()->id()
+            );
+        }
+
         AuditLogService::log('Create Event', 'Events', "Created event: {$event->title}");
 
         return redirect()->route('events.index')->with('success', 'Event created successfully.');
@@ -81,7 +101,7 @@ class EventController extends Controller
 
     public function show(Event $event): View
     {
-        $event->load('village', 'creator', 'responses.resident', 'participations.resident', 'participations.recorder');
+        $event->load('village', 'creator', 'responses.household', 'participations.household', 'participations.recorder');
 
         $role = auth()->user()->role?->role_slug;
 
@@ -97,6 +117,8 @@ class EventController extends Controller
 
     public function edit(Event $event): View
     {
+        abort_unless($event->isManagedBy(auth()->user()), 403, 'Only the creator of this event can manage it.');
+
         $user = auth()->user();
         $role = $user->role?->role_slug;
         $villageId = $event->village_id;
@@ -114,19 +136,100 @@ class EventController extends Controller
 
     public function update(UpdateEventRequest $request, Event $event): RedirectResponse
     {
+        abort_unless($event->isManagedBy(auth()->user()), 403, 'Only the creator of this event can manage it.');
+
         $data = $request->validated();
 
+        $wasLive = in_array($event->status, ['upcoming', 'ongoing']);
+
         $event = $this->eventService->update($event, $data);
+
+        if (! $wasLive && in_array($event->status, ['upcoming', 'ongoing'])) {
+            app(NotificationService::class)->notifyResidents(
+                $event->village_id,
+                'event',
+                'Event Scheduled',
+                "Event is now scheduled: {$event->title} on {$event->event_date->format('M d, Y')}.",
+                route('events.show', $event)
+            );
+
+            app(NotificationService::class)->notifyVillageStaff(
+                $event->village_id,
+                'event',
+                'Event Scheduled',
+                "Event is now scheduled: {$event->title} on {$event->event_date->format('M d, Y')}.",
+                route('events.show', $event),
+                auth()->id()
+            );
+        }
 
         AuditLogService::log('Update Event', 'Events', "Updated event: {$event->title}");
 
         return redirect()->route('events.index')->with('success', 'Event updated successfully.');
     }
 
+    public function complete(Event $event): RedirectResponse
+    {
+        abort_unless($event->isManagedBy(auth()->user()), 403, 'Only the creator of this event can manage it.');
+
+        if ($event->status === 'completed') {
+            return back()->with('error', 'This event is already completed.');
+        }
+
+        $this->eventService->markCompleted($event);
+
+        AuditLogService::log('Complete Event', 'Events', "Marked event as completed: {$event->title}");
+
+        return redirect()->route('events.show', $event)
+            ->with('success', "Event \"{$event->title}\" has been marked as completed.");
+    }
+
+    public function cancel(Event $event): RedirectResponse
+    {
+        abort_unless($event->isManagedBy(auth()->user()), 403, 'Only the creator of this event can manage it.');
+
+        if ($event->status === 'cancelled') {
+            return back()->with('error', 'This event is already cancelled.');
+        }
+
+        $this->eventService->cancel($event);
+
+        AuditLogService::log('Cancel Event', 'Events', "Cancelled event: {$event->title}");
+
+        return redirect()->route('events.show', $event)
+            ->with('success', "Event \"{$event->title}\" has been cancelled.");
+    }
+
     public function destroy(Event $event): RedirectResponse
     {
+        abort_unless($event->isManagedBy(auth()->user()), 403, 'Only the creator of this event can manage it.');
+
         $title = $event->title;
+
+        $respondentHouseholdIds = $event->responses()
+            ->pluck('household_id')
+            ->filter()
+            ->unique()
+            ->values();
+
         $this->eventService->delete($event);
+
+        app(NotificationService::class)->notifyVillageStaff(
+            $event->village_id,
+            'event',
+            'Event Deleted',
+            "Event \"{$title}\" has been deleted.",
+            route('events.index'),
+            auth()->id()
+        );
+
+        app(NotificationService::class)->notifyHouseholdResidents(
+            $respondentHouseholdIds->all(),
+            'event',
+            'Event Cancelled',
+            "The event \"{$title}\" has been cancelled.",
+            route('events.index')
+        );
 
         AuditLogService::log('Delete Event', 'Events', "Deleted event: {$title}");
 
@@ -139,19 +242,22 @@ class EventController extends Controller
             'response' => 'required|in:going,maybe,not_going',
         ]);
 
-        $resident = auth()->user()->household?->residents()->first();
+        $household = auth()->user()->household;
 
-        if (!$resident) {
-            return back()->with('error', 'No resident profile linked to your account.');
+        if (!$household) {
+            return back()->with('error', 'Your account is not linked to a household yet. Please contact the administration.');
         }
 
         $event->responses()->updateOrCreate(
-            ['resident_id' => $resident->id],
+            ['household_id' => $household->id],
             [
                 'response' => $request->input('response'),
                 'note' => $request->input('note'),
+                'resident_id' => null,
             ]
         );
+
+        $this->eventService->syncParticipationWithResponse($event, $household->id, $request->input('response'));
 
         AuditLogService::log('Event Response', 'Events', "Responded to event: {$event->title} - {$request->input('response')}");
 
@@ -164,7 +270,7 @@ class EventController extends Controller
 
         $this->eventService->recordParticipation(
             $event,
-            $data['resident_id'],
+            $data['household_id'],
             $data['status'],
             $data['remarks'] ?? null
         );

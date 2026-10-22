@@ -21,8 +21,8 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-4">
-                    <small class="text-muted d-block">Household</small>
-                    <strong>{{ $resident->household?->family_name ?? 'N/A' }}</strong>
+                    <small class="text-muted d-block">Block / Lot</small>
+                    <strong>{{ $resident->household ? 'Block ' . ($resident->household->block_number ?? 'N/A') . ' - Lot ' . ($resident->household->lot_number ?? 'N/A') : 'N/A' }}</strong>
                 </div>
                 <div class="col-md-4">
                     <small class="text-muted d-block">Village</small>

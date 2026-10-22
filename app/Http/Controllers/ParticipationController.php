@@ -44,18 +44,46 @@ class ParticipationController extends Controller
         return view('participation.index', compact('village', 'participationStats', 'householdStats', 'recentEvents', 'activeHouseholds', 'inactiveHouseholds', 'role'));
     }
 
+    /**
+     * Village drill-down used by the Super Admin to inspect a single village's
+     * events and household participation (same detail the admin sees).
+     */
+    public function village(Village $village): View
+    {
+        $participationStats = $this->eventService->getParticipationStats($village->id);
+        $householdStats = $this->eventService->getHouseholdParticipationStats($village->id);
+
+        $events = Event::where('village_id', $village->id)
+            ->with(['village', 'creator'])
+            ->withCount(['participations', 'responses'])
+            ->latest()
+            ->paginate(15)
+            ->withQueryString();
+
+        $activeHouseholds = collect($householdStats)->filter(fn ($s) => $s['participation_pct'] >= 50);
+        $inactiveHouseholds = collect($householdStats)->filter(fn ($s) => $s['participation_pct'] < 50);
+
+        return view('participation.village', compact(
+            'village',
+            'participationStats',
+            'householdStats',
+            'events',
+            'activeHouseholds',
+            'inactiveHouseholds'
+        ));
+    }
+
     public function household(int $householdId): View
     {
         $household = Household::with(['village', 'residents'])->findOrFail($householdId);
-        $residentIds = $household->residents->pluck('id');
 
-        $participations = \App\Models\Participation::whereIn('resident_id', $residentIds)
-            ->with(['event', 'resident'])
+        $participations = \App\Models\Participation::where('household_id', $household->id)
+            ->with(['event'])
             ->latest()
             ->paginate(20);
 
         $totalEvents = Event::where('village_id', $household->village_id)->where('status', 'completed')->count();
-        $attendedEvents = \App\Models\Participation::whereIn('resident_id', $residentIds)
+        $attendedEvents = \App\Models\Participation::where('household_id', $household->id)
             ->where('status', 'present')
             ->distinct('event_id')
             ->count('event_id');

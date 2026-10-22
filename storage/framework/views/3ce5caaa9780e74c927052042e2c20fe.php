@@ -159,7 +159,7 @@
                             <td>
                                 <?php if($resident->household): ?>
                                     <span class="text-muted small">Blk <?php echo e($resident->household->block_number ?? '—'); ?>, Lot <?php echo e($resident->household->lot_number ?? '—'); ?></span><br>
-                                    <span class="fw-semibold"><?php echo e($resident->household->household_number); ?></span>
+                                    <span class="fw-semibold"><?php echo e($resident->household?->household_number ?? '—'); ?></span>
                                 <?php else: ?>
                                     —
                                 <?php endif; ?>

@@ -5,9 +5,8 @@ namespace App\Services\Analytics;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\Village;
+use App\Support\SqlHelper;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\DB;
 
 class PopulationAnalyticsService
 {
@@ -17,7 +16,7 @@ class PopulationAnalyticsService
 
     protected function baseQuery(?int $villageId = null): Builder
     {
-        $query = Resident::query();
+        $query = Resident::query()->where('approval_status', 'approved');
 
         if ($villageId) {
             $query->where('village_id', $villageId);
@@ -28,11 +27,13 @@ class PopulationAnalyticsService
 
     public function getSystemStats(): array
     {
-        $total = Resident::where('status', 'active')->count();
+        $total = Resident::where('status', 'active')->where('approval_status', 'approved')->count();
         $previousMonth = Resident::where('status', 'active')
+            ->where('approval_status', 'approved')
             ->where('created_at', '<=', now()->subMonth()->endOfMonth())
             ->count();
         $thisMonth = Resident::where('status', 'active')
+            ->where('approval_status', 'approved')
             ->where('created_at', '>=', now()->startOfMonth())
             ->count();
 
@@ -47,18 +48,20 @@ class PopulationAnalyticsService
 
     public function getVillageStats(int $villageId): array
     {
-        $total = Resident::where('village_id', $villageId)->where('status', 'active')->count();
+        $total = Resident::where('village_id', $villageId)->where('status', 'active')->where('approval_status', 'approved')->count();
         $previousMonth = Resident::where('village_id', $villageId)
             ->where('status', 'active')
+            ->where('approval_status', 'approved')
             ->where('created_at', '<=', now()->subMonth()->endOfMonth())
             ->count();
         $thisMonth = Resident::where('village_id', $villageId)
             ->where('status', 'active')
+            ->where('approval_status', 'approved')
             ->where('created_at', '>=', now()->startOfMonth())
             ->count();
 
-        $male = Resident::where('village_id', $villageId)->where('status', 'active')->where('gender', 'Male')->count();
-        $female = Resident::where('village_id', $villageId)->where('status', 'active')->where('gender', 'Female')->count();
+        $male = Resident::where('village_id', $villageId)->where('status', 'active')->where('approval_status', 'approved')->where('gender', 'Male')->count();
+        $female = Resident::where('village_id', $villageId)->where('status', 'active')->where('approval_status', 'approved')->where('gender', 'Female')->count();
 
         return [
             'total' => $total,
@@ -218,7 +221,7 @@ class PopulationAnalyticsService
 
     public function getHouseholdDistribution(?int $villageId = null): array
     {
-        $query = Household::withCount(['residents' => fn($q) => $q->where('status', 'active')]);
+        $query = Household::withCount(['residents' => fn ($q) => $q->where('status', 'active')]);
 
         if ($villageId) {
             $query->where('village_id', $villageId);
@@ -235,11 +238,17 @@ class PopulationAnalyticsService
         ];
 
         foreach ($sizes as $size) {
-            if ($size == 1) $distribution['1']++;
-            elseif ($size <= 3) $distribution['2-3']++;
-            elseif ($size <= 5) $distribution['4-5']++;
-            elseif ($size <= 7) $distribution['6-7']++;
-            else $distribution['8+']++;
+            if ($size == 1) {
+                $distribution['1']++;
+            } elseif ($size <= 3) {
+                $distribution['2-3']++;
+            } elseif ($size <= 5) {
+                $distribution['4-5']++;
+            } elseif ($size <= 7) {
+                $distribution['6-7']++;
+            } else {
+                $distribution['8+']++;
+            }
         }
 
         $total = count($sizes);
@@ -263,10 +272,9 @@ class PopulationAnalyticsService
             $query->where('village_id', $villageId);
         }
 
-        $data = $query->selectRaw('
-            strftime(\'%Y-%m\', created_at) as month,
-            COUNT(*) as count
-        ')->groupBy('month')->pluck('count', 'month')->toArray();
+        $data = $query->selectRaw(
+            SqlHelper::dateFormat('created_at', '%Y-%m').' as month, COUNT(*) as count'
+        )->groupBy('month')->pluck('count', 'month')->toArray();
 
         $result = [];
         for ($i = $months - 1; $i >= 0; $i--) {
@@ -291,10 +299,9 @@ class PopulationAnalyticsService
             $query->where('village_id', $villageId);
         }
 
-        $data = $query->selectRaw('
-            strftime(\'%Y\', created_at) as year,
-            COUNT(*) as count
-        ')->groupBy('year')->pluck('count', 'year')->toArray();
+        $data = $query->selectRaw(
+            SqlHelper::dateFormat('created_at', '%Y').' as year, COUNT(*) as count'
+        )->groupBy('year')->pluck('count', 'year')->toArray();
 
         $result = [];
         for ($i = $years - 1; $i >= 0; $i--) {
@@ -312,12 +319,12 @@ class PopulationAnalyticsService
 
         $currentCount = $this->baseQuery($villageId)
             ->where('status', 'active')
-            ->whereRaw('strftime(\'%Y-%m\', created_at) = ?', [$currentMonth])
+            ->whereRaw(SqlHelper::dateFormat('created_at', '%Y-%m').' = ?', [$currentMonth])
             ->count();
 
         $previousCount = $this->baseQuery($villageId)
             ->where('status', 'active')
-            ->whereRaw('strftime(\'%Y-%m\', created_at) = ?', [$previousMonth])
+            ->whereRaw(SqlHelper::dateFormat('created_at', '%Y-%m').' = ?', [$previousMonth])
             ->count();
 
         $currentWeek = now()->startOfWeek()->toDateString();
@@ -420,7 +427,7 @@ class PopulationAnalyticsService
         $first = (clone $query)->oldest('created_at')->first();
         $last = (clone $query)->latest('created_at')->first();
 
-        if (!$first || !$last) {
+        if (! $first || ! $last) {
             return 0;
         }
 
@@ -525,7 +532,7 @@ class PopulationAnalyticsService
             $insights[] = [
                 'type' => 'warning',
                 'icon' => 'bi-graph-down',
-                'message' => "Population decreased by " . abs($summary['population_growth']) . "% this month.",
+                'message' => 'Population decreased by '.abs($summary['population_growth']).'% this month.',
             ];
         }
 
@@ -557,7 +564,7 @@ class PopulationAnalyticsService
             ];
         }
 
-        if (!$villageId) {
+        if (! $villageId) {
             $villages = Village::where('status', 'active')->get();
             $highestPop = null;
             $highestCount = 0;
@@ -598,7 +605,7 @@ class PopulationAnalyticsService
             $insights[] = [
                 'type' => 'warning',
                 'icon' => 'bi-arrow-down',
-                'message' => "Resident registration decreased this week by " . abs($growthAnalysis['weekly']['change']) . ".",
+                'message' => 'Resident registration decreased this week by '.abs($growthAnalysis['weekly']['change']).'.',
             ];
         }
 

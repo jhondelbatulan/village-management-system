@@ -13,9 +13,11 @@
             <a href="{{ route('payment-config.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Back
             </a>
+            @if(auth()->user()->role?->role_slug === 'treasurer')
             <a href="{{ route('payment-config.edit', $village) }}" class="btn btn-warning btn-sm">
                 <i class="bi bi-pencil me-1"></i>Edit
             </a>
+            @endif
         </div>
     </div>
 </div>
@@ -51,10 +53,6 @@
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Payment Manager</label>
                         <p class="fw-semibold mb-0">{{ ucfirst($setting->payment_manager_role ?? 'None') }}</p>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label text-muted small">Penalty Rate</label>
-                        <p class="fw-semibold mb-0">{{ $setting->penalty_rate }}% per month</p>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Grace Period</label>
@@ -101,9 +99,11 @@
                 <div class="text-center text-muted py-4">
                     <i class="bi bi-gear fs-1 d-block mb-2"></i>
                     <p>No payment configuration set for this village.</p>
+                    @if(auth()->user()->role?->role_slug === 'treasurer')
                     <a href="{{ route('payment-config.edit', $village) }}" class="btn btn-primary btn-sm">
                         <i class="bi bi-plus me-1"></i>Configure Now
                     </a>
+                    @endif
                 </div>
                 @endif
             </div>
@@ -117,12 +117,14 @@
                     <i class="bi bi-list-ul me-2 text-primary"></i>Payment Types ({{ $paymentTypes->count() }})
                 </h6>
                 <div class="d-flex gap-2">
+                    @if(auth()->user()->role?->role_slug === 'treasurer')
                     <a href="{{ route('household-amounts.index', $village) }}" class="btn btn-outline-success btn-sm" title="Manage per-household amounts">
                         <i class="bi bi-house-door me-1"></i>Household Amounts
                     </a>
                     <button class="btn btn-outline-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addPaymentTypeModal">
                         <i class="bi bi-plus-lg me-1"></i>Add Type
                     </button>
+                    @endif
                 </div>
             </div>
             <div class="card-body p-0">

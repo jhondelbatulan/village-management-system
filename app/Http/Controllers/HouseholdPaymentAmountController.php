@@ -20,7 +20,7 @@ class HouseholdPaymentAmountController extends Controller
 
     public function index(Village $village): View
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         $households = Household::where('village_id', $village->id)
             ->where('status', 'active')
@@ -39,7 +39,7 @@ class HouseholdPaymentAmountController extends Controller
 
     public function edit(Village $village, Household $household): View
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         if ($household->village_id !== $village->id) {
             abort(404);
@@ -59,7 +59,7 @@ class HouseholdPaymentAmountController extends Controller
 
     public function update(Request $request, Village $village, Household $household): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         if ($household->village_id !== $village->id) {
             abort(404);
@@ -101,7 +101,7 @@ class HouseholdPaymentAmountController extends Controller
 
     public function destroy(Village $village, Household $household, HouseholdPaymentAmount $amount): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         if ($amount->village_id !== $village->id || $amount->household_id !== $household->id) {
             abort(404);

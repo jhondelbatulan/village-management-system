@@ -348,7 +348,7 @@ class ReportService
 
     protected function residentMasterList(?int $villageId, array $filters): array
     {
-        $query = Resident::where('status', 'active')->with('village')->orderBy('last_name')->orderBy('first_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->with('village')->orderBy('last_name')->orderBy('first_name');
         if ($villageId) $query->where('village_id', $villageId);
         if (!empty($filters['gender'])) $query->where('gender', $filters['gender']);
         if (!empty($filters['civil_status'])) $query->where('civil_status', $filters['civil_status']);
@@ -363,7 +363,7 @@ class ReportService
 
     protected function residentProfile(?int $villageId, array $filters): array
     {
-        $query = Resident::where('status', 'active')->with('village', 'household')->orderBy('last_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->with('village', 'household')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);
         $residents = $query->get();
         return ['rows' => $residents->map(fn($r) => [
@@ -489,7 +489,7 @@ class ReportService
 
     protected function pwdReport(?int $villageId): array
     {
-        $query = Resident::where('status', 'active')->where('is_pwd', true)->with('village')->orderBy('last_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->where('is_pwd', true)->with('village')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);
         $residents = $query->get();
         return ['rows' => $residents->map(fn($r) => [
@@ -500,7 +500,7 @@ class ReportService
 
     protected function seniorCitizenReport(?int $villageId): array
     {
-        $query = Resident::where('status', 'active')->where('is_senior_citizen', true)->with('village')->orderBy('last_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->where('is_senior_citizen', true)->with('village')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);
         $residents = $query->get();
         return ['rows' => $residents->map(fn($r) => [
@@ -511,7 +511,7 @@ class ReportService
 
     protected function soloParentReport(?int $villageId): array
     {
-        $query = Resident::where('status', 'active')->where('is_solo_parent', true)->with('village')->orderBy('last_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->where('is_solo_parent', true)->with('village')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);
         $residents = $query->get();
         return ['rows' => $residents->map(fn($r) => [
@@ -522,7 +522,7 @@ class ReportService
 
     protected function youthReport(?int $villageId): array
     {
-        $query = Resident::where('status', 'active')->where('is_youth', true)->with('village')->orderBy('last_name');
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->where('is_youth', true)->with('village')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);
         $residents = $query->get();
         return ['rows' => $residents->map(fn($r) => [
@@ -541,7 +541,7 @@ class ReportService
         return ['rows' => $households->map(fn($h) => [
             'Household #' => $h->household_number, 'Head Name' => $h->household_head_name ?? '',
             'Block/Lot' => $h->block_number . '/' . $h->lot_number, 'Village' => $h->village?->village_name ?? '',
-            'Members' => $h->member_count, 'Type' => $h->household_type ?? '',
+            'Members' => $h->member_count, 'Family Count' => $h->household_type ?? '',
             'Registration' => $h->registration_date?->format('M d, Y') ?? '',
         ])->toArray(), 'total' => $households->count()];
     }
@@ -811,7 +811,7 @@ class ReportService
 
     protected function volunteerReport(?int $villageId): array
     {
-        $query = Resident::where('status', 'active')->where(function ($q) {
+        $query = Resident::where('status', 'active')->where('approval_status', 'approved')->where(function ($q) {
             $q->where('is_disaster_volunteer', true)->orWhere('is_village_volunteer', true);
         })->with('village')->orderBy('last_name');
         if ($villageId) $query->where('village_id', $villageId);

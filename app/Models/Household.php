@@ -70,7 +70,7 @@ class Household extends Model
 
     public function residents(): HasMany
     {
-        return $this->hasMany(Resident::class);
+        return $this->hasMany(Resident::class)->where('approval_status', 'approved');
     }
 
     public function submittedBy(): BelongsTo
@@ -121,7 +121,7 @@ class Household extends Model
 
         $total = 0.0;
         foreach ($billings as $billing) {
-            $paid = \App\Models\HouseholdPayment::where('billing_id', $billing->id)
+            $paid = HouseholdPayment::where('billing_id', $billing->id)
                 ->where('payment_status', '!=', 'cancelled')
                 ->sum('total_paid');
             $total += max(0, (float) $billing->total_amount - (float) $paid);
@@ -136,16 +136,81 @@ class Household extends Model
             ->sum('total_paid');
     }
 
-    public function getMemberCountAttribute(): int
+    public function getMemberCountAttribute($value = null): int
     {
+        if ($value !== null) {
+            return (int) $value;
+        }
+
         return $this->residents()->where('status', 'active')->count();
+    }
+
+    /**
+     * Human readable household reference used in notifications, e.g.
+     * "Blk 1, Lot 2 - Juan Dela Cruz" instead of the household number/code.
+     */
+    public function getNotificationLabelAttribute(): string
+    {
+        $parts = [];
+
+        if (filled($this->block_number)) {
+            $parts[] = "Blk {$this->block_number}";
+        }
+
+        if (filled($this->lot_number)) {
+            $parts[] = "Lot {$this->lot_number}";
+        }
+
+        $location = implode(', ', $parts);
+        $head = $this->household_head_name;
+
+        if ($location !== '' && filled($head)) {
+            return "{$location} - {$head}";
+        }
+
+        if ($location !== '') {
+            return $location;
+        }
+
+        if (filled($head)) {
+            return (string) $head;
+        }
+
+        return (string) $this->household_number;
+    }
+
+    /**
+     * Human readable household label used in lists/tables, e.g. "Juan Dela Cruz".
+     */
+    public function getFamilyNameAttribute(): string
+    {
+        if (filled($this->household_head_name)) {
+            return (string) $this->household_head_name;
+        }
+
+        return (string) $this->household_number;
+    }
+
+    /**
+     * Human readable approval state, e.g. "Awaiting Final Approval".
+     */
+    public function getApprovalStatusLabelAttribute(): string
+    {
+        return match ($this->approval_status) {
+            'approved' => 'Approved',
+            'admin_approved' => 'Awaiting Final Approval',
+            'pending' => 'Pending Approval',
+            'rejected' => 'Rejected',
+            default => 'Draft',
+        };
     }
 
     public static function generateHouseholdNumber(int $villageId): string
     {
         $village = Village::find($villageId);
         $prefix = $village ? strtoupper(substr(preg_replace('/[^A-Za-z]/', '', $village->village_name), 0, 3)) : 'HH';
-        $count = self::where('village_id', $villageId)->count() + 1;
-        return $prefix . '-' . str_pad($count, 5, '0', STR_PAD_LEFT);
+        $count = self::withTrashed()->where('village_id', $villageId)->count() + 1;
+
+        return $prefix.'-'.str_pad($count, 5, '0', STR_PAD_LEFT);
     }
 }

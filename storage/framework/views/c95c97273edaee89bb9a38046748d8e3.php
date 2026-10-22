@@ -19,7 +19,7 @@
 <?php echo $__env->make('partials.village-photos-slideshow', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
 <div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Total Residents','value' => number_format($populationStats['total'] ?? 0),'icon' => 'bi-people','color' => 'primary','previousValue' => $populationStats['previous'] ?? null,'change' => $populationStats['change'] ?? null,'route' => ''.e(route('residents.index')).'','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -41,7 +41,7 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Active Households','value' => number_format($householdStats['active'] ?? 0),'icon' => 'bi-house-door','color' => 'success','previousValue' => $householdStats['previous'] ?? null,'change' => $householdStats['change'] ?? null,'route' => ''.e(route('households.index')).'','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -63,7 +63,7 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Collection This Month','value' => number_format($paymentStats['collected'] ?? 0),'icon' => 'bi-cash-stack','color' => 'info','previousValue' => $paymentStats['previous'] ?? null,'change' => $paymentStats['change'] ?? null,'subtitle' => 'Collected this month','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -85,7 +85,29 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
+        <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Monthly Dues Collected','value' => '₱'.number_format($monthlyDues['collected'] ?? 0, 2),'icon' => 'bi-calendar-check','color' => 'warning','change' => $monthlyDues['change'] ?? null,'subtitle' => 'Monthly dues · '.e($monthlyDues['label'] ?? now()->format('F Y')).'','large' => true,'route' => route('billings.index')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.summary-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Monthly Dues Collected','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('₱'.number_format($monthlyDues['collected'] ?? 0, 2)),'icon' => 'bi-calendar-check','color' => 'warning','change' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($monthlyDues['change'] ?? null),'subtitle' => 'Monthly dues · '.e($monthlyDues['label'] ?? now()->format('F Y')).'','large' => true,'route' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('billings.index'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c)): ?>
+<?php $attributes = $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c; ?>
+<?php unset($__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c)): ?>
+<?php $component = $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c; ?>
+<?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
+<?php endif; ?>
+    </div>
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Pending Approvals','value' => number_format(($approvalStats['pending_households'] ?? 0) + ($approvalStats['pending_residents'] ?? 0)),'icon' => 'bi-hourglass-split','color' => 'warning','subtitle' => 'Awaiting your action','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>

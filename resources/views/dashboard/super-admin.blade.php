@@ -48,12 +48,13 @@
     <div class="col-xl-3 col-md-6">
         <x-analytics.summary-card
             title="Monthly Collection"
-            :value="number_format($paymentStats['collected'] ?? 0)"
+            :value="number_format($paymentStats['this_month_collected'] ?? 0)"
             icon="bi-cash-stack"
             color="info"
             :previousValue="$paymentStats['previous'] ?? null"
             :change="$paymentStats['change'] ?? null"
             subtitle="Collected this month"
+            route="{{ route('dashboard.super_admin.monthly-collection') }}"
             :large="true"
         />
     </div>
@@ -69,6 +70,35 @@
         />
     </div>
 </div>
+
+@if(($dashboardWidgets['announcements'] ?? true) || ($dashboardWidgets['calendar'] ?? true))
+<div class="row g-4 mb-4">
+    @if($dashboardWidgets['announcements'] ?? true)
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Recent Announcements"
+            icon="bi-megaphone"
+            color="primary"
+            valueLabel="Date"
+            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title . ($a->village ? ' — ' . $a->village->village_name : ''), 'value' => $a->created_at->format('M d')])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+    @endif
+    @if($dashboardWidgets['calendar'] ?? true)
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Upcoming Events"
+            icon="bi-calendar-event"
+            color="success"
+            valueLabel="Date"
+            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title . ($e->village ? ' — ' . $e->village->village_name : ''), 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+    @endif
+</div>
+@endif
 
 @if($dashboardWidgets['analytics_summary'] ?? true)
 <div class="row g-4 mb-4">
@@ -910,7 +940,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: participationData.map(p => p.name),
                 datasets: [
                     { label: 'Events', data: participationData.map(p => p.events), backgroundColor: '#0d6efd', borderRadius: 4 },
-                    { label: 'Participants', data: participationData.map(p => p.participants), backgroundColor: '#198754', borderRadius: 4 }
+                    { label: 'Household Participations', data: participationData.map(p => p.participants), backgroundColor: '#198754', borderRadius: 4 }
                 ]
             },
             options: {

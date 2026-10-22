@@ -12,8 +12,12 @@ use Illuminate\View\View;
 
 class VillageOfficerController extends Controller
 {
+    use \App\Http\Traits\VillageAccessAware;
+
     public function index(Village $village): View
     {
+        $this->enforceVillageAccess(auth()->user(), $village->id);
+
         $officers = $village->officers()->latest()->paginate(15);
 
         return view('villages.officers', compact('village', 'officers'));
@@ -21,6 +25,8 @@ class VillageOfficerController extends Controller
 
     public function store(Village $village, StoreVillageOfficerRequest $request): RedirectResponse
     {
+        $this->enforceVillageAccess(auth()->user(), $village->id);
+
         $data = $request->validated();
         $data['village_id'] = $village->id;
 
@@ -40,6 +46,8 @@ class VillageOfficerController extends Controller
 
     public function update(Village $village, VillageOfficer $officer, UpdateVillageOfficerRequest $request): RedirectResponse
     {
+        $this->enforceVillageAccess(auth()->user(), $village->id);
+
         $data = $request->validated();
 
         if ($request->hasFile('photo')) {
@@ -62,6 +70,8 @@ class VillageOfficerController extends Controller
 
     public function destroy(Village $village, VillageOfficer $officer): RedirectResponse
     {
+        $this->enforceVillageAccess(auth()->user(), $village->id);
+
         $name = $officer->full_name;
         $officer->delete();
 

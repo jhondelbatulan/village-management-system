@@ -18,7 +18,7 @@
 </div>
 
 <div class="row g-4 mb-4">
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center">
                 <i class="bi bi-cash-stack fs-2 text-success d-block mb-2"></i>
@@ -27,7 +27,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
+    <div class="col-md-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body text-center">
                 <i class="bi bi-exclamation-circle fs-2 text-danger d-block mb-2"></i>
@@ -36,16 +36,25 @@
             </div>
         </div>
     </div>
-    <div class="col-md-4">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body text-center">
-                <i class="bi bi-exclamation-triangle fs-2 text-warning d-block mb-2"></i>
-                <h4 class="mb-1">₱{{ number_format($balance['penalties'], 2) }}</h4>
-                <small class="text-muted">Total Penalties</small>
-            </div>
+</div>
+
+@if($gcashConfig && ($canPayOnline ?? false))
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-phone me-2 text-success"></i>GCash Payment Guide</h6>
+    </div>
+    <div class="card-body px-4 pb-4">
+        <div class="bg-light rounded p-3 text-center">
+            <div class="small text-muted mb-1">Send your GCash payment to</div>
+            <div class="fs-5 fw-bold text-success">{{ $gcashConfig->gcash_number }}</div>
+            <div class="fw-semibold">{{ $gcashConfig->gcash_name }}</div>
         </div>
+        <small class="text-muted d-block mt-2">
+            <i class="bi bi-info-circle me-1"></i>Use <strong>Pay Online</strong> on any unpaid bill below to submit your payment with a screenshot for approval.
+        </small>
     </div>
 </div>
+@endif
 
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-0 pt-4 px-4">
@@ -62,13 +71,18 @@
                         <th>Period</th>
                         <th>Due Date</th>
                         <th class="text-end">Amount</th>
-                        <th class="text-end">Penalty</th>
                         <th class="text-end">Total</th>
                         <th class="text-center">Status</th>
+                        <th class="text-end">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     @foreach($billings as $billing)
+                    @php
+                        $rowBalance = (float) $billing->total_amount - (float) $billing->payments->sum('total_paid');
+                        $hasActiveRequest = in_array($billing->id, $activeRequestBillingIds ?? []);
+                        $payableStatus = in_array($billing->status, ['pending', 'overdue', 'partially_paid']);
+                    @endphp
                     <tr>
                         <td>
                             <a href="{{ route('billings.show', $billing) }}" class="text-primary fw-semibold">
@@ -79,10 +93,20 @@
                         <td>{{ $billing->billing_period }}</td>
                         <td>{{ $billing->due_date->format('M d, Y') }}</td>
                         <td class="text-end">₱{{ number_format($billing->amount, 2) }}</td>
-                        <td class="text-end text-danger">₱{{ number_format($billing->penalty, 2) }}</td>
                         <td class="text-end fw-semibold">₱{{ number_format($billing->total_amount, 2) }}</td>
                         <td class="text-center">
                             <span class="badge {{ $billing->status_badge }}">{{ $billing->status_label }}</span>
+                        </td>
+                        <td class="text-end">
+                            @if($hasActiveRequest)
+                                <span class="badge bg-warning text-dark">Awaiting Approval</span>
+                            @elseif(($canPayOnline ?? false) && $payableStatus && $rowBalance > 0.009)
+                                <a href="{{ route('billings.pay-online', $billing) }}" class="btn btn-sm btn-success">
+                                    <i class="bi bi-phone me-1"></i>Pay Online
+                                </a>
+                            @else
+                                <span class="text-muted small">—</span>
+                            @endif
                         </td>
                     </tr>
                     @endforeach
@@ -150,4 +174,58 @@
         @endif
     </div>
 </div>
+
+@if(($onlinePayments ?? collect())->count() > 0)
+<div class="card border-0 shadow-sm mb-4">
+    <div class="card-header bg-white border-0 pt-4 px-4">
+        <h6 class="mb-0 fw-semibold"><i class="bi bi-phone me-2 text-warning"></i>Online Payment Requests</h6>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Billing #</th>
+                        <th class="text-end">Amount</th>
+                        <th>Transaction #</th>
+                        <th>Submitted</th>
+                        <th class="text-center">Status</th>
+                        <th>Remarks</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($onlinePayments as $onlinePayment)
+                    <tr>
+                        <td>
+                            <a href="{{ route('billings.show', $onlinePayment->billing_id) }}" class="text-primary fw-semibold">
+                                {{ $onlinePayment->billing?->billing_number ?? '—' }}
+                            </a>
+                        </td>
+                        <td class="text-end fw-semibold">₱{{ number_format($onlinePayment->amount, 2) }}</td>
+                        <td><span class="text-muted">{{ $onlinePayment->transaction_number }}</span></td>
+                        <td><small class="text-muted">{{ $onlinePayment->created_at->format('M d, Y h:i A') }}</small></td>
+                        <td class="text-center">
+                            <span class="badge {{ $onlinePayment->status_badge }}">{{ $onlinePayment->status_label }}</span>
+                        </td>
+                        <td>
+                            @if($onlinePayment->status === 'declined' && $onlinePayment->declined_reason)
+                                <small class="text-danger">{{ $onlinePayment->declined_reason }}</small>
+                            @elseif($onlinePayment->status === 'approved' && $onlinePayment->payment_id)
+                                <a href="{{ route('payments.receipt', $onlinePayment->payment_id) }}" class="small text-primary" target="_blank">
+                                    View Receipt
+                                </a>
+                            @elseif($onlinePayment->status === 'approved')
+                                <small class="text-success">Being recorded</small>
+                            @else
+                                <small class="text-muted">Awaiting treasurer approval</small>
+                            @endif
+                        </td>
+                    </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+@endif
 @endsection

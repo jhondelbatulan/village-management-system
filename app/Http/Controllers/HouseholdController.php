@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\HouseholdRequest\ApproveHouseholdRequest;
+use App\Http\Requests\HouseholdRequest\RequestMemberRequest;
 use App\Http\Requests\HouseholdRequest\StoreHouseholdRequest;
 use App\Http\Requests\HouseholdRequest\UpdateHouseholdRequest;
 use App\Models\Household;
@@ -10,10 +11,12 @@ use App\Models\Resident;
 use App\Models\User;
 use App\Models\Village;
 use App\Services\AuditLogService;
+use App\Services\GisService;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class HouseholdController extends Controller
@@ -31,11 +34,11 @@ class HouseholdController extends Controller
             $search = request('search');
             $query->where(function ($q) use ($search) {
                 $q->where('household_number', 'like', "%{$search}%")
-                  ->orWhere('block_number', 'like', "%{$search}%")
-                  ->orWhere('lot_number', 'like', "%{$search}%")
-                  ->orWhere('household_head_name', 'like', "%{$search}%")
-                  ->orWhere('purok', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                    ->orWhere('block_number', 'like', "%{$search}%")
+                    ->orWhere('lot_number', 'like', "%{$search}%")
+                    ->orWhere('household_head_name', 'like', "%{$search}%")
+                    ->orWhere('purok', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
             });
         }
 
@@ -63,8 +66,11 @@ class HouseholdController extends Controller
             $query->orderBy('household_head_name');
         } elseif (request('sort') === 'za') {
             $query->orderByDesc('household_head_name');
-        } else {
+        } elseif (request('sort') === 'newest') {
             $query->latest();
+        } else {
+            $query->orderByRaw('CAST(block_number AS UNSIGNED)')
+                ->orderByRaw('CAST(lot_number AS UNSIGNED)');
         }
 
         $households = $query->paginate(15)->withQueryString();
@@ -75,14 +81,14 @@ class HouseholdController extends Controller
             ->where('block_number', '!=', '')
             ->distinct()
             ->pluck('block_number')
-            ->sort()
+            ->sort(fn ($a, $b) => strnatcmp((string) $a, (string) $b))
             ->values();
 
         $lotNumbers = Household::where('lot_number', '!=', null)
             ->where('lot_number', '!=', '')
             ->distinct()
             ->pluck('lot_number')
-            ->sort()
+            ->sort(fn ($a, $b) => strnatcmp((string) $a, (string) $b))
             ->values();
 
         return view('households.index', compact('households', 'archivedHouseholds', 'villages', 'blockNumbers', 'lotNumbers'));
@@ -97,7 +103,9 @@ class HouseholdController extends Controller
             $villages = $villages->where('id', $user->village_id);
         }
 
-        return view('households.create', compact('villages'));
+        $latestHouseholds = app(GisService::class)->getLatestMappedHouseholds(null, 25);
+
+        return view('households.create', compact('villages', 'latestHouseholds'));
     }
 
     public function store(StoreHouseholdRequest $request): RedirectResponse
@@ -111,7 +119,9 @@ class HouseholdController extends Controller
         $household = Household::create($data);
 
         $village = Village::find($data['village_id']);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Create Household', 'Household Management', "Created household: {$household->household_number}");
 
@@ -129,14 +139,14 @@ class HouseholdController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->household_id) {
+        if (! $user->household_id) {
             return back()->with('error', 'You are not assigned to any household.');
         }
 
         $household = Household::with(['village', 'householdHead', 'residents', 'submittedBy', 'approvedBy', 'adminApprovedBy', 'billings.paymentType', 'payments'])
             ->find($user->household_id);
 
-        if (!$household) {
+        if (! $household) {
             return back()->with('error', 'Your household record no longer exists. Please contact an administrator.');
         }
 
@@ -146,14 +156,21 @@ class HouseholdController extends Controller
         $billings = $paymentService->getHouseholdBillings($household->id);
         $payments = $paymentService->getHouseholdPayments($household->id);
 
-        return view('households.my-household', compact('household', 'balance', 'billings', 'payments'));
+        $pendingMembers = Resident::where('household_id', $household->id)
+            ->whereIn('approval_status', ['pending', 'admin_approved'])
+            ->latest()
+            ->get();
+
+        return view('households.my-household', compact('household', 'balance', 'billings', 'payments', 'pendingMembers'));
     }
 
     public function edit(Household $household): View
     {
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
 
-        return view('households.edit', compact('household', 'villages'));
+        $latestHouseholds = app(GisService::class)->getLatestMappedHouseholds($household->village_id, 25);
+
+        return view('households.edit', compact('household', 'villages', 'latestHouseholds'));
     }
 
     public function update(UpdateHouseholdRequest $request, Household $household): RedirectResponse
@@ -173,7 +190,9 @@ class HouseholdController extends Controller
         $household->update($data);
 
         $village = Village::find($household->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Update Household', 'Household Management', "Updated household: {$household->household_number}");
 
@@ -183,32 +202,120 @@ class HouseholdController extends Controller
     public function destroy(Household $household): RedirectResponse
     {
         $number = $household->household_number;
-        $household->delete();
+
+        DB::transaction(function () use ($household): void {
+            $household->delete();
+
+            // Archive every resident of this household (any approval status),
+            // stamped with the household's deleted_at so restore can find them.
+            Resident::withTrashed()
+                ->where('household_id', $household->id)
+                ->whereNull('deleted_at')
+                ->update(['deleted_at' => $household->deleted_at]);
+        });
 
         $village = Village::find($household->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
-        AuditLogService::log('Archive Household', 'Household Management', "Archived household: {$number}");
+        AuditLogService::log('Archive Household', 'Household Management', "Archived household: {$number} and its residents.");
 
-        return redirect()->route('households.index')->with('success', "Household \"{$number}\" has been archived.");
+        app(NotificationService::class)->notifyHouseholdResidents(
+            [$household->id],
+            'warning',
+            'Household Archived',
+            "Your household ({$number}) has been archived by the administration.",
+            route('households.my-household')
+        );
+
+        app(NotificationService::class)->notifyAdmins(
+            $household->village_id,
+            'Household Archived',
+            "Household \"{$number}\" and its residents have been archived.",
+            route('households.index'),
+            'warning'
+        );
+
+        return redirect()->route('households.index')->with('success', "Household \"{$number}\" and its residents have been archived.");
     }
 
     public function restore(int $id): RedirectResponse
     {
         $household = Household::withTrashed()->findOrFail($id);
-        $household->restore();
+        $archivedAt = $household->deleted_at;
+
+        DB::transaction(function () use ($household, $archivedAt): void {
+            $household->restore();
+
+            // Restore only the residents archived together with this household;
+            // residents archived earlier on their own stay archived.
+            Resident::withTrashed()
+                ->where('household_id', $household->id)
+                ->where('deleted_at', $archivedAt)
+                ->restore();
+        });
 
         $village = Village::find($household->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
-        AuditLogService::log('Restore Household', 'Household Management', "Restored household: {$household->household_number}");
+        AuditLogService::log('Restore Household', 'Household Management', "Restored household: {$household->household_number} and its residents.");
 
-        return redirect()->route('households.index')->with('success', "Household \"{$household->household_number}\" has been restored.");
+        return redirect()->route('households.index')->with('success', "Household \"{$household->household_number}\" and its residents have been restored.");
+    }
+
+    public function forceDelete(Request $request, int $id): RedirectResponse
+    {
+        $household = Household::withTrashed()->findOrFail($id);
+        $number = $household->household_number;
+
+        // Capture linked users before force-delete nulls their household_id.
+        $householdUserIds = User::where('household_id', $household->id)->pluck('id');
+
+        try {
+            DB::transaction(function () use ($household): void {
+                $household->participations()->delete();
+
+                Resident::withTrashed()
+                    ->where('household_id', $household->id)
+                    ->each(function (Resident $resident): void {
+                        $resident->participations()->delete();
+                        $resident->forceDelete();
+                    });
+
+                $household->forceDelete();
+            });
+        } catch (\Throwable $e) {
+            report($e);
+
+            return back()->with('error', "Household \"{$number}\" could not be deleted because related records still reference it.");
+        }
+
+        $village = Village::find($household->village_id);
+        if ($village) {
+            $village->recalculateCounts();
+        }
+
+        AuditLogService::log('Permanently Delete Household', 'Household Management', "Permanently deleted household: {$number} and its residents.");
+
+        $notifications = app(NotificationService::class);
+        foreach ($householdUserIds as $userId) {
+            $notifications->notifyUser(
+                $userId,
+                'warning',
+                'Household Removed',
+                "Your household ({$number}) has been permanently deleted by the administration."
+            );
+        }
+
+        return redirect()->route('households.index')->with('success', "Household \"{$number}\" and its residents have been permanently deleted.");
     }
 
     public function submit(Household $household): RedirectResponse
     {
-        if (!in_array($household->approval_status, ['draft', 'rejected'])) {
+        if (! in_array($household->approval_status, ['draft', 'rejected'])) {
             return back()->with('error', 'Only draft or rejected records can be submitted for approval.');
         }
 
@@ -229,7 +336,7 @@ class HouseholdController extends Controller
 
         AuditLogService::log('Submit Household', 'Household Management', "Submitted household for approval: {$household->household_number}");
 
-        $this->notifyAdmins("New household {$household->household_number} submitted for approval.", 'approval', $household->village_id);
+        $this->notifyAdmins("New household submitted for approval ({$household->notification_label}).", 'approval', $household->village_id);
 
         return redirect()->route('households.show', $household)->with('success', 'Household submitted for approval successfully.');
     }
@@ -238,114 +345,22 @@ class HouseholdController extends Controller
     {
         $user = $request->user();
 
-        if (!$user->household_id) {
+        if (! $user->household_id) {
             return redirect()->route('households.my-household')->with('error', 'You are not assigned to any household.');
         }
 
         return view('households.request-member');
     }
 
-    public function requestMember(Request $request): RedirectResponse
+    public function requestMember(RequestMemberRequest $request): RedirectResponse
     {
         $user = $request->user();
 
-        if (!$user->household_id) {
+        if (! $user->household_id) {
             return back()->with('error', 'You are not assigned to any household.');
         }
 
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'middle_name' => 'nullable|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'suffix' => 'nullable|string|max:50',
-            'gender' => 'required|in:Male,Female,Other',
-            'birthdate' => 'required|date|before:today',
-            'civil_status' => 'required|in:Single,Married,Widowed,Separated,Divorced',
-            'nationality' => 'nullable|string|max:100',
-            'religion' => 'nullable|string|max:100',
-            'contact_number' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
-            'relationship_to_head' => 'nullable|string|max:100',
-            'voter_status' => 'nullable|boolean',
-            'is_household_head' => 'nullable|boolean',
-
-            // Education
-            'educational_attainment' => 'nullable|string|max:100',
-            'education_level' => 'nullable|string|max:100',
-            'school_name' => 'nullable|string|max:255',
-            'grade_level' => 'nullable|string|max:100',
-            'is_scholarship' => 'nullable|boolean',
-            'scholarship_type' => 'nullable|string|max:255',
-
-            // Employment
-            'employment_status' => 'nullable|string|max:50',
-            'occupation' => 'nullable|string|max:255',
-            'employer_name' => 'nullable|string|max:255',
-            'job_title' => 'nullable|string|max:255',
-            'years_of_experience' => 'nullable|integer|min:0|max:60',
-
-            // Income
-            'income_source' => 'nullable|string|max:100',
-            'monthly_income' => 'nullable|numeric|min:0',
-            'monthly_income_range' => 'nullable|string|max:100',
-
-            // Special Population
-            'is_pwd' => 'nullable|boolean',
-            'pwd_type' => 'nullable|string|max:255',
-            'is_solo_parent' => 'nullable|boolean',
-            'is_senior_citizen' => 'nullable|boolean',
-            'is_youth' => 'nullable|boolean',
-            'is_student' => 'nullable|boolean',
-            'is_ofw' => 'nullable|boolean',
-            'is_infant' => 'nullable|boolean',
-
-            // Government Memberships
-            'is_pagibig_member' => 'nullable|boolean',
-            'is_philhealth_member' => 'nullable|boolean',
-            'is_sss_member' => 'nullable|boolean',
-            'is_gsis_member' => 'nullable|boolean',
-
-            // Government Assistance
-            'is_4ps_member' => 'nullable|boolean',
-            'is_senior_pensioner' => 'nullable|boolean',
-            'other_gov_assistance' => 'nullable|string|max:255',
-            'is_tupad_beneficiary' => 'nullable|boolean',
-            'is_akap_beneficiary' => 'nullable|boolean',
-            'is_educational_assistance' => 'nullable|boolean',
-            'is_emergency_assistance' => 'nullable|boolean',
-            'is_slp_beneficiary' => 'nullable|boolean',
-
-            // Government IDs
-            'is_national_id_holder' => 'nullable|boolean',
-            'is_senior_id_holder' => 'nullable|boolean',
-            'is_pwd_id_holder' => 'nullable|boolean',
-            'is_solo_parent_id_holder' => 'nullable|boolean',
-
-            // Social Categories
-            'is_indigenous' => 'nullable|boolean',
-            'is_veteran' => 'nullable|boolean',
-
-            // Community Participation
-            'is_disaster_volunteer' => 'nullable|boolean',
-            'is_village_volunteer' => 'nullable|boolean',
-
-            // Skills & Livelihood
-            'skills' => 'nullable|string',
-            'primary_skill' => 'nullable|string|max:255',
-            'secondary_skill' => 'nullable|string|max:255',
-            'livelihood_programs' => 'nullable|string',
-            'special_qualifications' => 'nullable|string',
-            'community_activities' => 'nullable|string',
-
-            // Emergency Contact
-            'emergency_contact_name' => 'nullable|string|max:255',
-            'emergency_contact_number' => 'nullable|string|max:20',
-            'emergency_contact_relationship' => 'nullable|string|max:100',
-
-            // Additional
-            'blood_type' => 'nullable|string|max:10',
-            'years_of_residency' => 'nullable|integer|min:0',
-        ]);
+        $validated = $request->validated();
 
         $household = Household::findOrFail($user->household_id);
 
@@ -353,6 +368,7 @@ class HouseholdController extends Controller
             'resident_code' => Resident::generateResidentCode(),
             'household_id' => $household->id,
             'village_id' => $household->village_id,
+            'nationality' => $validated['nationality'] ?? 'Filipino',
             'approval_status' => 'pending',
             'submitted_by' => $user->id,
             'status' => 'active',
@@ -360,11 +376,11 @@ class HouseholdController extends Controller
 
         $resident = Resident::create($data);
 
-        $this->notifyAdmins("New resident {$resident->full_name} requested to join household {$household->household_number}.", 'approval', $household->village_id);
+        $this->notifyAdmins("New resident {$resident->full_name} is added on the household ({$household->notification_label}).", 'approval', $household->village_id);
 
         AuditLogService::log('Request Add Member', 'Household Management', "Resident requested to add {$resident->full_name} to household {$household->household_number}");
 
-        return redirect()->route('households.my-household')->with('success', 'Your request to add a new member has been submitted for secretary approval.');
+        return redirect()->route('households.my-household')->with('success', 'Your request to add a new member has been submitted for admin approval.');
     }
 
     public function toggleStatus(Household $household): RedirectResponse
@@ -386,108 +402,144 @@ class HouseholdController extends Controller
         }
 
         $village = Village::find($household->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Toggle Household Status', 'Household Management', "Toggled household {$household->household_number} to {$newStatus}");
 
-        return redirect()->back()->with('success', "Household status changed to {$newStatus}." . ($newStatus === 'inactive' ? ' All linked user accounts have been deactivated.' : ''));
+        return redirect()->back()->with('success', "Household status changed to {$newStatus}.".($newStatus === 'inactive' ? ' All linked user accounts have been deactivated.' : ''));
     }
 
     public function approve(Household $household, ApproveHouseholdRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $action = $data['approval_status'];
-        $userRole = auth()->user()->role?->role_slug;
 
-        if ($action === 'approved') {
-            if ($userRole === 'admin' && $household->approval_status === 'pending') {
-                $household->update([
-                    'approval_status' => 'admin_approved',
-                    'admin_approved_by' => auth()->id(),
-                    'admin_approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
+        return DB::transaction(function () use ($household, $data): RedirectResponse {
+            // Lock the row so only one approval action can be processed at a time.
+            $household = Household::query()->lockForUpdate()->findOrFail($household->id);
 
-                AuditLogService::log('Admin Approve Household', 'Household Management', "Admin approved household: {$household->household_number} (pending super admin final approval)");
+            $action = $data['approval_status'];
+            $userRole = auth()->user()->role?->role_slug;
 
-                $this->notifySuperAdmins("Household {$household->household_number} approved by Admin. Pending your final approval.");
-                $this->notifySubmitter($household, "Household {$household->household_number} approved by Admin. Awaiting Super Admin final approval.");
+            if ($action === 'approved') {
+                // Stage 1 — Admin reviews pending submissions from their village.
+                if ($userRole === 'admin' && $household->approval_status === 'pending') {
+                    $household->update([
+                        'approval_status' => 'admin_approved',
+                        'admin_approved_by' => auth()->id(),
+                        'admin_approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
 
-                return redirect()->route('households.show', $household)->with('success', 'Household approved by Admin. Awaiting Super Admin final approval.');
+                    AuditLogService::log('Admin Approve Household', 'Household Management', "Admin approved household: {$household->household_number} (pending super admin final approval)");
+
+                    $this->notifySuperAdmins("Household approved by Admin ({$household->notification_label}). Pending your final approval.");
+                    $this->notifySubmitter($household, "Household approved by Admin ({$household->notification_label}). Awaiting Super Admin final approval.");
+
+                    return redirect()->route('households.show', $household)->with('success', 'Household approved by Admin. Awaiting Super Admin final approval.');
+                }
+
+                // Stage 2 — Super Admin gives the final approval of admin-approved records only.
+                if ($userRole === 'super_admin' && $household->approval_status === 'admin_approved') {
+                    $household->update([
+                        'approval_status' => 'approved',
+                        'status' => 'active',
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
+
+                    AuditLogService::log('Final Approve Household', 'Household Management', "Super Admin final approved household: {$household->household_number}");
+
+                    $this->notifySubmitter($household, "Household has been approved by Super Admin ({$household->notification_label}).");
+
+                    return redirect()->route('households.show', $household)->with('success', 'Household has been approved successfully.');
+                }
+
+                return back()->with('error', $this->alreadyProcessed($household, $userRole)
+                    ? 'This household request has already been processed.'
+                    : 'You cannot approve this household at this stage.');
             }
 
-            if ($userRole === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved'])) {
-                $household->update([
-                    'approval_status' => 'approved',
-                    'approved_by' => auth()->id(),
-                    'approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
+            if ($action === 'rejected') {
+                // Admin rejects pending submissions in their village (Stage 1).
+                if ($userRole === 'admin' && $household->approval_status === 'pending') {
+                    $household->update([
+                        'approval_status' => 'rejected',
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
 
-                AuditLogService::log('Final Approve Household', 'Household Management', "Super Admin final approved household: {$household->household_number}");
+                    AuditLogService::log('Reject Household', 'Household Management', "Rejected household: {$household->household_number}");
 
-                $this->notifySubmitter($household, "Household {$household->household_number} has been approved by Super Admin.");
+                    $this->notifySubmitter($household, "Household has been rejected ({$household->notification_label}).");
 
-                return redirect()->route('households.show', $household)->with('success', 'Household has been approved successfully.');
+                    return redirect()->route('households.show', $household)->with('success', 'Household has been rejected.');
+                }
+
+                // Super Admin rejects admin-approved records (Stage 2).
+                if ($userRole === 'super_admin' && $household->approval_status === 'admin_approved') {
+                    $household->update([
+                        'approval_status' => 'rejected',
+                        'admin_approved_by' => auth()->id(),
+                        'admin_approved_at' => now(),
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
+
+                    AuditLogService::log('Reject Household', 'Household Management', "Rejected household: {$household->household_number}");
+
+                    $this->notifySubmitter($household, "Household has been rejected ({$household->notification_label}).");
+                    $this->notifyAdmins("Household was rejected ({$household->notification_label}).".($data['remarks'] ? ' Remarks: '.$data['remarks'] : ''), 'warning', $household->village_id);
+
+                    return redirect()->route('households.show', $household)->with('success', 'Household has been rejected.');
+                }
+
+                return back()->with('error', $this->alreadyProcessed($household, $userRole)
+                    ? 'This household request has already been processed.'
+                    : 'You cannot reject this household at this stage.');
             }
 
-            return back()->with('error', 'You cannot approve this household at this stage.');
-        }
-
-        if ($action === 'rejected') {
-            if (in_array($userRole, ['admin', 'super_admin']) && in_array($household->approval_status, ['pending', 'admin_approved'])) {
-                $household->update([
-                    'approval_status' => 'rejected',
-                    'approved_by' => auth()->id(),
-                    'approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
-
-                AuditLogService::log('Reject Household', 'Household Management', "Rejected household: {$household->household_number}");
-
-                $this->notifySubmitter($household, "Household {$household->household_number} has been rejected.");
-
-                return redirect()->route('households.show', $household)->with('success', 'Household has been rejected.');
-            }
-
-            return back()->with('error', 'You cannot reject this household at this stage.');
-        }
-
-        return back()->with('error', 'Invalid action.');
+            return back()->with('error', 'Invalid action.');
+        });
     }
 
-    private function notifyAdmins(string $message, string $type, ?int $villageId = null): void
+    /**
+     * Whether the record has already been decided, so a repeated click must not
+     * process the approval a second time.
+     */
+    private function alreadyProcessed(Household $household, ?string $userRole): bool
+    {
+        return in_array($household->approval_status, ['approved', 'rejected'], true)
+            || ($userRole === 'admin' && $household->approval_status === 'admin_approved');
+    }
+
+    private function notifyAdmins(string $message, string $type = 'approval', ?int $villageId = null): void
     {
         try {
-            $service = app(NotificationService::class);
-            $query = User::whereHas('role', fn($q) => $q->where('role_slug', 'admin'))->where('status', 'active');
-            if ($villageId) {
-                $query->where('village_id', $villageId);
-            }
-            foreach ($query->get() as $user) {
-                $service->createFromPlaceholder($type, 'Approval Required', $message, route('approvals.households'), $user->id);
-            }
-        } catch (\Throwable $e) {}
+            app(NotificationService::class)->notifyAdmins($villageId, 'Approval Required', $message, route('approvals.households'), $type);
+        } catch (\Throwable $e) {
+        }
     }
 
     private function notifySuperAdmins(string $message): void
     {
         try {
-            $service = app(NotificationService::class);
-            $users = User::whereHas('role', fn($q) => $q->where('role_slug', 'super_admin'))->where('status', 'active')->get();
-            foreach ($users as $user) {
-                $service->createFromPlaceholder('approval', 'Approval Update', $message, route('approvals.households'), $user->id);
-            }
-        } catch (\Throwable $e) {}
+            app(NotificationService::class)->notifySuperAdmins('Approval Update', $message, route('approvals.households'));
+        } catch (\Throwable $e) {
+        }
     }
 
     private function notifySubmitter(Household $household, string $message): void
     {
         try {
             if ($household->submittedBy) {
-                $service = app(NotificationService::class);
-                $service->createFromPlaceholder('approval', 'Household Update', $message, route('households.show', $household), $household->submittedBy->id);
+                app(NotificationService::class)->notifyUser($household->submittedBy->id, 'approval', 'Household Update', $message, route('households.show', $household));
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
     }
 }

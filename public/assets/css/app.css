@@ -332,12 +332,69 @@ body.dashboard-body {
 
 @media (max-width: 575.98px) {
     .app-content {
-        padding: 1rem;
-        padding-top: calc(var(--mvms-navbar-height) + 1rem);
+        padding: 0.75rem;
+        padding-top: calc(var(--mvms-navbar-height) + 0.75rem);
     }
 
     .stat-value {
-        font-size: 1.5rem;
+        font-size: 1.35rem;
+    }
+
+    .page-title {
+        font-size: 1.2rem;
+    }
+
+    .navbar-system-name {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 45vw;
+    }
+
+    .app-navbar {
+        padding: 0 0.75rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .stat-card .stat-icon {
+        width: 40px;
+        height: 40px;
+        font-size: 1.1rem;
+    }
+
+    .table th {
+        font-size: 0.68rem;
+    }
+
+    .table td {
+        font-size: 0.8rem;
+    }
+
+    .app-footer {
+        padding: 0.6rem 0.75rem;
+        font-size: 0.75rem;
+        text-align: center;
+    }
+
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+
+    .form-card {
+        max-width: 100%;
+    }
+
+    #notificationMenu {
+        min-width: min(320px, calc(100vw - 1.5rem)) !important;
+    }
+
+    .pagination .page-item .page-link {
+        padding: 0.2rem 0.45rem;
+        font-size: 0.78rem;
     }
 }
 
@@ -626,7 +683,8 @@ body.dashboard-body {
 
 /* Mobile breakpoint */
 @media (max-width: 767.98px) {
-    .page-header h4 {
+    .page-header h4,
+    .page-header h1 {
         font-size: 1.15rem;
     }
     .stat-card .stat-value {
@@ -636,8 +694,27 @@ body.dashboard-body {
         font-size: 0.85rem;
     }
     .app-content {
-        padding: 1rem;
-        padding-top: calc(var(--mvms-navbar-height) + 1rem);
+        padding: 0.75rem;
+        padding-top: calc(var(--mvms-navbar-height) + 0.75rem);
+    }
+
+    /* App-like gutters */
+    .app-content .row {
+        --bs-gutter-x: 0.75rem;
+    }
+
+    /* Prevent iOS zoom-on-focus so inputs stay full usable width */
+    .form-control,
+    .form-select,
+    .form-control-sm {
+        font-size: 16px;
+    }
+
+    /* Full-width stacked page-header actions */
+    .page-header .d-flex.justify-content-between,
+    .d-flex.justify-content-between.align-items-center {
+        flex-wrap: wrap;
+        gap: 0.75rem;
     }
 
     /* Mobile-friendly search/filter bars — full-width stacked fields */
@@ -661,6 +738,30 @@ body.dashboard-body {
         flex: 1;
         padding: 0.5rem 0.75rem;
         font-size: 0.85rem;
+    }
+
+    /* Compact slideshow so dashboard content fits without scrolling past photos */
+    .carousel-inner {
+        max-height: 200px !important;
+    }
+
+    /* Denser cards and lists */
+    .card-body {
+        padding: 1rem;
+    }
+    .list-group-item {
+        padding: 0.65rem 1rem;
+    }
+
+    /* Page-header action buttons stretch on small screens */
+    .page-header .d-flex > .btn {
+        flex: 1 1 auto;
+        text-align: center;
+    }
+
+    /* Table actions: larger touch targets */
+    .table .btn-sm {
+        padding: 0.35rem 0.55rem;
     }
 }
 

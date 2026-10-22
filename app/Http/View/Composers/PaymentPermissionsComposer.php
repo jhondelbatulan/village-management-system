@@ -33,7 +33,7 @@ class PaymentPermissionsComposer
             'can_view_payments' => $this->permissionService->canViewPayments($user),
             'can_record_payment_global' => !empty($this->permissionService->getPaymentManagerVillageIds($user)),
             'can_generate_billings_global' => !empty($this->permissionService->getPaymentManagerVillageIds($user)),
-            'can_manage_config' => $this->permissionService->canManagePaymentConfig($user),
+            'can_manage_config' => $this->permissionService->canManagePaymentConfig($user, $user->village_id),
             'payment_manager_village_ids' => $this->permissionService->getPaymentManagerVillageIds($user),
             'viewable_village_ids' => $this->permissionService->getViewableVillageIds($user),
             'user_role' => $user->role?->role_slug,

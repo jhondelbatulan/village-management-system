@@ -12,7 +12,7 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        @if(auth()->user()->role?->role_slug === 'secretary')
+        @if($event->isManagedBy(auth()->user()))
             <a href="{{ route('events.edit', $event) }}" class="btn btn-warning">
                 <i class="bi bi-pencil me-1"></i> Edit
             </a>
@@ -86,7 +86,7 @@
             </div>
         @endif
 
-        @if(auth()->user()->role?->role_slug === 'secretary')
+        @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary']))
             <div class="card shadow-sm mt-3">
                 <div class="card-header bg-white d-flex justify-content-between align-items-center">
                     <h6 class="mb-0 fw-semibold">Participations ({{ $event->participations->count() }})</h6>
@@ -107,8 +107,8 @@
                         <table class="table table-hover align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Resident</th>
-                                    <th>Household</th>
+                                    <th>Block / Lot</th>
+                                    <th>Household No.</th>
                                     <th>Status</th>
                                     <th>Remarks</th>
                                     <th>Recorded By</th>
@@ -118,7 +118,13 @@
                             <tbody>
                                 @forelse($event->participations as $p)
                                     <tr>
-                                        <td>{{ $p->resident?->full_name ?? '—' }}</td>
+                                        <td>
+                                            @if($p->household)
+                                                Block {{ $p->household->block_number ?? 'N/A' }} - Lot {{ $p->household->lot_number ?? 'N/A' }}
+                                            @else
+                                                —
+                                            @endif
+                                        </td>
                                         <td>{{ $p->household?->household_number ?? '—' }}</td>
                                         <td>
                                             @if($p->status === 'present')
@@ -202,30 +208,37 @@
 
                 @if($event->responses->count())
                     <hr>
-                    <div class="small">
-                        @foreach($event->responses as $resp)
-                            <div class="d-flex justify-content-between mb-1">
-                                <span>{{ $resp->resident?->full_name ?? 'Unknown' }}</span>
-                                @if($resp->response === 'going')
-                                    <span class="text-success">Going</span>
-                                @elseif($resp->response === 'maybe')
-                                    <span class="text-warning">Maybe</span>
-                                @else
-                                    <span class="text-danger">Not Going</span>
-                                @endif
-                            </div>
-                        @endforeach
-                    </div>
+                    <a href="#" class="d-flex justify-content-between align-items-center text-decoration-none"
+                       data-bs-toggle="modal" data-bs-target="#eventResponsesModal">
+                        <span class="small fw-semibold">{{ $event->responses->count() }} responded</span>
+                        <i class="bi bi-chevron-right small text-muted"></i>
+                    </a>
                 @endif
             </div>
         </div>
 
-        @if(auth()->user()->role?->role_slug === 'secretary')
+        @if($event->isManagedBy(auth()->user()))
             <div class="card shadow-sm mt-3">
                 <div class="card-header bg-white">
                     <h6 class="mb-0 fw-semibold">Actions</h6>
                 </div>
                 <div class="card-body d-grid gap-2">
+                    @if(! in_array($event->status, ['completed', 'cancelled']))
+                        <form action="{{ route('events.complete', $event) }}" method="POST">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-check-circle me-1"></i> Event Completed
+                            </button>
+                        </form>
+                        <form action="{{ route('events.cancel', $event) }}" method="POST" onsubmit="return confirm('Cancel this event?')">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" class="btn btn-outline-danger w-100">
+                                <i class="bi bi-x-circle me-1"></i> Cancel Event
+                            </button>
+                        </form>
+                    @endif
                     <form action="{{ route('events.destroy', $event) }}" method="POST" onsubmit="return confirm('Delete this event?')">
                         @csrf
                         @method('DELETE')
@@ -239,7 +252,7 @@
     </div>
 </div>
 
-@if(auth()->user()->role?->role_slug === 'secretary')
+@if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary']))
     <div class="modal fade" id="addParticipationModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
@@ -251,13 +264,14 @@
                     </div>
                     <div class="modal-body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold">Resident <span class="text-danger">*</span></label>
-                            <select name="resident_id" class="form-select" required>
-                                <option value="">Select Resident</option>
-                                @foreach(\App\Models\Resident::where('village_id', $event->village_id)->where('status', 'active')->orderBy('last_name')->get() as $resident)
-                                    <option value="{{ $resident->id }}">{{ $resident->full_name }} ({{ $resident->household?->household_number ?? 'N/A' }})</option>
+                            <label class="form-label fw-semibold">Household <span class="text-danger">*</span></label>
+                            <select name="household_id" class="form-select" required>
+                                <option value="">Select Household</option>
+                                @foreach(\App\Models\Household::where('village_id', $event->village_id)->where('status', 'active')->orderBy('household_number')->get() as $household)
+                                    <option value="{{ $household->id }}">Block {{ $household->block_number ?? 'N/A' }} - Lot {{ $household->lot_number ?? 'N/A' }} ({{ $household->household_number }})</option>
                                 @endforeach
                             </select>
+                            <small class="text-muted">One participation is recorded per household per event.</small>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
@@ -283,4 +297,34 @@
         </div>
     </div>
 @endif
+
+<div class="modal fade" id="eventResponsesModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title fw-semibold">Responding Households</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                @forelse($event->responses as $resp)
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="small">
+                            Block {{ $resp->household?->block_number ?? 'N/A' }}, Lot {{ $resp->household?->lot_number ?? 'N/A' }}
+                            <span class="text-muted">({{ $resp->household?->household_head_name ?? 'Unknown' }})</span>
+                        </span>
+                        @if($resp->response === 'going')
+                            <span class="badge bg-success">Going</span>
+                        @elseif($resp->response === 'maybe')
+                            <span class="badge bg-warning text-dark">Maybe</span>
+                        @else
+                            <span class="badge bg-danger">Not Going</span>
+                        @endif
+                    </div>
+                @empty
+                    <p class="text-muted small mb-0">No responses yet.</p>
+                @endforelse
+            </div>
+        </div>
+    </div>
+</div>
 @endsection

@@ -2,6 +2,8 @@
 
 namespace App\Http\Requests\UserRequest;
 
+use App\Models\Role;
+use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class UpdateUserRequest extends FormRequest
@@ -9,6 +11,25 @@ class UpdateUserRequest extends FormRequest
     public function authorize(): bool
     {
         return true;
+    }
+
+    protected function prepareForValidation(): void
+    {
+        $merge = [];
+
+        $email = $this->input('email');
+
+        if (is_string($email)) {
+            $merge['email'] = trim($email) === '' ? null : trim($email);
+        }
+
+        $contactNumber = $this->input('contact_number');
+
+        if (is_string($contactNumber)) {
+            $merge['contact_number'] = trim($contactNumber) === '' ? null : trim($contactNumber);
+        }
+
+        $this->merge($merge);
     }
 
     public function rules(): array
@@ -28,16 +49,50 @@ class UpdateUserRequest extends FormRequest
                 'exists:households,id',
             ],
             'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $userId],
-            'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email,' . $userId],
-            'first_name' => ['required', 'string', 'max:255'],
+            'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:users,email,' . $userId],
+            'first_name' => ['nullable', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
-            'last_name' => ['required', 'string', 'max:255'],
+            'last_name' => ['nullable', 'string', 'max:255'],
             'suffix' => ['nullable', 'string', 'max:50'],
             'contact_number' => ['nullable', 'string', 'max:20'],
             'password' => ['nullable', 'string', 'min:8', 'confirmed'],
             'status' => ['required', 'in:active,inactive,suspended'],
             'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
+    }
+
+    public function withValidator($validator): void
+    {
+        $validator->after(function ($validator): void {
+            $role = Role::find($this->input('role_id'));
+
+            if (! $role || ! in_array($role->role_slug, ['admin', 'secretary', 'treasurer'], true)) {
+                return;
+            }
+
+            $villageId = $this->input('village_id');
+
+            // An admin managing staff accounts is always locked to their own village.
+            if ($this->user()?->role?->role_slug === 'admin') {
+                $villageId = $this->user()->village_id;
+            }
+
+            if (! $villageId) {
+                return;
+            }
+
+            $user = $this->route('user');
+
+            $exists = User::query()
+                ->where('role_id', $role->id)
+                ->where('village_id', $villageId)
+                ->when($user, fn ($query) => $query->where('id', '!=', $user->id))
+                ->exists();
+
+            if ($exists) {
+                $validator->errors()->add('role_id', "A {$role->role_name} account already exists for this village.");
+            }
+        });
     }
 
     public function messages(): array
@@ -48,6 +103,7 @@ class UpdateUserRequest extends FormRequest
             'household_id.required_if' => 'A household must be assigned for resident users.',
             'household_id.exists' => 'The selected household is invalid.',
             'username.unique' => 'This username is already taken.',
+            'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email address is already registered.',
             'password.min' => 'Password must be at least 8 characters.',
             'password.confirmed' => 'Password confirmation does not match.',

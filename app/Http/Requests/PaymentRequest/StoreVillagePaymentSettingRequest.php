@@ -2,7 +2,7 @@
 
 namespace App\Http\Requests\PaymentRequest;
 
-use App\Services\PaymentPermissionService;
+use App\Models\Village;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreVillagePaymentSettingRequest extends FormRequest
@@ -10,11 +10,25 @@ class StoreVillagePaymentSettingRequest extends FormRequest
     public function authorize(): bool
     {
         $user = auth()->user();
-        if (!$user || $user->role?->role_slug !== 'super_admin') {
+        if (!$user) {
             return false;
         }
 
-        return true;
+        $role = $user->role?->role_slug;
+
+        if ($role === 'super_admin') {
+            return true;
+        }
+
+        if ($role === 'treasurer') {
+            $village = $this->route('village');
+
+            return $village instanceof Village
+                && $user->village_id !== null
+                && (int) $user->village_id === (int) $village->id;
+        }
+
+        return false;
     }
 
     public function rules(): array
@@ -22,7 +36,6 @@ class StoreVillagePaymentSettingRequest extends FormRequest
         return [
             'payment_enabled' => ['nullable'],
             'payment_manager_role' => ['nullable', 'in:treasurer,super_admin'],
-            'penalty_rate' => ['required', 'numeric', 'min:0', 'max:100'],
             'grace_period_days' => ['required', 'integer', 'min:0'],
             'billing_prefix' => ['required', 'string', 'max:10'],
             'receipt_prefix' => ['required', 'string', 'max:10'],
@@ -37,7 +50,6 @@ class StoreVillagePaymentSettingRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'penalty_rate.required' => 'Penalty rate is required.',
             'grace_period_days.required' => 'Grace period is required.',
             'billing_prefix.required' => 'Billing prefix is required.',
             'receipt_prefix.required' => 'Receipt prefix is required.',

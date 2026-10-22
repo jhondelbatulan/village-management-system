@@ -15,9 +15,10 @@ use App\Http\Controllers\VillageOfficerController;
 use App\Http\Controllers\GisController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\BillingController;
+use App\Http\Controllers\GcashConfigController;
+use App\Http\Controllers\OnlinePaymentController;
 use App\Http\Controllers\VillagePaymentConfigController;
 use App\Http\Controllers\HouseholdPaymentAmountController;
-use App\Http\Controllers\SwitchController;
 use App\Http\Controllers\AnnouncementController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\ParticipationController;
@@ -36,6 +37,14 @@ use Illuminate\Support\Facades\Route;
 */
 
 Route::get('/', function () {
+    if (auth()->check()) {
+        $routeName = \App\Support\RoleRedirect::routeName(auth()->user()?->role?->role_slug);
+
+        if ($routeName !== null) {
+            return redirect()->route($routeName);
+        }
+    }
+
     return redirect()->route('login');
 });
 
@@ -49,7 +58,7 @@ Route::middleware('guest')->group(function (): void {
     Route::post('/login', [LoginController::class, 'login'])->name('login.submit');
 
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
-    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email');
+    Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email')->middleware('throttle:5,1');
 
     Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
@@ -76,6 +85,10 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/dashboard/super-admin', [DashboardController::class, 'superAdmin'])
         ->middleware('role:super_admin')
         ->name('dashboard.super_admin');
+
+    Route::get('/dashboard/super-admin/monthly-collection', [DashboardController::class, 'monthlyCollection'])
+        ->middleware('role:super_admin')
+        ->name('dashboard.super_admin.monthly-collection');
 
     Route::get('/dashboard/admin', [DashboardController::class, 'admin'])
         ->middleware('role:admin')
@@ -117,19 +130,6 @@ Route::middleware(['auth'])->group(function (): void {
     });
 
     /*
-    | Multi-Session / Account Switcher
-    | Allows pinned accounts for quick role switching
-    */
-    Route::prefix('sessions')->name('sessions.')->group(function (): void {
-        Route::get('/', [SwitchController::class, 'index'])->name('index');
-        Route::post('/pin', [SwitchController::class, 'pin'])->name('pin');
-        Route::post('/unpin/{userId}', [SwitchController::class, 'unpin'])->name('unpin');
-        Route::post('/switch/{userId}', [SwitchController::class, 'switch'])->name('switch');
-        Route::post('/back', [SwitchController::class, 'back'])->name('back');
-        Route::get('/quick-switch', [SwitchController::class, 'quickSwitch'])->name('quick-switch');
-    });
-
-    /*
     | User Management (Super Admin & Admin only)
     */
     Route::middleware('role:super_admin,admin')->prefix('users')->name('users.')->group(function (): void {
@@ -143,21 +143,18 @@ Route::middleware(['auth'])->group(function (): void {
     });
 
     /*
-    | Approvals — Super Admin, Admin & Secretary
-    | Super Admin: view all, final approve/reject
-    | Admin: view pending from their village, approve → admin_approved
-    | Secretary: view pending resident requests from their village, approve directly
+    | Approvals — Two-Stage Workflow: Secretary → Admin → Super Admin
+    | Secretary: creates/submits household & resident records for review
+    | Admin: reviews pending submissions from their village (Stage 1)
+    | Super Admin: final approval of admin-approved records (Stage 2)
     */
     Route::middleware('role:super_admin,admin,secretary')->prefix('approvals')->name('approvals.')->group(function (): void {
         Route::get('/households', [ApprovalController::class, 'households'])->name('households');
         Route::post('/households/{household}/approve', [ApprovalController::class, 'approveHousehold'])->name('approve-household');
         Route::post('/households/{household}/reject', [ApprovalController::class, 'rejectHousehold'])->name('reject-household');
         Route::get('/residents', [ApprovalController::class, 'residents'])->name('residents');
-
         Route::post('/residents/{resident}/approve', [ApprovalController::class, 'approveResident'])->name('approve-resident')->middleware('role:super_admin,admin');
         Route::post('/residents/{resident}/reject', [ApprovalController::class, 'rejectResident'])->name('reject-resident')->middleware('role:super_admin,admin');
-        Route::post('/residents/{resident}/secretary-approve', [ApprovalController::class, 'approveResidentBySecretary'])->name('approve-resident-secretary')->middleware('role:secretary');
-        Route::post('/residents/{resident}/secretary-reject', [ApprovalController::class, 'rejectResidentBySecretary'])->name('reject-resident-secretary')->middleware('role:secretary');
     });
 
     /*
@@ -184,22 +181,32 @@ Route::middleware(['auth'])->group(function (): void {
 
     /*
     | Village Officers
+    | View: super admin, admin, secretary
+    | Manage (add/edit/remove): own-village admin or secretary only
     */
     Route::middleware('role:super_admin,admin,secretary')->prefix('villages/{village}/officers')->name('villages.officers.')->group(function (): void {
         Route::get('/', [VillageOfficerController::class, 'index'])->name('index');
-        Route::post('/', [VillageOfficerController::class, 'store'])->name('store');
-        Route::put('/{officer}', [VillageOfficerController::class, 'update'])->name('update');
-        Route::delete('/{officer}', [VillageOfficerController::class, 'destroy'])->name('destroy');
+
+        Route::middleware('role:admin,secretary')->group(function (): void {
+            Route::post('/', [VillageOfficerController::class, 'store'])->name('store');
+            Route::put('/{officer}', [VillageOfficerController::class, 'update'])->name('update');
+            Route::delete('/{officer}', [VillageOfficerController::class, 'destroy'])->name('destroy');
+        });
     });
 
     /*
     | Village Documents
+    | View/download: super admin, admin, secretary
+    | Upload/delete: own-village admin or secretary only
     */
     Route::middleware('role:super_admin,admin,secretary')->prefix('villages/{village}/documents')->name('villages.documents.')->group(function (): void {
         Route::get('/', [VillageDocumentController::class, 'index'])->name('index');
-        Route::post('/', [VillageDocumentController::class, 'store'])->name('store');
         Route::get('/{document}/download', [VillageDocumentController::class, 'download'])->name('download');
-        Route::delete('/{document}', [VillageDocumentController::class, 'destroy'])->name('destroy');
+
+        Route::middleware('role:admin,secretary')->group(function (): void {
+            Route::post('/', [VillageDocumentController::class, 'store'])->name('store');
+            Route::delete('/{document}', [VillageDocumentController::class, 'destroy'])->name('destroy');
+        });
     });
 
     /*
@@ -227,6 +234,10 @@ Route::middleware(['auth'])->group(function (): void {
             Route::delete('/{household}', [HouseholdController::class, 'destroy'])->name('destroy');
             Route::post('/{id}/restore', [HouseholdController::class, 'restore'])->name('restore');
             Route::post('/{household}/submit', [HouseholdController::class, 'submit'])->name('submit');
+        });
+
+        Route::middleware('role:super_admin')->group(function (): void {
+            Route::delete('/{household}/force-delete', [HouseholdController::class, 'forceDelete'])->name('force-delete');
         });
     });
 
@@ -275,6 +286,7 @@ Route::middleware(['auth'])->group(function (): void {
         Route::get('/export', [GisController::class, 'export'])->name('export');
         Route::get('/village/{villageId}', [GisController::class, 'villageApi'])->name('village-api');
         Route::get('/stats', [GisController::class, 'statsApi'])->name('stats');
+        Route::get('/latest', [GisController::class, 'latestApi'])->name('latest');
         Route::get('/villages', [GisController::class, 'villagesApi'])->name('villages-api');
         Route::get('/village/{villageId}/analytics', [GisController::class, 'villageAnalyticsApi'])->name('village-analytics-api');
         Route::get('/village/{villageId}/dashboard-data', [GisController::class, 'dashboardDataApi'])->name('dashboard-data-api');
@@ -283,14 +295,18 @@ Route::middleware(['auth'])->group(function (): void {
 
     /*
     | Payment Management
-    | Treasurer/Secretary: view + record payments for their village
-    | Admin: view + approve payments
-    | Super Admin: full access + payment config
+    | Treasurer: view + record payments for their village
+    | Admin/Secretary: view only
+    | Super Admin: view only
     */
     Route::middleware('role:super_admin,admin,treasurer,secretary')->prefix('payments')->name('payments.')->group(function (): void {
         Route::get('/', [PaymentController::class, 'index'])->name('index');
-        Route::get('/create', [PaymentController::class, 'create'])->name('create');
-        Route::post('/', [PaymentController::class, 'store'])->name('store');
+
+        Route::middleware('role:treasurer')->group(function (): void {
+            Route::get('/create', [PaymentController::class, 'create'])->name('create');
+            Route::post('/', [PaymentController::class, 'store'])->name('store');
+        });
+
         Route::get('/{payment}', [PaymentController::class, 'show'])->name('show');
     });
 
@@ -300,15 +316,45 @@ Route::middleware(['auth'])->group(function (): void {
 
     /*
     | Billing Management
-    | Treasurer/Secretary: view + generate billings for their village
-    | Admin: view billings
-    | Super Admin: full access
+    | Treasurer: view + generate billings for their village
+    | Admin/Secretary/Resident: view only
+    | Super Admin: view only
     */
     Route::middleware('role:super_admin,admin,treasurer,secretary,resident')->prefix('billings')->name('billings.')->group(function (): void {
         Route::get('/', [BillingController::class, 'index'])->name('index');
-        Route::get('/generate', [BillingController::class, 'generateForm'])->name('generate');
-        Route::post('/generate', [BillingController::class, 'generate'])->name('generate.store');
+
+        Route::middleware('role:treasurer')->group(function (): void {
+            Route::get('/generate', [BillingController::class, 'generateForm'])->name('generate');
+            Route::post('/generate', [BillingController::class, 'generate'])->name('generate.store');
+        });
+
+        Route::middleware('role:resident')->group(function (): void {
+            Route::get('/{billing}/pay-online', [OnlinePaymentController::class, 'create'])->name('pay-online');
+            Route::post('/{billing}/pay-online', [OnlinePaymentController::class, 'store'])->name('pay-online.store');
+        });
+
         Route::get('/{billing}', [BillingController::class, 'show'])->name('show');
+    });
+
+    /*
+    | Online Payments (GCash)
+    | Resident: submit a GCash payment request with proof for own bill
+    | Treasurer: review, approve (redirects to record payment) or decline
+    */
+    Route::middleware('role:treasurer')->prefix('online-payments')->name('online-payments.')->group(function (): void {
+        Route::get('/', [OnlinePaymentController::class, 'index'])->name('index');
+        Route::get('/{onlinePayment}', [OnlinePaymentController::class, 'show'])->name('show');
+        Route::post('/{onlinePayment}/approve', [OnlinePaymentController::class, 'approve'])->name('approve');
+        Route::post('/{onlinePayment}/decline', [OnlinePaymentController::class, 'decline'])->name('decline');
+    });
+
+    /*
+    | GCash Details — treasurer manages their village's GCash account info,
+    | residents see it as their guide when paying online
+    */
+    Route::middleware('role:treasurer')->prefix('gcash-config')->name('gcash-config.')->group(function (): void {
+        Route::get('/', [GcashConfigController::class, 'edit'])->name('edit');
+        Route::put('/', [GcashConfigController::class, 'update'])->name('update');
     });
 
     /*
@@ -331,23 +377,28 @@ Route::middleware(['auth'])->group(function (): void {
     Route::middleware('role:super_admin,admin,secretary')->patch('/households/{household}/status', [HouseholdController::class, 'toggleStatus'])->name('households.toggle-status');
 
     /*
-    | Payment Configuration — Super Admin only
+    | Payment Configuration
+    | Treasurer: view + manage config for their own village
+    | Super Admin: view only
     */
-    Route::middleware('role:super_admin')->prefix('payment-config')->name('payment-config.')->group(function (): void {
+    Route::middleware('role:super_admin,treasurer')->prefix('payment-config')->name('payment-config.')->group(function (): void {
         Route::get('/', [VillagePaymentConfigController::class, 'index'])->name('index');
         Route::get('/{village}', [VillagePaymentConfigController::class, 'show'])->name('show');
-        Route::get('/{village}/edit', [VillagePaymentConfigController::class, 'edit'])->name('edit');
-        Route::put('/{village}', [VillagePaymentConfigController::class, 'update'])->name('update');
-        Route::post('/payment-type', [VillagePaymentConfigController::class, 'storePaymentType'])->name('store-type');
-        Route::put('/payment-type/{paymentType}', [VillagePaymentConfigController::class, 'updatePaymentType'])->name('update-type');
-        Route::delete('/payment-type/{paymentType}', [VillagePaymentConfigController::class, 'destroyPaymentType'])->name('destroy-type');
+
+        Route::middleware('role:treasurer')->group(function (): void {
+            Route::get('/{village}/edit', [VillagePaymentConfigController::class, 'edit'])->name('edit');
+            Route::put('/{village}', [VillagePaymentConfigController::class, 'update'])->name('update');
+            Route::post('/payment-type', [VillagePaymentConfigController::class, 'storePaymentType'])->name('store-type');
+            Route::put('/payment-type/{paymentType}', [VillagePaymentConfigController::class, 'updatePaymentType'])->name('update-type');
+            Route::delete('/payment-type/{paymentType}', [VillagePaymentConfigController::class, 'destroyPaymentType'])->name('destroy-type');
+        });
     });
 
     /*
-    | Household Payment Amounts — Super Admin only
+    | Household Payment Amounts — Treasurer only (own village)
     | Per-household custom billing amounts (e.g. La Union building permits)
     */
-    Route::middleware('role:super_admin')->prefix('household-amounts')->name('household-amounts.')->group(function (): void {
+    Route::middleware('role:treasurer')->prefix('household-amounts')->name('household-amounts.')->group(function (): void {
         Route::get('/{village}', [HouseholdPaymentAmountController::class, 'index'])->name('index');
         Route::get('/{village}/{household}/edit', [HouseholdPaymentAmountController::class, 'edit'])->name('edit');
         Route::put('/{village}/{household}', [HouseholdPaymentAmountController::class, 'update'])->name('update');
@@ -357,15 +408,14 @@ Route::middleware(['auth'])->group(function (): void {
     /*
     | Announcement Management
     | Super Admin: full CRUD across all villages
-    | Admin: create for their village
-    | Secretary: full CRUD for their village
-    | Treasurer: payment-related only for their village
+    | Admin: CRUD for their village
+    | Secretary/Treasurer: view only
     | Resident: view + respond to attendance-required
     */
     Route::middleware('role:super_admin,admin,secretary,treasurer,resident')->prefix('announcements')->name('announcements.')->group(function (): void {
         Route::get('/', [AnnouncementController::class, 'index'])->name('index');
 
-        Route::middleware('role:super_admin,admin,secretary,treasurer')->group(function (): void {
+        Route::middleware('role:super_admin,admin')->group(function (): void {
             Route::get('/create', [AnnouncementController::class, 'create'])->name('create');
             Route::post('/', [AnnouncementController::class, 'store'])->name('store');
             Route::get('/{announcement}/edit', [AnnouncementController::class, 'edit'])->name('edit');
@@ -385,19 +435,24 @@ Route::middleware(['auth'])->group(function (): void {
     /*
     | Event Management
     | Super Admin: full CRUD across all villages
-    | Admin: create for their village
-    | Secretary: full CRUD for their village
-    | Resident: view + respond
+    | Admin: CRUD for their village
+    | Secretary: view + record participations only
+    | Treasurer/Resident: view (+ respond) only
     */
     Route::middleware('role:super_admin,admin,secretary,treasurer,resident')->prefix('events')->name('events.')->group(function (): void {
         Route::get('/', [EventController::class, 'index'])->name('index');
 
-        Route::middleware('role:super_admin,admin,secretary')->group(function (): void {
+        Route::middleware('role:super_admin,admin')->group(function (): void {
             Route::get('/create', [EventController::class, 'create'])->name('create');
             Route::post('/', [EventController::class, 'store'])->name('store');
             Route::get('/{event}/edit', [EventController::class, 'edit'])->name('edit');
             Route::put('/{event}', [EventController::class, 'update'])->name('update');
+            Route::patch('/{event}/complete', [EventController::class, 'complete'])->name('complete');
+            Route::patch('/{event}/cancel', [EventController::class, 'cancel'])->name('cancel');
             Route::delete('/{event}', [EventController::class, 'destroy'])->name('destroy');
+        });
+
+        Route::middleware('role:super_admin,admin,secretary')->group(function (): void {
             Route::post('/{event}/participations', [EventController::class, 'recordParticipation'])->name('participations.store');
             Route::delete('/{event}/participations/{participation}', [EventController::class, 'removeParticipation'])->name('participations.destroy');
             Route::post('/{event}/auto-generate', [EventController::class, 'autoGenerate'])->name('auto-generate');
@@ -417,6 +472,7 @@ Route::middleware(['auth'])->group(function (): void {
     */
     Route::middleware('role:super_admin,admin,secretary')->prefix('participation')->name('participation.')->group(function (): void {
         Route::get('/', [ParticipationController::class, 'index'])->name('index');
+        Route::get('/village/{village}', [ParticipationController::class, 'village'])->name('village');
         Route::get('/household/{household}', [ParticipationController::class, 'household'])->name('household');
         Route::get('/resident/{resident}', [ParticipationController::class, 'residentHistory'])->name('resident-history');
     });

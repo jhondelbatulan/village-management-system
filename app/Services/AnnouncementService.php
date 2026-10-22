@@ -23,6 +23,8 @@ class AnnouncementService
             $query->where('village_id', $user->village_id)->active();
         }
 
+        $query->visibleToRole($role, $user->id);
+
         if ($search) {
             $query->where(function ($q) use ($search) {
                 $q->where('title', 'like', "%{$search}%")
@@ -105,6 +107,8 @@ class AnnouncementService
 
         $data['created_by'] = auth()->id();
 
+        $this->normalizeVisibleRoles($data);
+
         if (isset($data['is_pinned']) && $data['is_pinned']) {
             $this->clearPinned($data['village_id']);
         }
@@ -135,6 +139,8 @@ class AnnouncementService
         if (isset($data['is_pinned']) && $data['is_pinned']) {
             $this->clearPinned($announcement->village_id, $announcement->id);
         }
+
+        $this->normalizeVisibleRoles($data);
 
         $announcement->update($data);
 
@@ -172,5 +178,16 @@ class AnnouncementService
         }
 
         $query->update(['is_pinned' => false]);
+    }
+
+    private function normalizeVisibleRoles(array &$data): void
+    {
+        if (! array_key_exists('visible_roles', $data)) {
+            return;
+        }
+
+        $data['visible_roles'] = empty($data['visible_roles'])
+            ? null
+            : array_values($data['visible_roles']);
     }
 }

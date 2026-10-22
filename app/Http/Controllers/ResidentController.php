@@ -7,13 +7,15 @@ use App\Http\Requests\ResidentRequest\StoreResidentRequest;
 use App\Http\Requests\ResidentRequest\UpdateResidentRequest;
 use App\Models\Household;
 use App\Models\Resident;
-use App\Models\User;
 use App\Models\Village;
+use App\Rules\ProperName;
+use App\Rules\SafeText;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -32,9 +34,9 @@ class ResidentController extends Controller
             $search = request('search');
             $query->where(function ($q) use ($search) {
                 $q->where('resident_code', 'like', "%{$search}%")
-                  ->orWhere('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -52,6 +54,8 @@ class ResidentController extends Controller
 
         if (request('approval_status')) {
             $query->where('approval_status', request('approval_status'));
+        } else {
+            $query->where('approval_status', 'approved');
         }
 
         if (request('civil_status')) {
@@ -63,11 +67,11 @@ class ResidentController extends Controller
         }
 
         if (request('block_number')) {
-            $query->whereHas('household', fn($q) => $q->where('block_number', request('block_number')));
+            $query->whereHas('household', fn ($q) => $q->where('block_number', request('block_number')));
         }
 
         if (request('lot_number')) {
-            $query->whereHas('household', fn($q) => $q->where('lot_number', request('lot_number')));
+            $query->whereHas('household', fn ($q) => $q->where('lot_number', request('lot_number')));
         }
 
         if (request('sort') === 'az') {
@@ -118,15 +122,15 @@ class ResidentController extends Controller
             $villages = $villages->where('id', $user->village_id);
         }
 
-        $households = Household::where('status', 'active')
-            ->where('approval_status', 'approved')
+        $householdsQuery = Household::query()
             ->orderBy('block_number')
-            ->orderBy('lot_number')
-            ->get();
+            ->orderBy('lot_number');
 
         if (in_array($user->role?->role_slug, ['admin', 'secretary', 'treasurer'])) {
-            $households = $households->where('village_id', $user->village_id);
+            $householdsQuery->where('village_id', $user->village_id);
         }
+
+        $households = $householdsQuery->get();
 
         $hasHouseholds = $households->isNotEmpty();
 
@@ -137,6 +141,7 @@ class ResidentController extends Controller
     {
         $data = $request->validated();
         $data['resident_code'] = Resident::generateResidentCode();
+        $data['nationality'] = $data['nationality'] ?: 'Filipino';
         $data['is_household_head'] = $request->boolean('is_household_head');
         $data['approval_status'] = 'draft';
         $data['submitted_by'] = null;
@@ -148,15 +153,17 @@ class ResidentController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             $file = $request->file('profile_picture');
-            $filename = 'resident_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'resident_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('residents', $filename, 'public');
-            $data['profile_picture'] = 'residents/' . $filename;
+            $data['profile_picture'] = 'residents/'.$filename;
         }
 
         $resident = Resident::create($data);
 
         $village = Village::find($data['village_id']);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Create Resident', 'Resident Management', "Registered resident: {$resident->full_name} ({$resident->resident_code})");
 
@@ -174,12 +181,21 @@ class ResidentController extends Controller
     {
         $user = auth()->user();
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
-        $households = Household::where('status', 'active')
-            ->where('approval_status', 'approved')
+        $households = Household::query()
             ->where('village_id', $resident->village_id)
             ->orderBy('block_number')
             ->orderBy('lot_number')
             ->get();
+
+        // The household the resident already belongs to must always be selectable,
+        // even when it sits outside the village scope or was archived.
+        if ($resident->household_id && ! $households->contains('id', $resident->household_id)) {
+            $currentHousehold = $resident->household()->withTrashed()->first();
+
+            if ($currentHousehold) {
+                $households->prepend($currentHousehold);
+            }
+        }
 
         if (in_array($user->role?->role_slug, ['admin', 'secretary', 'treasurer'])) {
             $villages = $villages->where('id', $user->village_id);
@@ -191,6 +207,7 @@ class ResidentController extends Controller
     public function update(UpdateResidentRequest $request, Resident $resident): RedirectResponse
     {
         $data = $request->validated();
+        $data['nationality'] = $data['nationality'] ?: 'Filipino';
         $data['is_household_head'] = $request->boolean('is_household_head');
 
         if ($resident->approval_status === 'rejected') {
@@ -205,13 +222,15 @@ class ResidentController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($resident->profile_picture) {
-                $oldPath = storage_path('app/public/' . $resident->profile_picture);
-                if (file_exists($oldPath)) unlink($oldPath);
+                $oldPath = storage_path('app/public/'.$resident->profile_picture);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
             $file = $request->file('profile_picture');
-            $filename = 'resident_' . $resident->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'resident_'.$resident->id.'_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('residents', $filename, 'public');
-            $data['profile_picture'] = 'residents/' . $filename;
+            $data['profile_picture'] = 'residents/'.$filename;
         }
 
         $household = Household::find($data['household_id'] ?? $resident->household_id);
@@ -223,11 +242,15 @@ class ResidentController extends Controller
         $resident->update($data);
 
         $newVillage = Village::find($resident->village_id);
-        if ($newVillage) $newVillage->recalculateCounts();
+        if ($newVillage) {
+            $newVillage->recalculateCounts();
+        }
 
         if ($oldVillageId != $resident->village_id) {
             $oldVillage = Village::find($oldVillageId);
-            if ($oldVillage) $oldVillage->recalculateCounts();
+            if ($oldVillage) {
+                $oldVillage->recalculateCounts();
+            }
         }
 
         AuditLogService::log('Update Resident', 'Resident Management', "Updated resident: {$resident->full_name}");
@@ -242,9 +265,21 @@ class ResidentController extends Controller
         $resident->delete();
 
         $village = Village::find($resident->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Archive Resident', 'Resident Management', "Archived resident: {$name} ({$code})");
+
+        if ($resident->household_id) {
+            app(NotificationService::class)->notifyHouseholdResidents(
+                [$resident->household_id],
+                'warning',
+                'Resident Archived',
+                "A resident profile ({$name}) in your household has been archived.",
+                route('households.my-household')
+            );
+        }
 
         return redirect()->route('residents.index')->with('success', "Resident \"{$name}\" has been archived.");
     }
@@ -255,7 +290,9 @@ class ResidentController extends Controller
         $resident->restore();
 
         $village = Village::find($resident->village_id);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Restore Resident', 'Resident Management', "Restored resident: {$resident->full_name}");
 
@@ -264,7 +301,7 @@ class ResidentController extends Controller
 
     public function submit(Resident $resident): RedirectResponse
     {
-        if (!in_array($resident->approval_status, ['draft', 'rejected'])) {
+        if (! in_array($resident->approval_status, ['draft', 'rejected'])) {
             return back()->with('error', 'Only draft or rejected records can be submitted for approval.');
         }
 
@@ -285,7 +322,15 @@ class ResidentController extends Controller
 
         AuditLogService::log('Submit Resident', 'Resident Management', "Submitted resident for approval: {$resident->full_name}");
 
-        $this->notifyAdmins("New resident {$resident->full_name} submitted for approval.", 'approval', $resident->village_id);
+        $householdLabel = $resident->household?->notification_label;
+
+        $this->notifyAdmins(
+            $householdLabel
+                ? "New resident {$resident->full_name} is added on the household ({$householdLabel})."
+                : "New resident {$resident->full_name} submitted for approval.",
+            'approval',
+            $resident->village_id
+        );
 
         return redirect()->route('residents.show', $resident)->with('success', 'Resident submitted for approval successfully.');
     }
@@ -293,64 +338,106 @@ class ResidentController extends Controller
     public function approve(Resident $resident, ApproveResidentRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $action = $data['approval_status'];
-        $userRole = auth()->user()->role?->role_slug;
 
-        if ($action === 'approved') {
-            if ($userRole === 'admin' && $resident->approval_status === 'pending') {
-                $resident->update([
-                    'approval_status' => 'admin_approved',
-                    'admin_approved_by' => auth()->id(),
-                    'admin_approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
+        return DB::transaction(function () use ($resident, $data): RedirectResponse {
+            // Lock the row so only one approval action can be processed at a time.
+            $resident = Resident::query()->lockForUpdate()->findOrFail($resident->id);
 
-                AuditLogService::log('Admin Approve Resident', 'Resident Management', "Admin approved resident: {$resident->full_name} (pending super admin final approval)");
+            $action = $data['approval_status'];
+            $userRole = auth()->user()->role?->role_slug;
 
-                $this->notifySuperAdmins("Resident {$resident->full_name} approved by Admin. Pending your final approval.");
-                $this->notifySubmitter($resident, "Resident {$resident->full_name} approved by Admin. Awaiting Super Admin final approval.");
+            if ($action === 'approved') {
+                // Stage 1 — Admin reviews pending submissions from their village.
+                if ($userRole === 'admin' && $resident->approval_status === 'pending') {
+                    $resident->update([
+                        'approval_status' => 'admin_approved',
+                        'admin_approved_by' => auth()->id(),
+                        'admin_approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
 
-                return redirect()->route('residents.show', $resident)->with('success', 'Resident approved by Admin. Awaiting Super Admin final approval.');
+                    AuditLogService::log('Admin Approve Resident', 'Resident Management', "Admin approved resident: {$resident->full_name} (pending super admin final approval)");
+
+                    $this->notifySuperAdmins("Resident {$resident->full_name} approved by Admin. Pending your final approval.");
+                    $this->notifySubmitter($resident, "Resident {$resident->full_name} approved by Admin. Awaiting Super Admin final approval.");
+
+                    return redirect()->route('residents.show', $resident)->with('success', 'Resident approved by Admin. Awaiting Super Admin final approval.');
+                }
+
+                // Stage 2 — Super Admin gives the final approval of admin-approved records only.
+                if ($userRole === 'super_admin' && $resident->approval_status === 'admin_approved') {
+                    $resident->update([
+                        'approval_status' => 'approved',
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
+
+                    AuditLogService::log('Final Approve Resident', 'Resident Management', "Super Admin final approved resident: {$resident->full_name}");
+
+                    $this->notifySubmitter($resident, "Resident {$resident->full_name} has been approved by Super Admin.");
+
+                    return redirect()->route('residents.show', $resident)->with('success', 'Resident has been approved successfully.');
+                }
+
+                return back()->with('error', $this->alreadyProcessed($resident, $userRole)
+                    ? 'This resident request has already been processed.'
+                    : 'You cannot approve this resident at this stage.');
             }
 
-            if ($userRole === 'super_admin' && in_array($resident->approval_status, ['pending', 'admin_approved'])) {
-                $resident->update([
-                    'approval_status' => 'approved',
-                    'approved_by' => auth()->id(),
-                    'approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
+            if ($action === 'rejected') {
+                // Admin rejects pending submissions in their village (Stage 1).
+                if ($userRole === 'admin' && $resident->approval_status === 'pending') {
+                    $resident->update([
+                        'approval_status' => 'rejected',
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
 
-                AuditLogService::log('Final Approve Resident', 'Resident Management', "Super Admin final approved resident: {$resident->full_name}");
+                    AuditLogService::log('Reject Resident', 'Resident Management', "Rejected resident: {$resident->full_name}");
 
-                $this->notifySubmitter($resident, "Resident {$resident->full_name} has been approved by Super Admin.");
+                    $this->notifySubmitter($resident, "Resident {$resident->full_name} has been rejected.");
 
-                return redirect()->route('residents.show', $resident)->with('success', 'Resident has been approved successfully.');
+                    return redirect()->route('residents.show', $resident)->with('success', 'Resident has been rejected.');
+                }
+
+                // Super Admin rejects admin-approved records (Stage 2).
+                if ($userRole === 'super_admin' && $resident->approval_status === 'admin_approved') {
+                    $resident->update([
+                        'approval_status' => 'rejected',
+                        'admin_approved_by' => auth()->id(),
+                        'admin_approved_at' => now(),
+                        'approved_by' => auth()->id(),
+                        'approved_at' => now(),
+                        'remarks' => $data['remarks'] ?? null,
+                    ]);
+
+                    AuditLogService::log('Reject Resident', 'Resident Management', "Rejected resident: {$resident->full_name}");
+
+                    $this->notifySubmitter($resident, "Resident {$resident->full_name} has been rejected.");
+                    $this->notifyAdmins("Resident {$resident->full_name} was rejected.".($data['remarks'] ? ' Remarks: '.$data['remarks'] : ''), 'warning', $resident->village_id);
+
+                    return redirect()->route('residents.show', $resident)->with('success', 'Resident has been rejected.');
+                }
+
+                return back()->with('error', $this->alreadyProcessed($resident, $userRole)
+                    ? 'This resident request has already been processed.'
+                    : 'You cannot reject this resident at this stage.');
             }
 
-            return back()->with('error', 'You cannot approve this resident at this stage.');
-        }
+            return back()->with('error', 'Invalid action.');
+        });
+    }
 
-        if ($action === 'rejected') {
-            if (in_array($userRole, ['admin', 'super_admin']) && in_array($resident->approval_status, ['pending', 'admin_approved'])) {
-                $resident->update([
-                    'approval_status' => 'rejected',
-                    'approved_by' => auth()->id(),
-                    'approved_at' => now(),
-                    'remarks' => $data['remarks'] ?? null,
-                ]);
-
-                AuditLogService::log('Reject Resident', 'Resident Management', "Rejected resident: {$resident->full_name}");
-
-                $this->notifySubmitter($resident, "Resident {$resident->full_name} has been rejected.");
-
-                return redirect()->route('residents.show', $resident)->with('success', 'Resident has been rejected.');
-            }
-
-            return back()->with('error', 'You cannot reject this resident at this stage.');
-        }
-
-        return back()->with('error', 'Invalid action.');
+    /**
+     * Whether the record has already been decided, so a repeated click must not
+     * process the approval a second time.
+     */
+    private function alreadyProcessed(Resident $resident, ?string $userRole): bool
+    {
+        return in_array($resident->approval_status, ['approved', 'rejected'], true)
+            || ($userRole === 'admin' && $resident->approval_status === 'admin_approved');
     }
 
     public function import(): View
@@ -397,16 +484,19 @@ class ResidentController extends Controller
             $lineNumber++;
             $data = array_combine($header, $row);
 
-            $validation = \Illuminate\Support\Facades\Validator::make($data, [
-                'first_name' => 'required|string|max:255',
-                'last_name' => 'required|string|max:255',
+            $validation = Validator::make($data, [
+                'first_name' => ['required', 'string', 'max:255', new ProperName],
+                'middle_name' => ['nullable', 'string', 'max:255', new ProperName],
+                'last_name' => ['required', 'string', 'max:255', new ProperName],
+                'suffix' => ['nullable', 'string', 'max:50', new SafeText],
                 'gender' => 'required|in:Male,Female,Other',
                 'birthdate' => 'required|date|before:today',
                 'civil_status' => 'required|in:Single,Married,Widowed,Separated,Divorced',
             ]);
 
             if ($validation->fails()) {
-                $errors[] = "Line {$lineNumber}: " . implode(', ', $validation->errors()->all());
+                $errors[] = "Line {$lineNumber}: ".implode(', ', $validation->errors()->all());
+
                 continue;
             }
 
@@ -437,12 +527,14 @@ class ResidentController extends Controller
         fclose($handle);
 
         $village = Village::find($villageId);
-        if ($village) $village->recalculateCounts();
+        if ($village) {
+            $village->recalculateCounts();
+        }
 
         AuditLogService::log('Import Residents', 'Resident Management', "Imported {$imported} residents");
 
         $message = "{$imported} residents imported successfully.";
-        if (!empty($errors)) {
+        if (! empty($errors)) {
             $errorCount = count($errors);
             $message .= " {$errorCount} rows had errors.";
             session(['import_errors' => $errors]);
@@ -488,11 +580,13 @@ class ResidentController extends Controller
             $query->where('status', request('status'));
         }
 
+        $query->where('approval_status', 'approved');
+
         $residents = $query->latest()->get();
 
         $headers = [
             'Content-type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="residents_export_' . now()->format('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="residents_export_'.now()->format('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($residents) {
@@ -537,7 +631,7 @@ class ResidentController extends Controller
 
         $headers = [
             'Content-type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="households_export_' . now()->format('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="households_export_'.now()->format('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($households) {
@@ -568,7 +662,7 @@ class ResidentController extends Controller
 
         $headers = [
             'Content-type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="villages_export_' . now()->format('Y-m-d') . '.csv"',
+            'Content-Disposition' => 'attachment; filename="villages_export_'.now()->format('Y-m-d').'.csv"',
         ];
 
         $callback = function () use ($villages) {
@@ -592,38 +686,29 @@ class ResidentController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    private function notifyAdmins(string $message, string $type, ?int $villageId = null): void
+    private function notifyAdmins(string $message, string $type = 'approval', ?int $villageId = null): void
     {
         try {
-            $service = app(NotificationService::class);
-            $query = User::whereHas('role', fn($q) => $q->where('role_slug', 'admin'))->where('status', 'active');
-            if ($villageId) {
-                $query->where('village_id', $villageId);
-            }
-            foreach ($query->get() as $user) {
-                $service->createFromPlaceholder($type, 'Approval Required', $message, route('approvals.residents'), $user->id);
-            }
-        } catch (\Throwable $e) {}
+            app(NotificationService::class)->notifyAdmins($villageId, 'Approval Required', $message, route('approvals.residents'), $type);
+        } catch (\Throwable $e) {
+        }
     }
 
     private function notifySuperAdmins(string $message): void
     {
         try {
-            $service = app(NotificationService::class);
-            $users = User::whereHas('role', fn($q) => $q->where('role_slug', 'super_admin'))->where('status', 'active')->get();
-            foreach ($users as $user) {
-                $service->createFromPlaceholder('approval', 'Approval Update', $message, route('approvals.residents'), $user->id);
-            }
-        } catch (\Throwable $e) {}
+            app(NotificationService::class)->notifySuperAdmins('Approval Update', $message, route('approvals.residents'));
+        } catch (\Throwable $e) {
+        }
     }
 
     private function notifySubmitter(Resident $resident, string $message): void
     {
         try {
             if ($resident->submittedBy) {
-                $service = app(NotificationService::class);
-                $service->createFromPlaceholder('approval', 'Resident Update', $message, route('residents.show', $resident), $resident->submittedBy->id);
+                app(NotificationService::class)->notifyUser($resident->submittedBy->id, 'approval', 'Resident Update', $message, route('residents.show', $resident));
             }
-        } catch (\Throwable $e) {}
+        } catch (\Throwable $e) {
+        }
     }
 }

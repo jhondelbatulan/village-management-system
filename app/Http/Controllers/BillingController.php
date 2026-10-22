@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Billing;
+use App\Models\OnlinePayment;
 use App\Models\PaymentType;
 use App\Models\Village;
 use App\Services\PaymentPermissionService;
@@ -89,7 +90,30 @@ class BillingController extends Controller
         $canRecordPayment = $this->permissionService->canRecordPayment($user, $billing->village_id);
         $isReadOnly = $this->permissionService->isReadOnlyVillage($user, $billing->village_id);
 
-        return view('billings.show', compact('billing', 'totalPaid', 'balance', 'canRecordPayment', 'isReadOnly'));
+        $activeOnlinePayment = OnlinePayment::where('billing_id', $billing->id)
+            ->where(function ($query): void {
+                $query->where('status', 'pending')
+                    ->orWhere(function ($q): void {
+                        $q->where('status', 'approved')->whereNull('payment_id');
+                    });
+            })
+            ->latest()
+            ->first();
+
+        $canPayOnline = $user->role?->role_slug === 'resident'
+            && (int) $user->household_id === (int) $billing->household_id
+            && $balance > 0
+            && $activeOnlinePayment === null;
+
+        return view('billings.show', compact(
+            'billing',
+            'totalPaid',
+            'balance',
+            'canRecordPayment',
+            'isReadOnly',
+            'canPayOnline',
+            'activeOnlinePayment'
+        ));
     }
 
     public function generateForm(): View

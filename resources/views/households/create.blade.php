@@ -55,7 +55,10 @@
                     <label for="block_number" class="form-label fw-semibold">Block Number <span class="text-danger">*</span></label>
                     <input type="text" name="block_number" id="block_number"
                         class="form-control @error('block_number') is-invalid @enderror"
-                        value="{{ old('block_number') }}" required placeholder="e.g. 1, 2A">
+                        value="{{ old('block_number') }}" required placeholder="e.g. 1"
+                        inputmode="numeric" pattern="[0-9]*" maxlength="50"
+                        aria-describedby="block_number-hint">
+                    <div class="form-text" id="block_number-hint">Numbers only.</div>
                     @error('block_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -64,7 +67,10 @@
                     <label for="lot_number" class="form-label fw-semibold">Lot Number <span class="text-danger">*</span></label>
                     <input type="text" name="lot_number" id="lot_number"
                         class="form-control @error('lot_number') is-invalid @enderror"
-                        value="{{ old('lot_number') }}" required placeholder="e.g. 15, 23B">
+                        value="{{ old('lot_number') }}" required placeholder="e.g. 15"
+                        inputmode="numeric" pattern="[0-9]*" maxlength="50"
+                        aria-describedby="lot_number-hint">
+                    <div class="form-text" id="lot_number-hint">Numbers only.</div>
                     @error('lot_number')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -73,7 +79,9 @@
                     <label for="household_head_name" class="form-label fw-semibold">Household Head Name <span class="text-danger">*</span></label>
                     <input type="text" name="household_head_name" id="household_head_name"
                         class="form-control @error('household_head_name') is-invalid @enderror"
-                        value="{{ old('household_head_name') }}" required placeholder="Full name of household head">
+                        value="{{ old('household_head_name') }}" required placeholder="Full name of household head"
+                        maxlength="255" aria-describedby="household_head_name-hint">
+                    <div class="form-text" id="household_head_name-hint">Letters only. First letter of every word is capitalized automatically.</div>
                     @error('household_head_name')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -118,10 +126,11 @@
                     @enderror
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold">Pin Location on Map <small class="text-muted">(click map to set)</small></label>
+                    <label class="form-label fw-semibold">Pin Location on Map <small class="text-muted">(type the address to auto-pin, or click the map)</small></label>
                     <div class="map-picker-container" id="map-picker" style="height:320px;width:100%;position:relative;">
-                        <div class="map-picker-hint" id="map-hint">Click anywhere to pin location</div>
+                        <div class="map-picker-hint" id="map-hint">Type an address to auto-pin, or click anywhere to pin location</div>
                     </div>
+                    <div class="form-text">Blue-gray pins are the latest saved households, shown as your reference.</div>
                 </div>
                 <div class="col-md-6">
                     <label for="latitude" class="form-label fw-semibold">Latitude</label>
@@ -154,13 +163,12 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label for="household_type" class="form-label fw-semibold">Household Type <span class="text-danger">*</span></label>
+                    <label for="household_type" class="form-label fw-semibold">Family Count <span class="text-danger">*</span></label>
                     <select name="household_type" id="household_type" class="form-select @error('household_type') is-invalid @enderror" required>
-                        <option value="">Select Type</option>
-                        <option value="Single-Family" {{ old('household_type') == 'Single-Family' ? 'selected' : '' }}>Single-Family</option>
-                        <option value="Multi-Family" {{ old('household_type') == 'Multi-Family' ? 'selected' : '' }}>Multi-Family</option>
-                        <option value="Extended" {{ old('household_type') == 'Extended' ? 'selected' : '' }}>Extended</option>
-                        <option value="Other" {{ old('household_type') == 'Other' ? 'selected' : '' }}>Other</option>
+                        <option value="">Select Family Count</option>
+                        @for ($i = 1; $i <= 5; $i++)
+                            <option value="{{ $i }}" {{ old('household_type') == $i ? 'selected' : '' }}>{{ $i }}</option>
+                        @endfor
                     </select>
                     @error('household_type')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -171,23 +179,22 @@
                     <select name="house_ownership" id="house_ownership" class="form-select @error('house_ownership') is-invalid @enderror" required>
                         <option value="">Select Ownership</option>
                         <option value="Owned" {{ old('house_ownership') == 'Owned' ? 'selected' : '' }}>Owned</option>
-                        <option value="Rented" {{ old('house_ownership') == 'Rented' ? 'selected' : '' }}>Rented</option>
                         <option value="Leased" {{ old('house_ownership') == 'Leased' ? 'selected' : '' }}>Leased</option>
-                        <option value="Inherited" {{ old('house_ownership') == 'Inherited' ? 'selected' : '' }}>Inherited</option>
-                        <option value="Other" {{ old('house_ownership') == 'Other' ? 'selected' : '' }}>Other</option>
                     </select>
                     @error('house_ownership')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
-                    <label for="house_status" class="form-label fw-semibold">House Status <span class="text-danger">*</span></label>
+                    <label for="house_status" class="form-label fw-semibold">House Material <span class="text-danger">*</span></label>
                     <select name="house_status" id="house_status" class="form-select @error('house_status') is-invalid @enderror" required>
-                        <option value="">Select Status</option>
-                        <option value="owned" {{ old('house_status') == 'owned' ? 'selected' : '' }}>Owned</option>
-                        <option value="rented" {{ old('house_status') == 'rented' ? 'selected' : '' }}>Rented</option>
-                        <option value="leased" {{ old('house_status') == 'leased' ? 'selected' : '' }}>Leased</option>
-                        <option value="inherited" {{ old('house_status') == 'inherited' ? 'selected' : '' }}>Inherited</option>
+                        <option value="">Select Material</option>
+                        <option value="concrete" {{ old('house_status') == 'concrete' ? 'selected' : '' }}>Concrete</option>
+                        <option value="wood_timber" {{ old('house_status') == 'wood_timber' ? 'selected' : '' }}>Wood/Timber</option>
+                        <option value="steel" {{ old('house_status') == 'steel' ? 'selected' : '' }}>Steel</option>
+                        <option value="brick_blocks" {{ old('house_status') == 'brick_blocks' ? 'selected' : '' }}>Brick/Blocks</option>
+                        <option value="stone" {{ old('house_status') == 'stone' ? 'selected' : '' }}>Stone</option>
+                        <option value="mixed" {{ old('house_status') == 'mixed' ? 'selected' : '' }}>Mixed</option>
                         <option value="other" {{ old('house_status') == 'other' ? 'selected' : '' }}>Other</option>
                     </select>
                     @error('house_status')
@@ -198,7 +205,9 @@
                     <label for="registration_date" class="form-label fw-semibold">Registration Date <span class="text-danger">*</span></label>
                     <input type="date" name="registration_date" id="registration_date"
                         class="form-control @error('registration_date') is-invalid @enderror"
-                        value="{{ old('registration_date', date('Y-m-d')) }}" required>
+                        value="{{ old('registration_date', date('Y-m-d')) }}" required readonly
+                        aria-describedby="registration_date-hint">
+                    <div class="form-text" id="registration_date-hint">Set automatically to today's date. Cannot be edited.</div>
                     @error('registration_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -247,18 +256,184 @@ document.addEventListener('DOMContentLoaded', function() {
     var latIn = document.getElementById('latitude');
     var lngIn = document.getElementById('longitude');
     var hint = document.getElementById('map-hint');
+    var addressIn = document.getElementById('address');
+    var villageSelect = document.getElementById('village_id');
+
+    var referenceLayer = L.layerGroup().addTo(pickerMap);
+    var latestHouseholds = @json($latestHouseholds ?? []);
+    var pinVersion = 0;
+    var addrTimer = null;
+
+    var referenceIcon = L.divIcon({
+        className: 'gis-marker',
+        html: '<div style="width:11px;height:11px;background:#6c757d;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>',
+        iconSize: [15, 15], iconAnchor: [7, 7],
+    });
+
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setHint(text, show) {
+        if (!hint) return;
+        hint.textContent = text;
+        hint.style.display = show ? '' : 'none';
+    }
+
+    function renderReferenceMarkers(list) {
+        referenceLayer.clearLayers();
+        list.forEach(function(h) {
+            if (!h.latitude || !h.longitude) return;
+            L.marker([h.latitude, h.longitude], { icon: referenceIcon })
+                .bindPopup('<div class="gis-popup"><span class="badge bg-secondary">Latest saved</span><br><strong>' + escHtml(h.household_number) + '</strong><br><small>' + escHtml(h.household_head_name || '') + '</small><br><small>' + escHtml(h.village ? h.village.village_name : '') + '</small></div>')
+                .addTo(referenceLayer);
+        });
+    }
+
+    function fitToReference() {
+        var layers = referenceLayer.getLayers();
+        if (layers.length > 0) {
+            pickerMap.fitBounds(L.featureGroup(layers).getBounds().pad(0.2));
+        }
+    }
+
+    function loadReferenceMarkers() {
+        var vid = villageSelect ? villageSelect.value : '';
+        if (!vid) {
+            renderReferenceMarkers(latestHouseholds);
+            return;
+        }
+        fetch('/gis/village/' + vid)
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                if (res.success && res.households) {
+                    renderReferenceMarkers(res.households);
+                    fitToReference();
+                    if (res.center && res.center.lat) {
+                        pickerMap.setView([res.center.lat, res.center.lng], 15);
+                    }
+                }
+            })
+            .catch(function() {});
+    }
+
+    renderReferenceMarkers(latestHouseholds);
     if (latIn.value && lngIn.value) {
         pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)]).addTo(pickerMap);
         pickerMap.setView([parseFloat(latIn.value), parseFloat(lngIn.value)], 15);
-        if (hint) hint.style.display = 'none';
+        setHint('Click anywhere to pin location', false);
+    } else if (latestHouseholds.length > 0) {
+        fitToReference();
     }
-    pickerMap.on('click', function(e) {
-        latIn.value = e.latlng.lat.toFixed(8);
-        lngIn.value = e.latlng.lng.toFixed(8);
+
+    if (villageSelect) {
+        villageSelect.addEventListener('change', loadReferenceMarkers);
+    }
+
+    function setPin(lat, lng, moveMap) {
+        latIn.value = lat.toFixed(8);
+        lngIn.value = lng.toFixed(8);
         if (pickerMarker) pickerMap.removeLayer(pickerMarker);
-        pickerMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(pickerMap);
-        if (hint) hint.style.display = 'none';
+        pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+        setHint('Click anywhere to pin location', false);
+        if (moveMap) pickerMap.setView([lat, lng], 16);
+    }
+
+    pickerMap.on('click', function(e) {
+        pinVersion++;
+        clearTimeout(addrTimer);
+        setPin(e.latlng.lat, e.latlng.lng, false);
     });
+
+    function geocodeAddress(q) {
+        return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (Array.isArray(json) && json.length > 0) {
+                    return { lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) };
+                }
+                return null;
+            })
+            .catch(function() { return null; });
+    }
+
+    function autoPinFromAddress() {
+        if (!addressIn) return;
+        var q = addressIn.value.trim();
+        if (q.length < 6) return;
+
+        var context = '';
+        if (villageSelect && villageSelect.value) {
+            var opt = villageSelect.selectedOptions[0];
+            if (opt && opt.text && opt.text !== 'Select Village') context = ', ' + opt.text;
+        }
+
+        var seq = ++pinVersion;
+        setHint('Searching address...', true);
+        geocodeAddress(q + context).then(function(loc) {
+            if (seq !== pinVersion) return;
+            if (!loc) {
+                setHint('Address not found — click the map to pin manually', true);
+                return;
+            }
+            setPin(loc.lat, loc.lng, true);
+        });
+    }
+
+    if (addressIn) {
+        addressIn.addEventListener('input', function() {
+            clearTimeout(addrTimer);
+            addrTimer = setTimeout(autoPinFromAddress, 1000);
+        });
+        addressIn.addEventListener('blur', function() {
+            clearTimeout(addrTimer);
+            autoPinFromAddress();
+        });
+    }
+});
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    function clearInvalid(el) {
+        if (el) el.classList.remove('is-invalid');
+    }
+
+    function titleCaseName(value) {
+        value = value.replace(/\s+/g, ' ').trim();
+
+        if (value === '') return '';
+
+        if (value === value.toUpperCase() || value === value.toLowerCase()) {
+            value = value.toLowerCase();
+        }
+
+        return value.split(' ').map(function(word) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    ['block_number', 'lot_number'].forEach(function(id) {
+        var field = document.getElementById(id);
+        if (!field) return;
+
+        field.addEventListener('input', function() {
+            field.value = field.value.replace(/[^0-9]/g, '');
+            clearInvalid(field);
+        });
+    });
+
+    var headName = document.getElementById('household_head_name');
+
+    if (headName) {
+        headName.addEventListener('input', function() {
+            headName.value = headName.value.replace(/[^\p{L} ]/gu, '').replace(/ {2,}/g, ' ');
+            clearInvalid(headName);
+        });
+
+        headName.addEventListener('blur', function() {
+            headName.value = titleCaseName(headName.value);
+        });
+    }
 });
 </script>
 @endpush

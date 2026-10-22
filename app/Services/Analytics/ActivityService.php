@@ -3,53 +3,69 @@
 namespace App\Services\Analytics;
 
 use App\Models\AuditLog;
+use Illuminate\Support\Collection;
 
 class ActivityService
 {
-    public function getRecentActivity(?int $villageId = null, int $limit = 15): \Illuminate\Support\Collection
+    /**
+     * Activity tied to one village: everything logged against that village plus
+     * everything performed by an account assigned to it (secretary, treasurer,
+     * resident, admin).
+     */
+    public function getRecentActivity(?int $villageId = null, int $limit = 15): Collection
     {
         $query = AuditLog::with('user');
 
         if ($villageId) {
-            $query->whereHas('user', fn($q) => $q->where('village_id', $villageId));
+            $query->where(function ($q) use ($villageId) {
+                $q->where('village_id', $villageId)
+                    ->orWhereHas('user', fn ($userQuery) => $userQuery->where('village_id', $villageId));
+            });
         }
 
-        return $query->latest()
-            ->take($limit)
-            ->get()
-            ->map(fn($log) => [
-                'id' => $log->id,
-                'action' => $log->action,
-                'module' => $log->module,
-                'description' => $log->description,
-                'user' => $log->user?->full_name ?? 'System',
-                'user_role' => $log->user?->role?->role_name ?? '',
-                'village' => $log->user?->village?->village_name ?? 'N/A',
-                'created_at' => $log->created_at,
-                'time_ago' => $log->created_at->diffForHumans(),
-                'icon' => $this->getActivityIcon($log->action),
-                'color' => $this->getActivityColor($log->action),
-            ]);
+        return $this->transform($query->latest()->take($limit)->get());
     }
 
-    public function getSystemRecentActivity(int $limit = 20): \Illuminate\Support\Collection
+    /**
+     * Activity performed by a single account - used by the secretary, treasurer
+     * and resident dashboards, which must not see anyone else's activity.
+     */
+    public function getRecentActivityForUser(int $userId, int $limit = 15): Collection
     {
-        return AuditLog::with('user')
-            ->latest()
-            ->take($limit)
-            ->get()
-            ->map(fn($log) => [
-                'id' => $log->id,
-                'action' => $log->action,
-                'module' => $log->module,
-                'description' => $log->description,
-                'user' => $log->user?->full_name ?? 'System',
-                'village' => $log->user?->village?->village_name ?? 'N/A',
-                'created_at' => $log->created_at,
-                'time_ago' => $log->created_at->diffForHumans(),
-                'icon' => $this->getActivityIcon($log->action),
-                'color' => $this->getActivityColor($log->action),
-            ]);
+        return $this->transform(
+            AuditLog::with('user')
+                ->where('user_id', $userId)
+                ->latest()
+                ->take($limit)
+                ->get()
+        );
+    }
+
+    /**
+     * Every activity in the system - super admin dashboard only.
+     */
+    public function getSystemRecentActivity(int $limit = 20): Collection
+    {
+        return $this->transform(
+            AuditLog::with('user')->latest()->take($limit)->get()
+        );
+    }
+
+    private function transform($logs): Collection
+    {
+        return $logs->map(fn ($log) => [
+            'id' => $log->id,
+            'action' => $log->action,
+            'module' => $log->module,
+            'description' => $log->description,
+            'user' => $log->user?->full_name ?? 'System',
+            'user_role' => $log->user?->role?->role_name ?? '',
+            'village' => $log->user?->village?->village_name ?? 'N/A',
+            'created_at' => $log->created_at,
+            'time_ago' => $log->created_at->diffForHumans(),
+            'icon' => $this->getActivityIcon($log->action),
+            'color' => $this->getActivityColor($log->action),
+        ]);
     }
 
     private function getActivityIcon(string $action): string

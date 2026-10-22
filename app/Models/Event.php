@@ -48,6 +48,23 @@ class Event extends Model
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    /**
+     * Only the creator can edit/manage/delete this event. Legacy rows
+     * without a creator stay manageable by super admins.
+     */
+    public function isManagedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->created_by !== null && (int) $this->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $this->created_by === null && $user->role?->role_slug === 'super_admin';
+    }
+
     public function responses(): HasMany
     {
         return $this->hasMany(EventResponse::class);

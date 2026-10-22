@@ -12,7 +12,7 @@
         </p>
     </div>
     <div class="d-flex gap-2">
-        @if(auth()->user()->role?->role_slug === 'secretary')
+        @if($announcement->isManagedBy(auth()->user()))
             @if($announcement->status === 'draft' || $announcement->status === 'archived')
                 <a href="{{ route('announcements.edit', $announcement) }}" class="btn btn-warning">
                     <i class="bi bi-pencil me-1"></i> Edit
@@ -85,6 +85,16 @@
                             <span class="badge bg-warning text-dark">Draft</span>
                         @endif
                     </dd>
+                    <dt class="col-sm-5 text-muted">Visible To</dt>
+                    <dd class="col-sm-7">
+                        @if(empty($announcement->visible_roles))
+                            <span class="badge bg-info-subtle text-info-emphasis border"><i class="bi bi-globe2 me-1"></i>Public</span>
+                        @else
+                            @foreach($announcement->visible_roles as $visibleRole)
+                                <span class="badge bg-primary-subtle text-primary-emphasis border">{{ ucfirst($visibleRole) }}</span>
+                            @endforeach
+                        @endif
+                    </dd>
                     <dt class="col-sm-5 text-muted">Start Date</dt>
                     <dd class="col-sm-7 fw-semibold">{{ $announcement->start_date?->format('M d, Y') ?? '—' }}</dd>
                     <dt class="col-sm-5 text-muted">Expires</dt>
@@ -95,7 +105,7 @@
             </div>
         </div>
 
-        @if(auth()->user()->role?->role_slug === 'secretary')
+        @if($announcement->isManagedBy(auth()->user()))
             <div class="card shadow-sm mt-3">
                 <div class="card-header bg-white">
                     <h6 class="mb-0 fw-semibold">Actions</h6>

@@ -17,6 +17,9 @@
     </div>
 </div>
 
+@php $canManageOfficers = in_array(auth()->user()->role?->role_slug, ['admin', 'secretary'], true); @endphp
+
+@if($canManageOfficers)
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-0 py-3">
         <a class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" href="#addOfficerForm" role="button" aria-expanded="false" aria-controls="addOfficerForm">
@@ -80,6 +83,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -121,6 +125,7 @@
                                 @endif
                             </td>
                             <td class="text-end">
+                                @if($canManageOfficers)
                                 <button type="button" class="btn btn-sm btn-outline-warning" title="Edit"
                                         data-bs-toggle="modal" data-bs-target="#editOfficerModal{{ $officer->id }}">
                                     <i class="bi bi-pencil"></i>
@@ -133,6 +138,7 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -155,6 +161,7 @@
     @endif
 </div>
 
+@if($canManageOfficers)
 @foreach($officers as $officer)
     <div class="modal fade" id="editOfficerModal{{ $officer->id }}" tabindex="-1" aria-labelledby="editOfficerModalLabel{{ $officer->id }}" aria-hidden="true">
         <div class="modal-dialog">
@@ -229,4 +236,5 @@
         </div>
     </div>
 @endforeach
+@endif
 @endsection

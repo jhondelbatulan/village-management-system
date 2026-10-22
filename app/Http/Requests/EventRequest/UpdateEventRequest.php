@@ -24,7 +24,6 @@ class UpdateEventRequest extends FormRequest
             'max_participants' => ['nullable', 'integer', 'min:1'],
             'cover_image' => ['nullable', 'image', 'max:2048'],
             'attachment' => ['nullable', 'file', 'mimes:pdf,doc,docx,xls,xlsx', 'max:5120'],
-            'status' => ['required', 'in:draft,upcoming,ongoing,completed,cancelled'],
         ];
     }
 

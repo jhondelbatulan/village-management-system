@@ -22,7 +22,7 @@ return new class extends Migration
             $table->decimal('custom_amount', 12, 2);
             $table->timestamps();
 
-            $table->unique(['village_id', 'household_id', 'payment_type_id']);
+            $table->unique(['village_id', 'household_id', 'payment_type_id'], 'hpa_village_household_payment_type_unique');
         });
     }
 

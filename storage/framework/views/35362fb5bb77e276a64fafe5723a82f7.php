@@ -7,7 +7,7 @@
         <p class="page-subtitle text-muted">Manage village announcements and notices</p>
     </div>
     <div class="d-flex gap-2">
-        <?php if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer'])): ?>
+        <?php if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin'])): ?>
             <a href="<?php echo e(route('announcements.create')); ?>" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Create Announcement
             </a>
@@ -72,6 +72,7 @@
                         <th>Title</th>
                         <th>Category</th>
                         <th>Village</th>
+                        <th>Visible To</th>
                         <th>Dates</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -93,6 +94,15 @@
                             </td>
                             <td><span class="badge bg-light text-dark"><?php echo e($announcement->category); ?></span></td>
                             <td><?php echo e($announcement->village->village_name ?? '—'); ?></td>
+                            <td>
+                                <?php if(empty($announcement->visible_roles)): ?>
+                                    <span class="badge bg-info-subtle text-info-emphasis border"><i class="bi bi-globe2 me-1"></i>Public</span>
+                                <?php else: ?>
+                                    <?php $__currentLoopData = $announcement->visible_roles; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $visibleRole): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                                        <span class="badge bg-primary-subtle text-primary-emphasis border"><?php echo e(ucfirst($visibleRole)); ?></span>
+                                    <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                                <?php endif; ?>
+                            </td>
                             <td class="small">
                                 <?php if($announcement->start_date): ?>
                                     <?php echo e($announcement->start_date->format('M d, Y')); ?>
@@ -117,7 +127,7 @@
                                     <a href="<?php echo e(route('announcements.show', $announcement)); ?>" class="btn btn-outline-primary" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer'])): ?>
+                                    <?php if($announcement->isManagedBy(auth()->user())): ?>
                                         <?php if($announcement->status === 'draft' || $announcement->status === 'archived'): ?>
                                             <a href="<?php echo e(route('announcements.edit', $announcement)); ?>" class="btn btn-outline-warning" title="Edit">
                                                 <i class="bi bi-pencil"></i>
@@ -139,16 +149,24 @@
                                                 </button>
                                             </form>
                                         <?php endif; ?>
+                                        <form action="<?php echo e(route('announcements.destroy', $announcement)); ?>" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Delete this announcement? This cannot be undone.')">
+                                            <?php echo csrf_field(); ?>
+                                            <?php echo method_field('DELETE'); ?>
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     <?php endif; ?>
                                 </div>
                             </td>
                         </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <i class="bi bi-megaphone fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">No announcements found.</p>
-                                <?php if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer'])): ?>
+                                <?php if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin'])): ?>
                                     <a href="<?php echo e(route('announcements.create')); ?>" class="btn btn-primary btn-sm mt-3">
                                         <i class="bi bi-plus-lg me-1"></i> Create First Announcement
                                     </a>

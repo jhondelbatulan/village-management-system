@@ -17,12 +17,14 @@ class RoleMiddleware
         $user = auth()->user();
 
         if (! $user) {
-            auth()->logout();
+            $this->clearSession($request);
+
             return redirect()->route('login');
         }
 
         if ($user->status !== 'active') {
-            auth()->logout();
+            $this->clearSession($request);
+
             return redirect()->route('login')->withErrors([
                 'username' => 'Your account has been deactivated. Please contact an administrator.',
             ]);
@@ -35,5 +37,16 @@ class RoleMiddleware
         }
 
         return $next($request);
+    }
+
+    /**
+     * Drop the whole session (not just the user id) so a stale cookie cannot
+     * keep the browser bouncing back into a broken login state.
+     */
+    private function clearSession(Request $request): void
+    {
+        auth()->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
     }
 }

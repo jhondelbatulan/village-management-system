@@ -37,9 +37,28 @@ class PaymentPermissionService
         return !empty($this->getPaymentManagerVillageIds($user));
     }
 
-    public function canManagePaymentConfig(User $user): bool
+    public function canManagePaymentConfig(User $user, ?int $villageId = null): bool
     {
-        return $user->role?->role_slug === 'super_admin';
+        if ($user->role?->role_slug === 'treasurer') {
+            return $villageId !== null && $user->village_id === $villageId;
+        }
+
+        return false;
+    }
+
+    public function canViewPaymentConfig(User $user, ?int $villageId = null): bool
+    {
+        $role = $user->role?->role_slug;
+
+        if ($role === 'super_admin') {
+            return true;
+        }
+
+        if ($role === 'treasurer') {
+            return $villageId !== null && $user->village_id === $villageId;
+        }
+
+        return false;
     }
 
     public function isPaymentManagerFor(User $user, ?int $villageId): bool
@@ -48,14 +67,7 @@ class PaymentPermissionService
             return false;
         }
 
-        $role = $user->role?->role_slug;
-
-        if ($role === 'super_admin') {
-            $config = PaymentConfiguration::where('village_id', $villageId)->first();
-            return $config && $config->payment_manager_role === 'super_admin';
-        }
-
-        if ($role === 'treasurer') {
+        if ($user->role?->role_slug === 'treasurer') {
             if ($user->village_id !== $villageId) {
                 return false;
             }
@@ -129,7 +141,7 @@ class PaymentPermissionService
         $role = $user->role?->role_slug;
 
         if ($role === 'super_admin') {
-            return !$this->isPaymentManagerFor($user, $villageId);
+            return true;
         }
 
         if ($role === 'admin') {
@@ -141,6 +153,13 @@ class PaymentPermissionService
         }
 
         return true;
+    }
+
+    public function authorizeViewPaymentConfig(User $user, ?int $villageId = null): void
+    {
+        if (!$this->canViewPaymentConfig($user, $villageId)) {
+            abort(403, 'You are not authorized to view payment configuration.');
+        }
     }
 
     public function authorizeRecordPayment(User $user, int $villageId): void
@@ -167,25 +186,16 @@ class PaymentPermissionService
         }
     }
 
-    public function authorizePaymentConfig(User $user): void
+    public function authorizePaymentConfig(User $user, ?int $villageId = null): void
     {
-        if (!$this->canManagePaymentConfig($user)) {
-            abort(403, 'Only Super Administrators can manage payment configuration.');
+        if (!$this->canManagePaymentConfig($user, $villageId)) {
+            abort(403, 'You are not authorized to manage payment configuration.');
         }
     }
 
     public function getPaymentManagerVillageIds(User $user): array
     {
-        $role = $user->role?->role_slug;
-
-        if ($role === 'super_admin') {
-            return PaymentConfiguration::where('payment_manager_role', 'super_admin')
-                ->where('payment_enabled', true)
-                ->pluck('village_id')
-                ->toArray();
-        }
-
-        if ($role === 'treasurer') {
+        if ($user->role?->role_slug === 'treasurer') {
             if (!$user->village_id) {
                 return [];
             }

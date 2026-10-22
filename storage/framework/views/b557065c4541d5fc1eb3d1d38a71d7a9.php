@@ -52,16 +52,29 @@ unset($__defined_vars, $__key, $__value); ?>
     <div class="card-body p-0">
         <div class="list-group list-group-flush">
             <?php $__empty_1 = true; $__currentLoopData = array_slice($items, 0, $maxItems); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $item): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); $__empty_1 = false; ?>
-                <div class="list-group-item d-flex align-items-center justify-content-between px-3 py-2">
-                    <div class="d-flex align-items-center gap-2">
-                        <span class="badge bg-<?php echo e($loop->iteration <= 3 ? $color : 'secondary'); ?> rounded-circle" style="width:24px;height:24px;line-height:18px;">
-                            <?php echo e($loop->iteration); ?>
+                <?php if(!empty($item['url'])): ?>
+                    <a href="<?php echo e($item['url']); ?>" class="list-group-item list-group-item-action d-flex align-items-center justify-content-between px-3 py-2 text-decoration-none">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-<?php echo e($loop->iteration <= 3 ? $color : 'secondary'); ?> rounded-circle" style="width:24px;height:24px;line-height:18px;">
+                                <?php echo e($loop->iteration); ?>
 
-                        </span>
-                        <span class="small fw-semibold"><?php echo e($item['name'] ?? ''); ?></span>
+                            </span>
+                            <span class="small fw-semibold text-body"><?php echo e($item['name'] ?? ''); ?></span>
+                        </div>
+                        <span class="small fw-bold text-<?php echo e($color); ?>"><?php echo e($item['value'] ?? ''); ?></span>
+                    </a>
+                <?php else: ?>
+                    <div class="list-group-item d-flex align-items-center justify-content-between px-3 py-2">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-<?php echo e($loop->iteration <= 3 ? $color : 'secondary'); ?> rounded-circle" style="width:24px;height:24px;line-height:18px;">
+                                <?php echo e($loop->iteration); ?>
+
+                            </span>
+                            <span class="small fw-semibold"><?php echo e($item['name'] ?? ''); ?></span>
+                        </div>
+                        <span class="small fw-bold text-<?php echo e($color); ?>"><?php echo e($item['value'] ?? ''); ?></span>
                     </div>
-                    <span class="small fw-bold text-<?php echo e($color); ?>"><?php echo e($item['value'] ?? ''); ?></span>
-                </div>
+                <?php endif; ?>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                 <div class="text-center py-4">
                     <i class="bi bi-inbox fs-1 text-gray-300"></i>

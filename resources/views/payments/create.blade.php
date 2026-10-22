@@ -15,6 +15,23 @@
     </div>
 </div>
 
+@if(!empty($onlinePayment))
+    <div class="alert alert-success border-start border-4 border-success" role="alert">
+        <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-check-circle"></i>
+            <strong>Recording approved online payment</strong>
+            <span class="badge bg-success">Approved</span>
+        </div>
+        <small>
+            {{ $onlinePayment->household?->household_number ?? '—' }} —
+            {{ $onlinePayment->household?->household_head_name ?? '' }} |
+            Bill <strong>{{ $onlinePayment->billing?->billing_number ?? '—' }}</strong> |
+            Amount <strong>₱{{ number_format($onlinePayment->amount, 2) }}</strong> |
+            GCash Txn #<strong>{{ $onlinePayment->transaction_number }}</strong>
+        </small>
+    </div>
+@endif
+
 @if($errors->any())
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <ul class="mb-0">
@@ -39,6 +56,9 @@
             <div class="card-body p-4">
                 <form action="{{ route('payments.store') }}" method="POST" novalidate id="paymentForm">
                     @csrf
+                    @if(!empty($onlinePayment))
+                        <input type="hidden" name="online_payment_id" value="{{ $onlinePayment->id }}">
+                    @endif
                     <div class="mb-3">
                         <label for="billing_id" class="form-label fw-semibold">Select Billing <span class="text-danger">*</span></label>
                         <div class="d-flex gap-2 mb-2">
@@ -71,14 +91,13 @@
                                     data-due="{{ $billing->due_date->format('M d, Y') }}"
                                     data-due-sort="{{ $billing->due_date->format('Y-m-d') }}"
                                     data-village="{{ $billing->village?->village_name ?? '' }}"
-                                    data-penalty="{{ $billing->penalty }}"
                                     data-balance="{{ number_format($balance, 2, '.', '') }}"
                                     data-balance-sort="{{ $balance }}"
                                     data-block="{{ $billing->household?->block_number ?? 999 }}"
                                     data-head-sort="{{ strtolower($billing->household?->household_head_name ?? 'zzz') }}"
                                     data-billing-id="{{ $billing->id }}"
                                     data-search="{{ strtolower(($billing->household?->household_head_name ?? '') . ' ' . ($billing->household?->household_number ?? '') . ' ' . $billing->billing_number . ' Block ' . ($billing->household?->block_number ?? '')) }}"
-                                    {{ request('billing_id') == $billing->id ? 'selected' : '' }}>
+                                    {{ request('billing_id') == $billing->id || (!empty($onlinePayment) && $onlinePayment->billing_id == $billing->id) ? 'selected' : '' }}>
                                     {{ $billing->household?->household_head_name ?? 'Unknown' }} — {{ $billing->billing_number }} | {{ $billing->paymentType?->payment_name ?? '' }} | ₱{{ number_format($balance, 2) }} remaining | Due: {{ $billing->due_date->format('M d, Y') }}
                                 </option>
                             @endforeach
@@ -109,15 +128,11 @@
                                     <label class="form-label text-muted small">Due Date</label>
                                     <div class="fw-semibold" id="infoDue">—</div>
                                 </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label text-muted small">Total Amount Due</label>
                                     <div class="fw-bold text-primary" id="infoTotal">₱0.00</div>
                                 </div>
-                                <div class="col-md-4">
-                                    <label class="form-label text-muted small">Penalty</label>
-                                    <div class="fw-semibold text-danger" id="infoPenalty">₱0.00</div>
-                                </div>
-                                <div class="col-md-4">
+                                <div class="col-md-6">
                                     <label class="form-label text-muted small">Remaining Balance</label>
                                     <div class="fw-bold text-danger" id="infoBalance">₱0.00</div>
                                 </div>
@@ -131,7 +146,8 @@
                             <div class="input-group">
                                 <span class="input-group-text">₱</span>
                                 <input type="number" step="0.01" class="form-control" id="amount"
-                                       name="amount" value="{{ old('amount') }}" min="0.01" required
+                                       name="amount" value="{{ old('amount', !empty($onlinePayment) ? number_format($onlinePayment->amount, 2, '.', '') : '') }}"
+                                       min="0.01" {{ !empty($onlinePayment) ? 'readonly' : 'required' }}
                                        placeholder="Enter payment amount">
                             </div>
                             <div id="amountError" class="text-danger small mt-1" style="display:none;"></div>
@@ -141,22 +157,33 @@
                             <div class="input-group">
                                 <span class="input-group-text">₱</span>
                                 <input type="number" step="0.01" class="form-control" id="discount"
-                                       name="discount" value="{{ old('discount', '0.00') }}" min="0">
+                                       name="discount" value="{{ old('discount', '0.00') }}" min="0"
+                                       {{ !empty($onlinePayment) ? 'readonly' : '' }}>
                             </div>
                         </div>
                         <div class="col-md-6">
                             <label for="payment_method" class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
-                            <select class="form-select" id="payment_method" name="payment_method" required>
-                                <option value="cash" {{ old('payment_method') === 'cash' ? 'selected' : '' }}>Cash</option>
-                                <option value="gcash" {{ old('payment_method') === 'gcash' ? 'selected' : '' }}>GCash</option>
-                                <option value="maya" {{ old('payment_method') === 'maya' ? 'selected' : '' }}>Maya</option>
-                                <option value="bank_transfer" {{ old('payment_method') === 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
-                            </select>
+                            @if(!empty($onlinePayment))
+                                <input type="hidden" name="payment_method" value="gcash">
+                                <select class="form-select" id="payment_method" disabled>
+                                    <option value="gcash" selected>GCash (approved online payment)</option>
+                                </select>
+                            @else
+                                <select class="form-select" id="payment_method" name="payment_method" required>
+                                    <option value="cash" {{ old('payment_method') === 'cash' ? 'selected' : '' }}>Cash</option>
+                                    <option value="gcash" {{ old('payment_method') === 'gcash' ? 'selected' : '' }}>GCash</option>
+                                    <option value="maya" {{ old('payment_method') === 'maya' ? 'selected' : '' }}>Maya</option>
+                                    <option value="bank_transfer" {{ old('payment_method') === 'bank_transfer' ? 'selected' : '' }}>Bank Transfer</option>
+                                </select>
+                            @endif
                         </div>
                         <div class="col-md-6">
                             <label for="reference_number" class="form-label fw-semibold">Reference Number</label>
                             <input type="text" class="form-control" id="reference_number"
-                                   name="reference_number" value="{{ old('reference_number') }}" placeholder="For non-cash payments">
+                                   name="reference_number"
+                                   value="{{ old('reference_number', !empty($onlinePayment) ? $onlinePayment->transaction_number : '') }}"
+                                   {{ !empty($onlinePayment) ? 'readonly' : '' }}
+                                   placeholder="For non-cash payments">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold">Net Amount to Pay</label>
@@ -218,7 +245,6 @@ document.addEventListener('DOMContentLoaded', function() {
         document.getElementById('infoPeriod').textContent = selected.dataset.period;
         document.getElementById('infoDue').textContent = selected.dataset.due;
         document.getElementById('infoTotal').textContent = '₱' + parseFloat(selected.dataset.amount).toFixed(2);
-        document.getElementById('infoPenalty').textContent = '₱' + parseFloat(selected.dataset.penalty || 0).toFixed(2);
 
         currentBalance = parseFloat(selected.dataset.balance);
         document.getElementById('infoBalance').textContent = '₱' + currentBalance.toFixed(2);
@@ -285,6 +311,19 @@ document.addEventListener('DOMContentLoaded', function() {
     if (billingSelect.value) {
         billingSelect.dispatchEvent(new Event('change'));
     }
+
+    @if(!empty($onlinePayment))
+    // Online payment: only the matching billing can be selected, and the
+    // amount is restored to the resident's submitted GCash amount after the
+    // change handler resets it to the full balance.
+    Array.from(billingSelect.options).forEach(function(o) {
+        if (o.value && o.value !== '{{ $onlinePayment->billing_id }}') {
+            o.remove();
+        }
+    });
+    amountInput.value = '{{ number_format($onlinePayment->amount, 2, '.', '') }}';
+    updateTotal();
+    @endif
 
     function sortBillings() {
         const selectedValue = billingSelect.value;

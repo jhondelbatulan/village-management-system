@@ -21,6 +21,13 @@
     </div>
 @endif
 
+@if(session('success'))
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i>{{ session('success') }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+@endif
+
 <div class="row g-3 g-lg-4 mb-4">
     <div class="col-md-3 col-6">
         <div class="card border-0 shadow-sm h-100">
@@ -169,6 +176,48 @@
             </div>
         </div>
 
+        @if(($pendingMembers ?? collect())->isNotEmpty())
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Approval Requests ({{ $pendingMembers->count() }})
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Relationship</th>
+                                <th>Submitted</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach($pendingMembers as $member)
+                            <tr>
+                                <td class="fw-semibold">
+                                    {{ $member->full_name ?? $member->first_name . ' ' . $member->last_name }}
+                                </td>
+                                <td>{{ $member->relationship_to_head ?? '—' }}</td>
+                                <td>{{ $member->created_at?->diffForHumans() ?? '—' }}</td>
+                                <td>
+                                    @if($member->approval_status === 'admin_approved')
+                                        <span class="badge bg-info">Admin Approved - Awaiting Final Approval</span>
+                                    @else
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            @endforeach
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        @endif
+
         @if($household->village && $household->village->isPaymentEnabled())
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 px-4">
@@ -265,10 +314,6 @@
                     <span class="fw-bold {{ ($balance['outstanding'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
                         ₱{{ number_format($balance['outstanding'], 2) }}
                     </span>
-                </div>
-                <div class="d-flex justify-content-between mb-3">
-                    <span class="text-muted">Penalties</span>
-                    <span class="fw-bold text-warning">₱{{ number_format($balance['penalties'], 2) }}</span>
                 </div>
                 <hr>
                 <a href="{{ route('household-payments.show', $household) }}" class="btn btn-outline-primary w-100">

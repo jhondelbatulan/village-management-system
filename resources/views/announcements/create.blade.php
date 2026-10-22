@@ -79,14 +79,6 @@
                     <input type="date" name="expiration_date" class="form-control" value="{{ old('expiration_date') }}">
                 </div>
 
-                <div class="col-md-4">
-                    <label class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select name="status" class="form-select" required>
-                        <option value="draft" {{ old('status', 'draft') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="published" {{ old('status') == 'published' ? 'selected' : '' }}>Published</option>
-                    </select>
-                </div>
-
                 <div class="col-md-6">
                     <label class="form-label fw-semibold">Cover Image</label>
                     <input type="file" name="cover_image" class="form-control" accept="image/*">
@@ -104,6 +96,27 @@
                         <input class="form-check-input" type="checkbox" name="is_pinned" value="1" {{ old('is_pinned') ? 'checked' : '' }}>
                         <label class="form-check-label fw-semibold">Pin this announcement</label>
                     </div>
+                </div>
+
+                @php
+                    $selectedRoles = old('visible_roles');
+                    $isPublic = ! is_array($selectedRoles) || $selectedRoles === [] || in_array('public', $selectedRoles, true);
+                @endphp
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Who Can View <span class="text-danger">*</span></label>
+                    <div class="d-flex flex-wrap gap-3">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" name="visible_roles[]" value="public" id="visible_public" {{ $isPublic ? 'checked' : '' }}>
+                            <label class="form-check-label" for="visible_public"><i class="bi bi-globe2 me-1"></i>Public (all roles)</label>
+                        </div>
+                        @foreach(['admin', 'secretary', 'treasurer', 'resident'] as $roleSlug)
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" name="visible_roles[]" value="{{ $roleSlug }}" id="visible_{{ $roleSlug }}" {{ is_array($selectedRoles) && in_array($roleSlug, $selectedRoles, true) ? 'checked' : '' }}>
+                                <label class="form-check-label" for="visible_{{ $roleSlug }}">{{ ucfirst($roleSlug) }}</label>
+                            </div>
+                        @endforeach
+                    </div>
+                    <small class="text-muted">Leave "Public" checked to show this announcement to everyone. Uncheck it and tick only the roles allowed to view it.</small>
                 </div>
             </div>
 

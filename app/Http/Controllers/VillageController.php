@@ -9,7 +9,6 @@ use App\Models\VillagePhoto;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class VillageController extends Controller
@@ -22,8 +21,8 @@ class VillageController extends Controller
             $search = request('search');
             $query->where(function ($q) use ($search) {
                 $q->where('village_name', 'like', "%{$search}%")
-                  ->orWhere('village_code', 'like', "%{$search}%")
-                  ->orWhere('address', 'like', "%{$search}%");
+                    ->orWhere('village_code', 'like', "%{$search}%")
+                    ->orWhere('address', 'like', "%{$search}%");
             });
         }
 
@@ -48,16 +47,16 @@ class VillageController extends Controller
 
         if ($request->hasFile('logo')) {
             $file = $request->file('logo');
-            $filename = 'village_logo_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'village_logo_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('village_logos', $filename, 'public');
-            $data['logo'] = 'village_logos/' . $filename;
+            $data['logo'] = 'village_logos/'.$filename;
         }
 
         if ($request->hasFile('cover_photo')) {
             $file = $request->file('cover_photo');
-            $filename = 'village_cover_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'village_cover_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('village_covers', $filename, 'public');
-            $data['cover_photo'] = 'village_covers/' . $filename;
+            $data['cover_photo'] = 'village_covers/'.$filename;
         }
 
         $village = Village::create($data);
@@ -74,8 +73,8 @@ class VillageController extends Controller
         }, 'photos']);
 
         $stats = [
-            'total_households' => $village->households()->count(),
-            'total_residents' => $village->residents()->where('status', 'active')->count(),
+            'total_households' => $village->households()->where('approval_status', 'approved')->count(),
+            'total_residents' => $village->residents()->where('status', 'active')->where('approval_status', 'approved')->count(),
             'active_officers' => $village->officers()->where('status', 'active')->count(),
             'total_documents' => $village->documents()->count(),
         ];
@@ -89,6 +88,7 @@ class VillageController extends Controller
     public function edit(Village $village): View
     {
         $village->load('photos');
+
         return view('villages.edit', compact('village'));
     }
 
@@ -98,24 +98,28 @@ class VillageController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($village->logo) {
-                $oldPath = storage_path('app/public/' . $village->logo);
-                if (file_exists($oldPath)) unlink($oldPath);
+                $oldPath = storage_path('app/public/'.$village->logo);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
             $file = $request->file('logo');
-            $filename = 'village_logo_' . $village->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'village_logo_'.$village->id.'_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('village_logos', $filename, 'public');
-            $data['logo'] = 'village_logos/' . $filename;
+            $data['logo'] = 'village_logos/'.$filename;
         }
 
         if ($request->hasFile('cover_photo')) {
             if ($village->cover_photo) {
-                $oldPath = storage_path('app/public/' . $village->cover_photo);
-                if (file_exists($oldPath)) unlink($oldPath);
+                $oldPath = storage_path('app/public/'.$village->cover_photo);
+                if (file_exists($oldPath)) {
+                    unlink($oldPath);
+                }
             }
             $file = $request->file('cover_photo');
-            $filename = 'village_cover_' . $village->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = 'village_cover_'.$village->id.'_'.time().'.'.$file->getClientOriginalExtension();
             $file->storeAs('village_covers', $filename, 'public');
-            $data['cover_photo'] = 'village_covers/' . $filename;
+            $data['cover_photo'] = 'village_covers/'.$filename;
         }
 
         $village->update($data);
@@ -161,11 +165,11 @@ class VillageController extends Controller
         }
 
         $file = $request->file('photo');
-        $filename = 'village_photo_' . $village->id . '_' . time() . '.' . $file->getClientOriginalExtension();
+        $filename = 'village_photo_'.$village->id.'_'.time().'.'.$file->getClientOriginalExtension();
         $file->storeAs('village_photos', $filename, 'public');
 
         $village->photos()->create([
-            'photo_path' => 'village_photos/' . $filename,
+            'photo_path' => 'village_photos/'.$filename,
             'sort_order' => $existingCount,
         ]);
 
@@ -180,8 +184,10 @@ class VillageController extends Controller
             abort(404);
         }
 
-        $oldPath = storage_path('app/public/' . $photo->photo_path);
-        if (file_exists($oldPath)) unlink($oldPath);
+        $oldPath = storage_path('app/public/'.$photo->photo_path);
+        if (file_exists($oldPath)) {
+            unlink($oldPath);
+        }
 
         $photo->delete();
 

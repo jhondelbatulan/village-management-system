@@ -114,10 +114,11 @@
                     @enderror
                 </div>
                 <div class="col-12">
-                    <label class="form-label fw-semibold">Pin Location on Map <small class="text-muted">(click map to update)</small></label>
+                    <label class="form-label fw-semibold">Pin Location on Map <small class="text-muted">(type the address to auto-pin, or click the map to update)</small></label>
                     <div class="map-picker-container" id="map-picker" style="height:320px;width:100%;position:relative;">
-                        <div class="map-picker-hint" id="map-hint">Click anywhere to update location</div>
+                        <div class="map-picker-hint" id="map-hint">Type an address to auto-pin, or click anywhere to update location</div>
                     </div>
+                    <div class="form-text">Blue-gray pins are the latest saved households in this village, shown as your reference.</div>
                 </div>
                 <div class="col-md-6">
                     <label for="latitude" class="form-label fw-semibold">Latitude</label>
@@ -150,13 +151,12 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-md-4">
-                    <label for="household_type" class="form-label fw-semibold">Household Type <span class="text-danger">*</span></label>
+                    <label for="household_type" class="form-label fw-semibold">Family Count <span class="text-danger">*</span></label>
                     <select name="household_type" id="household_type" class="form-select @error('household_type') is-invalid @enderror" required>
-                        <option value="">Select Type</option>
-                        <option value="Single-Family" {{ old('household_type', $household->household_type) == 'Single-Family' ? 'selected' : '' }}>Single-Family</option>
-                        <option value="Multi-Family" {{ old('household_type', $household->household_type) == 'Multi-Family' ? 'selected' : '' }}>Multi-Family</option>
-                        <option value="Extended" {{ old('household_type', $household->household_type) == 'Extended' ? 'selected' : '' }}>Extended</option>
-                        <option value="Other" {{ old('household_type', $household->household_type) == 'Other' ? 'selected' : '' }}>Other</option>
+                        <option value="">Select Family Count</option>
+                        @for ($i = 1; $i <= 5; $i++)
+                            <option value="{{ $i }}" {{ old('household_type', $household->household_type) == $i ? 'selected' : '' }}>{{ $i }}</option>
+                        @endfor
                     </select>
                     @error('household_type')
                         <div class="invalid-feedback">{{ $message }}</div>
@@ -167,23 +167,22 @@
                     <select name="house_ownership" id="house_ownership" class="form-select @error('house_ownership') is-invalid @enderror" required>
                         <option value="">Select Ownership</option>
                         <option value="Owned" {{ old('house_ownership', $household->house_ownership) == 'Owned' ? 'selected' : '' }}>Owned</option>
-                        <option value="Rented" {{ old('house_ownership', $household->house_ownership) == 'Rented' ? 'selected' : '' }}>Rented</option>
                         <option value="Leased" {{ old('house_ownership', $household->house_ownership) == 'Leased' ? 'selected' : '' }}>Leased</option>
-                        <option value="Inherited" {{ old('house_ownership', $household->house_ownership) == 'Inherited' ? 'selected' : '' }}>Inherited</option>
-                        <option value="Other" {{ old('house_ownership', $household->house_ownership) == 'Other' ? 'selected' : '' }}>Other</option>
                     </select>
                     @error('house_ownership')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
                 <div class="col-md-4">
-                    <label for="house_status" class="form-label fw-semibold">House Status <span class="text-danger">*</span></label>
+                    <label for="house_status" class="form-label fw-semibold">House Material <span class="text-danger">*</span></label>
                     <select name="house_status" id="house_status" class="form-select @error('house_status') is-invalid @enderror" required>
-                        <option value="">Select Status</option>
-                        <option value="owned" {{ old('house_status', $household->house_status) == 'owned' ? 'selected' : '' }}>Owned</option>
-                        <option value="rented" {{ old('house_status', $household->house_status) == 'rented' ? 'selected' : '' }}>Rented</option>
-                        <option value="leased" {{ old('house_status', $household->house_status) == 'leased' ? 'selected' : '' }}>Leased</option>
-                        <option value="inherited" {{ old('house_status', $household->house_status) == 'inherited' ? 'selected' : '' }}>Inherited</option>
+                        <option value="">Select Material</option>
+                        <option value="concrete" {{ old('house_status', $household->house_status) == 'concrete' ? 'selected' : '' }}>Concrete</option>
+                        <option value="wood_timber" {{ old('house_status', $household->house_status) == 'wood_timber' ? 'selected' : '' }}>Wood/Timber</option>
+                        <option value="steel" {{ old('house_status', $household->house_status) == 'steel' ? 'selected' : '' }}>Steel</option>
+                        <option value="brick_blocks" {{ old('house_status', $household->house_status) == 'brick_blocks' ? 'selected' : '' }}>Brick/Blocks</option>
+                        <option value="stone" {{ old('house_status', $household->house_status) == 'stone' ? 'selected' : '' }}>Stone</option>
+                        <option value="mixed" {{ old('house_status', $household->house_status) == 'mixed' ? 'selected' : '' }}>Mixed</option>
                         <option value="other" {{ old('house_status', $household->house_status) == 'other' ? 'selected' : '' }}>Other</option>
                     </select>
                     @error('house_status')
@@ -240,17 +239,109 @@ document.addEventListener('DOMContentLoaded', function() {
     var latIn = document.getElementById('latitude');
     var lngIn = document.getElementById('longitude');
     var hint = document.getElementById('map-hint');
+    var addressIn = document.getElementById('address');
+    var villageName = @json($household->village?->village_name ?? '');
+    var ownId = {{ $household->id }};
+
+    var referenceLayer = L.layerGroup().addTo(pickerMap);
+    var latestHouseholds = @json($latestHouseholds ?? []);
+    var pinVersion = 0;
+    var addrTimer = null;
+
+    var referenceIcon = L.divIcon({
+        className: 'gis-marker',
+        html: '<div style="width:11px;height:11px;background:#6c757d;border:2px solid #fff;border-radius:50%;box-shadow:0 1px 3px rgba(0,0,0,.4);"></div>',
+        iconSize: [15, 15], iconAnchor: [7, 7],
+    });
+
+    function escHtml(s) {
+        return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    function setHint(text, show) {
+        if (!hint) return;
+        hint.textContent = text;
+        hint.style.display = show ? '' : 'none';
+    }
+
+    function renderReferenceMarkers(list) {
+        referenceLayer.clearLayers();
+        list.forEach(function(h) {
+            if (!h.latitude || !h.longitude) return;
+            if (h.id == ownId) return;
+            L.marker([h.latitude, h.longitude], { icon: referenceIcon })
+                .bindPopup('<div class="gis-popup"><span class="badge bg-secondary">Latest saved</span><br><strong>' + escHtml(h.household_number) + '</strong><br><small>' + escHtml(h.household_head_name || '') + '</small></div>')
+                .addTo(referenceLayer);
+        });
+    }
+
+    renderReferenceMarkers(latestHouseholds);
+
     if (latIn.value && lngIn.value) {
         pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)]).addTo(pickerMap);
-        if (hint) hint.style.display = 'none';
+        setHint('Click anywhere to update location', false);
+    } else {
+        var layers = referenceLayer.getLayers();
+        if (layers.length > 0) {
+            pickerMap.fitBounds(L.featureGroup(layers).getBounds().pad(0.2));
+        }
     }
-    pickerMap.on('click', function(e) {
-        latIn.value = e.latlng.lat.toFixed(8);
-        lngIn.value = e.latlng.lng.toFixed(8);
+
+    function setPin(lat, lng, moveMap) {
+        latIn.value = lat.toFixed(8);
+        lngIn.value = lng.toFixed(8);
         if (pickerMarker) pickerMap.removeLayer(pickerMarker);
-        pickerMarker = L.marker([e.latlng.lat, e.latlng.lng]).addTo(pickerMap);
-        if (hint) hint.style.display = 'none';
+        pickerMarker = L.marker([lat, lng]).addTo(pickerMap);
+        setHint('Click anywhere to update location', false);
+        if (moveMap) pickerMap.setView([lat, lng], 16);
+    }
+
+    pickerMap.on('click', function(e) {
+        pinVersion++;
+        clearTimeout(addrTimer);
+        setPin(e.latlng.lat, e.latlng.lng, false);
     });
+
+    function geocodeAddress(q) {
+        return fetch('https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=ph&q=' + encodeURIComponent(q))
+            .then(function(r) { return r.json(); })
+            .then(function(json) {
+                if (Array.isArray(json) && json.length > 0) {
+                    return { lat: parseFloat(json[0].lat), lng: parseFloat(json[0].lon) };
+                }
+                return null;
+            })
+            .catch(function() { return null; });
+    }
+
+    function autoPinFromAddress() {
+        if (!addressIn) return;
+        var q = addressIn.value.trim();
+        if (q.length < 6) return;
+
+        var context = villageName ? ', ' + villageName : '';
+        var seq = ++pinVersion;
+        setHint('Searching address...', true);
+        geocodeAddress(q + context).then(function(loc) {
+            if (seq !== pinVersion) return;
+            if (!loc) {
+                setHint('Address not found — click the map to pin manually', true);
+                return;
+            }
+            setPin(loc.lat, loc.lng, true);
+        });
+    }
+
+    if (addressIn) {
+        addressIn.addEventListener('input', function() {
+            clearTimeout(addrTimer);
+            addrTimer = setTimeout(autoPinFromAddress, 1000);
+        });
+        addressIn.addEventListener('blur', function() {
+            clearTimeout(addrTimer);
+            autoPinFromAddress();
+        });
+    }
 });
 </script>
 @endpush

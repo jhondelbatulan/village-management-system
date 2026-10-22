@@ -5,7 +5,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
             <h4 class="page-title mb-1">Request to Add Household Member</h4>
-            <p class="page-subtitle text-muted mb-0">Submit a request to add a new member to your household. A secretary will review and approve it.</p>
+            <p class="page-subtitle text-muted mb-0">Submit a request to add a new member to your household. It will be reviewed by your village admin and finalized by the Super Admin.</p>
         </div>
         <a href="<?php echo e(route('households.my-household')); ?>" class="btn btn-outline-secondary btn-sm">
             <i class="bi bi-arrow-left me-1"></i>Back to My Household
@@ -55,7 +55,8 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>"
-                                           id="first_name" name="first_name" value="<?php echo e(old('first_name')); ?>" required>
+                                           id="first_name" name="first_name" value="<?php echo e(old('first_name')); ?>"
+                                           maxlength="255" placeholder="e.g. Juan" autocomplete="off" required>
                                     <?php $__errorArgs = ['first_name'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -75,7 +76,9 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>"
-                                           id="middle_name" name="middle_name" value="<?php echo e(old('middle_name')); ?>">
+                                           id="middle_name" name="middle_name" value="<?php echo e(old('middle_name')); ?>"
+                                           maxlength="1" placeholder="e.g. D" autocomplete="off">
+                                    <div class="form-text">Single capital letter only.</div>
                                     <?php $__errorArgs = ['middle_name'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -95,7 +98,8 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>"
-                                           id="last_name" name="last_name" value="<?php echo e(old('last_name')); ?>" required>
+                                           id="last_name" name="last_name" value="<?php echo e(old('last_name')); ?>"
+                                           maxlength="255" placeholder="e.g. Dela Cruz" autocomplete="off" required>
                                     <?php $__errorArgs = ['last_name'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -115,7 +119,21 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>"
-                                           id="suffix" name="suffix" value="<?php echo e(old('suffix')); ?>" placeholder="e.g. Jr., Sr., III">
+                                           id="suffix" name="suffix" value="<?php echo e(old('suffix')); ?>"
+                                           list="member-suffix-options" maxlength="10" placeholder="e.g. Jr., Sr., III" autocomplete="off">
+                                    <datalist id="member-suffix-options">
+                                        <option value="Jr."></option>
+                                        <option value="Sr."></option>
+                                        <option value="II"></option>
+                                        <option value="III"></option>
+                                        <option value="IV"></option>
+                                        <option value="V"></option>
+                                        <option value="VI"></option>
+                                        <option value="VII"></option>
+                                        <option value="VIII"></option>
+                                        <option value="IX"></option>
+                                        <option value="X"></option>
+                                    </datalist>
                                     <?php $__errorArgs = ['suffix'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -161,6 +179,28 @@ endif;
 unset($__errorArgs, $__bag); ?>"
                                            id="birthdate" name="birthdate" value="<?php echo e(old('birthdate')); ?>" required>
                                     <?php $__errorArgs = ['birthdate'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> <div class="invalid-feedback"><?php echo e($message); ?></div> <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>
+                                </div>
+                                <div class="col-md-2">
+                                    <label for="age" class="form-label fw-semibold">Age</label>
+                                    <input type="number" class="form-control <?php $__errorArgs = ['age'];
+$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
+if ($__bag->has($__errorArgs[0])) :
+if (isset($message)) { $__messageOriginal = $message; }
+$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
+if (isset($__messageOriginal)) { $message = $__messageOriginal; }
+endif;
+unset($__errorArgs, $__bag); ?>"
+                                           id="age" name="age" value="<?php echo e(old('age')); ?>"
+                                           min="0" max="130" placeholder="Auto-calculated" readonly>
+                                    <div class="form-text">Auto-calculated from birthdate.</div>
+                                    <?php $__errorArgs = ['age'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -1213,7 +1253,7 @@ unset($__errorArgs, $__bag); ?>
                     </h6>
                     <hr>
                     <p class="text-muted small mb-3">
-                        This request will be submitted to your village secretary for review and approval.
+                        This request will be submitted to your village admin for review, then to the Super Admin for final approval.
                         Once approved, the new member will be added to your household.
                     </p>
                 </div>
@@ -1235,6 +1275,202 @@ unset($__errorArgs, $__bag); ?>
     document.getElementById('is_pwd').addEventListener('change', function() {
         document.getElementById('pwdTypeWrapper').style.display = this.checked ? 'block' : 'none';
     });
+
+    const firstName = document.getElementById('first_name');
+    const middleName = document.getElementById('middle_name');
+    const lastName = document.getElementById('last_name');
+    const suffix = document.getElementById('suffix');
+    const birthdate = document.getElementById('birthdate');
+    const ageField = document.getElementById('age');
+    const memberForm = firstName.form;
+
+    const NAME_PATTERN = /^[\p{L}]+(?: [\p{L}]+)*$/u;
+    const SUFFIX_PATTERN = /^(?:Jr\.|Sr\.|II|III|IV|V|VI|VII|VIII|IX|X)$/;
+
+    function getFeedback(el) {
+        let node = el.nextElementSibling;
+        while (node) {
+            if (node.classList && node.classList.contains('invalid-feedback')) return node;
+            node = node.nextElementSibling;
+        }
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        el.insertAdjacentElement('afterend', feedback);
+        return feedback;
+    }
+
+    function setFieldError(el, message) {
+        el.classList.add('is-invalid');
+        getFeedback(el).textContent = message;
+    }
+
+    function clearFieldError(el) {
+        el.classList.remove('is-invalid');
+        getFeedback(el).textContent = '';
+    }
+
+    function autoCapitalize(value) {
+        return value.replace(/(^|\s)(\p{L})/gu, function (match, space, letter) {
+            return space + letter.toUpperCase();
+        });
+    }
+
+    function titleCase(value) {
+        value = value.replace(/\s+/g, ' ').trim();
+        if (!value) return '';
+        if (value === value.toUpperCase() || value === value.toLowerCase()) {
+            value = value.toLowerCase();
+        }
+        return value.split(' ').map(function (word) {
+            return word.charAt(0).toUpperCase() + word.slice(1);
+        }).join(' ');
+    }
+
+    function normalizeSuffix(value) {
+        const key = value.trim().replace(/\.$/, '').toLowerCase();
+        const map = {
+            jr: 'Jr.', sr: 'Sr.', ii: 'II', iii: 'III', iv: 'IV', v: 'V',
+            vi: 'VI', vii: 'VII', viii: 'VIII', ix: 'IX', x: 'X'
+        };
+        return map[key] || value.trim();
+    }
+
+    function checkName(el, label) {
+        const value = el.value.trim();
+        if (!value) return el.required ? label + ' is required.' : null;
+        if (!NAME_PATTERN.test(value)) return label + ' must only contain letters - no numbers or special characters.';
+        return null;
+    }
+
+    function checkMiddleName(el) {
+        const value = el.value.trim();
+        if (!value) return null;
+        if (!/^\p{Lu}$/u.test(value)) return 'Middle name must be a single capital letter (e.g., M).';
+        return null;
+    }
+
+    function checkSuffix(el) {
+        const value = el.value.trim();
+        if (!value) return null;
+        if (!SUFFIX_PATTERN.test(value)) return 'Suffix must only be one of: Jr., Sr., II, III, IV, V, VI, VII, VIII, IX, X.';
+        return null;
+    }
+
+    function validateField(el, checker, label) {
+        const message = checker(el, label);
+        if (message) {
+            setFieldError(el, message);
+            return false;
+        }
+        clearFieldError(el);
+        return true;
+    }
+
+    function calculateAge() {
+        const value = birthdate.value;
+        if (!value) {
+            ageField.value = '';
+            return;
+        }
+
+        const today = new Date();
+        const birth = new Date(value + 'T00:00:00');
+        if (isNaN(birth.getTime()) || birth > today) {
+            ageField.value = '';
+            return;
+        }
+
+        let age = today.getFullYear() - birth.getFullYear();
+        const monthDiff = today.getMonth() - birth.getMonth();
+        if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+            age--;
+        }
+
+        ageField.value = Math.max(age, 0);
+    }
+
+    [firstName, lastName].forEach(function (el) {
+        const label = el.id === 'first_name' ? 'First Name' : 'Last Name';
+
+        el.addEventListener('input', function () {
+            const caret = el.selectionStart;
+
+            const cleaned = el.value.replace(/[^\p{L} ]/gu, '').replace(/ {2,}/g, ' ');
+            if (cleaned !== el.value) {
+                el.value = cleaned;
+                el.setSelectionRange(Math.min(caret, cleaned.length), Math.min(caret, cleaned.length));
+            }
+
+            const capitalized = autoCapitalize(el.value);
+            if (capitalized !== el.value) {
+                el.value = capitalized;
+                el.setSelectionRange(Math.min(caret, capitalized.length), Math.min(caret, capitalized.length));
+            }
+
+            clearFieldError(el);
+        });
+
+        el.addEventListener('blur', function () {
+            el.value = titleCase(el.value);
+            validateField(el, checkName, label);
+        });
+    });
+
+    middleName.addEventListener('input', function () {
+        const cleaned = middleName.value.replace(/[^\p{L}]/gu, '').slice(0, 1);
+        middleName.value = cleaned ? cleaned.toUpperCase() : '';
+        clearFieldError(middleName);
+    });
+
+    middleName.addEventListener('blur', function () {
+        validateField(middleName, checkMiddleName);
+    });
+
+    suffix.addEventListener('input', function () {
+        suffix.value = suffix.value.replace(/[^\p{L}.]/gu, '');
+        clearFieldError(suffix);
+    });
+
+    suffix.addEventListener('blur', function () {
+        suffix.value = normalizeSuffix(suffix.value);
+        validateField(suffix, checkSuffix);
+    });
+
+    birthdate.addEventListener('change', calculateAge);
+    birthdate.addEventListener('input', calculateAge);
+
+    memberForm.addEventListener('submit', function (event) {
+        firstName.value = titleCase(firstName.value);
+        lastName.value = titleCase(lastName.value);
+        middleName.value = middleName.value.trim().slice(0, 1);
+        if (middleName.value) middleName.value = middleName.value.toUpperCase();
+        suffix.value = normalizeSuffix(suffix.value);
+        calculateAge();
+
+        let firstInvalid = null;
+
+        memberForm.querySelectorAll('[required]').forEach(function (el) {
+            if (!el.value.trim()) {
+                const label = el.id ? (memberForm.querySelector('label[for="' + el.id + '"]') || {}).textContent : null;
+                setFieldError(el, (label ? label.replace('*', '').trim() : 'This field') + ' is required.');
+                if (!firstInvalid) firstInvalid = el;
+            }
+        });
+
+        [[firstName, checkName, 'First Name'], [lastName, checkName, 'Last Name'],
+         [middleName, checkMiddleName], [suffix, checkSuffix]].forEach(function (entry) {
+            if (!validateField(entry[0], entry[1], entry[2]) && !firstInvalid) {
+                firstInvalid = entry[0];
+            }
+        });
+
+        if (firstInvalid) {
+            event.preventDefault();
+            firstInvalid.focus();
+        }
+    });
+
+    calculateAge();
 </script>
 <?php $__env->stopPush(); ?>
 <?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\Dennis Casuco\Documents\multi-village-management-system\resources\views/households/request-member.blade.php ENDPATH**/ ?>

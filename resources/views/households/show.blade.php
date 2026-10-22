@@ -61,10 +61,20 @@
                 <i class="bi bi-check-lg me-1"></i> Review
             </button>
         @endif
-        @if(auth()->user()->role?->role_slug === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved']))
+        @if(auth()->user()->role?->role_slug === 'super_admin' && $household->approval_status === 'admin_approved')
             <button type="button" class="btn btn-success" data-bs-toggle="modal" data-bs-target="#approveModal">
                 <i class="bi bi-check-lg me-1"></i> Final Approval
             </button>
+        @endif
+        @if(auth()->user()->role?->role_slug === 'super_admin')
+            <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline"
+                  onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone and will remove all of its billing, payment, and participation records.')">
+                @csrf
+                @method('DELETE')
+                <button type="submit" class="btn btn-outline-danger">
+                    <i class="bi bi-trash me-1"></i> Delete Permanently
+                </button>
+            </form>
         @endif
     </div>
 </div>
@@ -146,7 +156,7 @@
             <div class="card-body">
                 <div class="row g-3">
                     <div class="col-md-4">
-                        <label class="form-label text-muted small">Household Type</label>
+                        <label class="form-label text-muted small">Family Count</label>
                         <div class="fw-semibold">{{ $household->household_type ?? '—' }}</div>
                     </div>
                     <div class="col-md-4">
@@ -154,8 +164,8 @@
                         <div class="fw-semibold">{{ $household->house_ownership ?? '—' }}</div>
                     </div>
                     <div class="col-md-4">
-                        <label class="form-label text-muted small">House Status</label>
-                        <div class="fw-semibold">{{ ucfirst($household->house_status ?? '—') }}</div>
+                        <label class="form-label text-muted small">House Material</label>
+                        <div class="fw-semibold">{{ ucwords(str_replace('_', ' ', $household->house_status ?? '')) ?: '—' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Registration Date</label>
@@ -406,7 +416,7 @@
                             <td>{{ $resident->civil_status ?? '—' }}</td>
                             <td>
                                 @if($resident->relationship_to_head)
-                                    <span class="badge bg-outline-primary border">{{ $resident->relationship_to_head }}</span>
+                                    <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">{{ $resident->relationship_to_head }}</span>
                                 @else
                                     —
                                 @endif
@@ -437,7 +447,7 @@
 
 @if(
     (auth()->user()->role?->role_slug === 'admin' && $household->approval_status === 'pending') ||
-    (auth()->user()->role?->role_slug === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved']))
+    (auth()->user()->role?->role_slug === 'super_admin' && $household->approval_status === 'admin_approved')
 )
 <div class="modal fade" id="approveModal" tabindex="-1" aria-labelledby="approveModalLabel" aria-hidden="true">
     <div class="modal-dialog">

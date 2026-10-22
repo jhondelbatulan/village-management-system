@@ -9,7 +9,7 @@
         <p class="page-subtitle text-muted">Manage village announcements and notices</p>
     </div>
     <div class="d-flex gap-2">
-        @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer']))
+        @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin']))
             <a href="{{ route('announcements.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Create Announcement
             </a>
@@ -74,6 +74,7 @@
                         <th>Title</th>
                         <th>Category</th>
                         <th>Village</th>
+                        <th>Visible To</th>
                         <th>Dates</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -94,6 +95,15 @@
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $announcement->category }}</span></td>
                             <td>{{ $announcement->village->village_name ?? '—' }}</td>
+                            <td>
+                                @if(empty($announcement->visible_roles))
+                                    <span class="badge bg-info-subtle text-info-emphasis border"><i class="bi bi-globe2 me-1"></i>Public</span>
+                                @else
+                                    @foreach($announcement->visible_roles as $visibleRole)
+                                        <span class="badge bg-primary-subtle text-primary-emphasis border">{{ ucfirst($visibleRole) }}</span>
+                                    @endforeach
+                                @endif
+                            </td>
                             <td class="small">
                                 @if($announcement->start_date)
                                     {{ $announcement->start_date->format('M d, Y') }}
@@ -116,7 +126,7 @@
                                     <a href="{{ route('announcements.show', $announcement) }}" class="btn btn-outline-primary" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer']))
+                                    @if($announcement->isManagedBy(auth()->user()))
                                         @if($announcement->status === 'draft' || $announcement->status === 'archived')
                                             <a href="{{ route('announcements.edit', $announcement) }}" class="btn btn-outline-warning" title="Edit">
                                                 <i class="bi bi-pencil"></i>
@@ -138,16 +148,24 @@
                                                 </button>
                                             </form>
                                         @endif
+                                        <form action="{{ route('announcements.destroy', $announcement) }}" method="POST" class="d-inline"
+                                              onsubmit="return confirm('Delete this announcement? This cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="8" class="text-center py-5">
                                 <i class="bi bi-megaphone fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">No announcements found.</p>
-                                @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary', 'treasurer']))
+                                @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin']))
                                     <a href="{{ route('announcements.create') }}" class="btn btn-primary btn-sm mt-3">
                                         <i class="bi bi-plus-lg me-1"></i> Create First Announcement
                                     </a>

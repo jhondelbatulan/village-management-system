@@ -23,7 +23,7 @@
     </div>
 
     <?php if($role === 'super_admin'): ?>
-        
+
         <?php
             $totalVillages = count($stats);
             $totalEvents = collect($stats)->sum('total_events');
@@ -66,7 +66,7 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Participants</div>
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Household Participations</div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo e(number_format($totalParticipants)); ?></div>
                             </div>
                             <div class="col-auto">
@@ -143,6 +143,11 @@
                             <span class="text-muted small">Completed: <?php echo e($villageStat['completed_events']); ?></span>
                         </div>
                     </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="<?php echo e(route('participation.village', $villageStat['village'])); ?>" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-bar-chart me-1"></i> View Events &amp; Households
+                        </a>
+                    </div>
                 </div>
             </div>
             <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
@@ -159,7 +164,7 @@
         </div>
 
     <?php else: ?>
-        
+
         <div class="row mb-4">
             <div class="col-xl-3 col-md-6 mb-4">
                 <div class="card border-left-primary shadow h-100 py-2">
@@ -196,7 +201,7 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Participants</div>
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Household Participations</div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800"><?php echo e(number_format($participationStats['total_participants'])); ?></div>
                             </div>
                             <div class="col-auto">
@@ -354,7 +359,7 @@
                     <table class="table table-bordered" width="100%" cellspacing="0">
                         <thead>
                             <tr>
-                                <th>Household</th>
+                                <th>Block / Lot</th>
                                 <th>Members</th>
                                 <th>Events Attended</th>
                                 <th>Participation %</th>
@@ -367,19 +372,18 @@
                             <?php $__currentLoopData = $householdStats; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $stat): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <tr>
                                 <td>
-                                    <a href="<?php echo e(route('participation.household', $stat['household'])); ?>">
-                                        <?php echo e($stat['household']->family_name); ?>
+                                    <a href="<?php echo e(route('participation.household', $stat['household'])); ?>" class="fw-semibold text-decoration-none">
+                                        Block <?php echo e($stat['household']->block_number ?? 'N/A'); ?> — Lot <?php echo e($stat['household']->lot_number ?? 'N/A'); ?>
+
 
                                     </a>
-                                    <br>
-                                    <small class="text-muted">Block <?php echo e($stat['household']->block_number ?? 'N/A'); ?> — Lot <?php echo e($stat['household']->lot_number ?? 'N/A'); ?></small>
                                 </td>
                                 <td><?php echo e($stat['member_count']); ?></td>
                                 <td><?php echo e($stat['participated_count']); ?> / <?php echo e($stat['total_events']); ?></td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="progress flex-grow-1 me-2" style="height: 20px; width: 100px;">
-                                            <div class="progress-bar bg-<?php echo e($stat['participation_pct'] >= 50 ? 'success' : ($stat['participation_pct'] >= 25 ? 'warning' : 'danger')); ?>" 
+                                            <div class="progress-bar bg-<?php echo e($stat['participation_pct'] >= 50 ? 'success' : ($stat['participation_pct'] >= 25 ? 'warning' : 'danger')); ?>"
                                                  style="width: <?php echo e($stat['participation_pct']); ?>%"></div>
                                         </div>
                                         <strong class="<?php echo e($stat['participation_pct'] >= 50 ? 'text-success' : ($stat['participation_pct'] >= 25 ? 'text-warning' : 'text-danger')); ?>">
@@ -390,6 +394,7 @@
                                 <td>
                                     <?php if($stat['last_attendance']): ?>
                                         <?php echo e($stat['last_attendance']->diffForHumans()); ?>
+
 
                                     <?php else: ?>
                                         <span class="text-muted">Never</span>
@@ -424,5 +429,6 @@
     <?php endif; ?>
 </div>
 <?php $__env->stopSection(); ?>
+
 
 <?php echo $__env->make('layouts.app', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?><?php /**PATH C:\Users\Dennis Casuco\Documents\multi-village-management-system\resources\views/participation/index.blade.php ENDPATH**/ ?>

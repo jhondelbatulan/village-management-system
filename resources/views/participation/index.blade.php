@@ -1,5 +1,4 @@
 @extends('layouts.app')
-
 @section('title', 'Participation Monitoring')
 
 @section('content')
@@ -25,7 +24,7 @@
     </div>
 
     @if($role === 'super_admin')
-        {{-- Super Admin: Village Comparison --}}
+
         @php
             $totalVillages = count($stats);
             $totalEvents = collect($stats)->sum('total_events');
@@ -68,7 +67,7 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Participants</div>
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Household Participations</div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($totalParticipants) }}</div>
                             </div>
                             <div class="col-auto">
@@ -145,6 +144,11 @@
                             <span class="text-muted small">Completed: {{ $villageStat['completed_events'] }}</span>
                         </div>
                     </div>
+                    <div class="card-footer bg-transparent">
+                        <a href="{{ route('participation.village', $villageStat['village']) }}" class="btn btn-sm btn-primary w-100">
+                            <i class="bi bi-bar-chart me-1"></i> View Events &amp; Households
+                        </a>
+                    </div>
                 </div>
             </div>
             @empty
@@ -161,7 +165,7 @@
         </div>
 
     @else
-        {{-- Admin / Secretary: Village Participation --}}
+
         <div class="row mb-4">
             <div class="col-xl-3 col-md-6 mb-4">
                 <div class="card border-left-primary shadow h-100 py-2">
@@ -198,7 +202,7 @@
                     <div class="card-body">
                         <div class="row no-gutters align-items-center">
                             <div class="col mr-2">
-                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Total Participants</div>
+                                <div class="text-xs font-weight-bold text-info text-uppercase mb-1">Household Participations</div>
                                 <div class="h5 mb-0 font-weight-bold text-gray-800">{{ number_format($participationStats['total_participants']) }}</div>
                             </div>
                             <div class="col-auto">
@@ -356,7 +360,7 @@
                     <table class="table table-bordered" width="100%" cellspacing="0">
                         <thead>
                             <tr>
-                                <th>Household</th>
+                                <th>Block / Lot</th>
                                 <th>Members</th>
                                 <th>Events Attended</th>
                                 <th>Participation %</th>
@@ -369,18 +373,17 @@
                             @foreach($householdStats as $stat)
                             <tr>
                                 <td>
-                                    <a href="{{ route('participation.household', $stat['household']) }}">
-                                        {{ $stat['household']->family_name }}
+                                    <a href="{{ route('participation.household', $stat['household']) }}" class="fw-semibold text-decoration-none">
+                                        Block {{ $stat['household']->block_number ?? 'N/A' }} — Lot {{ $stat['household']->lot_number ?? 'N/A' }}
+
                                     </a>
-                                    <br>
-                                    <small class="text-muted">Block {{ $stat['household']->block_number ?? 'N/A' }} — Lot {{ $stat['household']->lot_number ?? 'N/A' }}</small>
                                 </td>
                                 <td>{{ $stat['member_count'] }}</td>
                                 <td>{{ $stat['participated_count'] }} / {{ $stat['total_events'] }}</td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <div class="progress flex-grow-1 me-2" style="height: 20px; width: 100px;">
-                                            <div class="progress-bar bg-{{ $stat['participation_pct'] >= 50 ? 'success' : ($stat['participation_pct'] >= 25 ? 'warning' : 'danger') }}" 
+                                            <div class="progress-bar bg-{{ $stat['participation_pct'] >= 50 ? 'success' : ($stat['participation_pct'] >= 25 ? 'warning' : 'danger') }}"
                                                  style="width: {{ $stat['participation_pct'] }}%"></div>
                                         </div>
                                         <strong class="{{ $stat['participation_pct'] >= 50 ? 'text-success' : ($stat['participation_pct'] >= 25 ? 'text-warning' : 'text-danger') }}">
@@ -391,6 +394,7 @@
                                 <td>
                                     @if($stat['last_attendance'])
                                         {{ $stat['last_attendance']->diffForHumans() }}
+
                                     @else
                                         <span class="text-muted">Never</span>
                                     @endif
@@ -424,3 +428,4 @@
     @endif
 </div>
 @endsection
+

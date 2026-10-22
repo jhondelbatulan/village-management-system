@@ -6,10 +6,10 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\FailedLogin;
 use App\Models\LoginHistory;
-use App\Models\SystemSetting;
-use App\Models\User;
 use App\Services\AuditLogService;
+use App\Services\LoginLockoutService;
 use App\Services\PasswordService;
+use App\Support\RoleRedirect;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,13 +17,22 @@ use Illuminate\View\View;
 
 class LoginController extends Controller
 {
+    public function __construct(
+        private LoginLockoutService $lockout
+    ) {}
+
     public function showLoginForm(): View|RedirectResponse
     {
         if (auth()->check()) {
             return $this->redirectByRole();
         }
 
-        return view('auth.login');
+        $username = request('username') ?? old('username');
+        $lockSeconds = is_string($username) && $username !== ''
+            ? $this->lockout->remainingLockSeconds($username)
+            : 0;
+
+        return view('auth.login', ['lockSeconds' => $lockSeconds]);
     }
 
     public function login(LoginRequest $request): RedirectResponse
@@ -32,44 +41,21 @@ class LoginController extends Controller
         $remember = $request->boolean('remember');
         $username = $credentials['username'];
 
-        $user = User::where('username', $username)->first();
-
-        if ($user && app(PasswordService::class)->isAccountLocked($user)) {
-            $lockDuration = (int) SystemSetting::getValue('account_lockout_duration', '30');
-
-            return back()
-                ->withErrors([
-                    'username' => "Your account is temporarily locked due to too many failed login attempts. Please try again in {$lockDuration} minutes or contact an administrator.",
-                ])
-                ->onlyInput('username');
+        $lockedFor = $this->lockout->remainingLockSeconds($username);
+        if ($lockedFor > 0) {
+            return $this->loginRedirect($username, $this->lockedMessage($lockedFor));
         }
 
         if (!Auth::attempt($credentials, $remember)) {
-            $failed = $this->recordLoginFailure($username, $request);
+            $this->recordLoginFailure($username, $request);
 
-            $remainingAttempts = $this->getRemainingAttempts($username);
+            $lockSeconds = $this->lockout->recordFailure($username);
 
-            if ($remainingAttempts !== null && $remainingAttempts <= 2 && $remainingAttempts > 0) {
-                return back()
-                    ->withErrors([
-                        'username' => "Invalid username or password. WARNING: Your account will be locked after {$remainingAttempts} more failed attempt(s).",
-                    ])
-                    ->onlyInput('username');
+            if ($lockSeconds > 0) {
+                return $this->loginRedirect($username, $this->lockedMessage($lockSeconds));
             }
 
-            if ($failed && $failed->is_flagged && $remainingAttempts !== null && $remainingAttempts <= 0) {
-                $lockDuration = (int) SystemSetting::getValue('account_lockout_duration', '30');
-
-                return back()
-                    ->withErrors([
-                        'username' => "Too many failed attempts. Your account has been locked for {$lockDuration} minutes.",
-                    ])
-                    ->onlyInput('username');
-            }
-
-            return back()
-                ->withErrors(['username' => 'Invalid username or password. Please try again.'])
-                ->onlyInput('username');
+            return $this->loginRedirect($username, 'Invalid username or password. Please try again.');
         }
 
         $user = Auth::user();
@@ -79,9 +65,7 @@ class LoginController extends Controller
 
             $this->recordLoginFailure($username, $request, 'Account deactivated');
 
-            return back()
-                ->withErrors(['username' => 'Your account has been deactivated. Please contact an administrator.'])
-                ->onlyInput('username');
+            return $this->loginRedirect($username, 'Your account has been deactivated. Please contact an administrator.');
         }
 
         if ($user->role?->role_slug === 'resident' && !$user->household) {
@@ -89,10 +73,10 @@ class LoginController extends Controller
 
             $this->recordLoginFailure($username, $request, 'Household removed');
 
-            return back()
-                ->withErrors(['username' => 'Invalid username or password. Please try again.'])
-                ->onlyInput('username');
+            return $this->loginRedirect($username, 'Invalid username or password. Please try again.');
         }
+
+        $this->lockout->clear($username);
 
         $user->update(['last_login' => now(), 'locked_at' => null]);
 
@@ -185,32 +169,34 @@ class LoginController extends Controller
         return $failed;
     }
 
-    private function getRemainingAttempts(string $username): ?int
+    private function loginRedirect(string $username, string $message): RedirectResponse
     {
-        try {
-            $maxAttempts = (int) SystemSetting::getValue('account_lockout_attempts', '5');
-            $recentFailures = FailedLogin::where('username', $username)
-                ->where('created_at', '>=', now()->subMinutes(15))
-                ->count();
+        return redirect()
+            ->route('login', ['username' => $username])
+            ->withErrors(['username' => $message])
+            ->withInput(['username' => $username]);
+    }
 
-            $remaining = $maxAttempts - $recentFailures;
-            return $remaining > 0 ? $remaining : 0;
-        } catch (\Throwable $e) {
-            return null;
-        }
+    private function lockedMessage(int $seconds): string
+    {
+        return 'Too many failed login attempts. Please try again in '
+            . $seconds . ' second' . ($seconds === 1 ? '' : 's') . '.';
     }
 
     private function redirectByRole(): RedirectResponse
     {
-        $role = auth()->user()->role?->role_slug;
+        $routeName = RoleRedirect::routeName(auth()->user()?->role?->role_slug);
 
-        return match ($role) {
-            'super_admin' => redirect()->route('dashboard.super_admin'),
-            'admin' => redirect()->route('dashboard.admin'),
-            'secretary' => redirect()->route('dashboard.secretary'),
-            'treasurer' => redirect()->route('dashboard.treasurer'),
-            'resident' => redirect()->route('dashboard.resident'),
-            default => redirect()->route('login'),
-        };
+        if ($routeName === null) {
+            Auth::logout();
+            request()->session()->invalidate();
+            request()->session()->regenerateToken();
+
+            return redirect()->route('login')->withErrors([
+                'username' => 'Your account is not linked to a valid role. Please contact an administrator.',
+            ]);
+        }
+
+        return redirect()->route($routeName);
     }
 }

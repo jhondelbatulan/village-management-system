@@ -66,14 +66,14 @@
     <div class="col-xl-3 col-md-6">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Monthly Collection','value' => number_format($paymentStats['collected'] ?? 0),'icon' => 'bi-cash-stack','color' => 'info','previousValue' => $paymentStats['previous'] ?? null,'change' => $paymentStats['change'] ?? null,'subtitle' => 'Collected this month','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Monthly Collection','value' => number_format($paymentStats['this_month_collected'] ?? 0),'icon' => 'bi-cash-stack','color' => 'info','previousValue' => $paymentStats['previous'] ?? null,'change' => $paymentStats['change'] ?? null,'subtitle' => 'Collected this month','route' => ''.e(route('dashboard.super_admin.monthly-collection')).'','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('analytics.summary-card'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Monthly Collection','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(number_format($paymentStats['collected'] ?? 0)),'icon' => 'bi-cash-stack','color' => 'info','previousValue' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($paymentStats['previous'] ?? null),'change' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($paymentStats['change'] ?? null),'subtitle' => 'Collected this month','large' => true]); ?>
+<?php $component->withAttributes(['title' => 'Monthly Collection','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(number_format($paymentStats['this_month_collected'] ?? 0)),'icon' => 'bi-cash-stack','color' => 'info','previousValue' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($paymentStats['previous'] ?? null),'change' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($paymentStats['change'] ?? null),'subtitle' => 'Collected this month','route' => ''.e(route('dashboard.super_admin.monthly-collection')).'','large' => true]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c)): ?>
@@ -108,6 +108,59 @@
 <?php endif; ?>
     </div>
 </div>
+
+<?php if(($dashboardWidgets['announcements'] ?? true) || ($dashboardWidgets['calendar'] ?? true)): ?>
+<div class="row g-4 mb-4">
+    <?php if($dashboardWidgets['announcements'] ?? true): ?>
+    <div class="col-lg-6">
+        <?php if (isset($component)) { $__componentOriginal7ec549346b1bac202822fb3c000f6e04 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal7ec549346b1bac202822fb3c000f6e04 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.ranking-card','data' => ['title' => 'Recent Announcements','icon' => 'bi-megaphone','color' => 'primary','valueLabel' => 'Date','items' => $recentAnnouncements->map(fn($a) => ['name' => $a->title . ($a->village ? ' — ' . $a->village->village_name : ''), 'value' => $a->created_at->format('M d')])->toArray(),'maxItems' => 5]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.ranking-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Recent Announcements','icon' => 'bi-megaphone','color' => 'primary','valueLabel' => 'Date','items' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($recentAnnouncements->map(fn($a) => ['name' => $a->title . ($a->village ? ' — ' . $a->village->village_name : ''), 'value' => $a->created_at->format('M d')])->toArray()),'maxItems' => 5]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $attributes = $__attributesOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $component = $__componentOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__componentOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if($dashboardWidgets['calendar'] ?? true): ?>
+    <div class="col-lg-6">
+        <?php if (isset($component)) { $__componentOriginal7ec549346b1bac202822fb3c000f6e04 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal7ec549346b1bac202822fb3c000f6e04 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.ranking-card','data' => ['title' => 'Upcoming Events','icon' => 'bi-calendar-event','color' => 'success','valueLabel' => 'Date','items' => $upcomingEvents->map(fn($e) => ['name' => $e->title . ($e->village ? ' — ' . $e->village->village_name : ''), 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray(),'maxItems' => 5]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.ranking-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Upcoming Events','icon' => 'bi-calendar-event','color' => 'success','valueLabel' => 'Date','items' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($upcomingEvents->map(fn($e) => ['name' => $e->title . ($e->village ? ' — ' . $e->village->village_name : ''), 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()),'maxItems' => 5]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $attributes = $__attributesOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $component = $__componentOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__componentOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php if($dashboardWidgets['analytics_summary'] ?? true): ?>
 <div class="row g-4 mb-4">
@@ -2079,7 +2132,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: participationData.map(p => p.name),
                 datasets: [
                     { label: 'Events', data: participationData.map(p => p.events), backgroundColor: '#0d6efd', borderRadius: 4 },
-                    { label: 'Participants', data: participationData.map(p => p.participants), backgroundColor: '#198754', borderRadius: 4 }
+                    { label: 'Household Participations', data: participationData.map(p => p.participants), backgroundColor: '#198754', borderRadius: 4 }
                 ]
             },
             options: {

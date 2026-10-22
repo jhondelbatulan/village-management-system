@@ -62,15 +62,35 @@ class GisController extends Controller
     private function residentView($user): View
     {
         $household = $user->household;
+        $villageId = $household?->village_id ?? $user->village_id;
+        $village = $villageId ? Village::find($villageId) : null;
+        $neighbors = $villageId
+            ? $this->gis->getVillageHouseholds($villageId)
+            : collect();
+
+        $center = null;
         if ($household && $household->latitude && $household->longitude) {
+            $center = [
+                'lat' => (float) $household->latitude,
+                'lng' => (float) $household->longitude,
+            ];
+        } elseif ($villageId) {
+            $center = $this->gis->getVillageCenter($villageId);
+        }
+
+        $hasMapData = ($household && $household->latitude && $household->longitude)
+            || $neighbors->isNotEmpty();
+
+        if ($center && $hasMapData) {
             return view('gis.household', [
-                'household' => $household->load('village:id,village_name'),
-                'center' => [
-                    'lat' => (float) $household->latitude,
-                    'lng' => (float) $household->longitude,
-                ],
+                'household' => $household?->load('village:id,village_name'),
+                'village' => $village,
+                'neighbors' => $neighbors,
+                'neighborCount' => $neighbors->filter(fn ($h) => ! $household || $h->id !== $household->id)->count(),
+                'center' => $center,
             ]);
         }
+
         return view('gis.no-location');
     }
 
@@ -124,6 +144,7 @@ class GisController extends Controller
                 'village_id' => $h->village_id,
                 'address' => $h->address,
                 'purok' => $h->purok,
+                'member_count' => $h->member_count,
             ];
         })->filter()->values();
 
@@ -339,5 +360,28 @@ class GisController extends Controller
         $data = $this->dashboard->getSystemOverviewData();
 
         return response()->json(['success' => true, 'data' => $data]);
+    }
+
+    public function latestApi(Request $request): JsonResponse
+    {
+        $user = auth()->user();
+        $role = $user->role?->role_slug;
+
+        if ($role === 'resident') {
+            return response()->json(['success' => false, 'message' => 'Unauthorized'], 403);
+        }
+
+        $villageId = $request->get('village_id');
+
+        if ($role !== 'super_admin') {
+            $villageId = $user->village_id;
+        }
+
+        $households = $this->gis->getLatestMappedHouseholds(
+            $villageId ? (int) $villageId : null,
+            max(1, min(50, (int) $request->get('limit', 10)))
+        );
+
+        return response()->json(['success' => true, 'data' => $households]);
     }
 }

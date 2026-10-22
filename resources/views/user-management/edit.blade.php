@@ -106,9 +106,9 @@
                 </div>
 
                 <div class="col-md-3">
-                    <label for="first_name" class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
+                    <label for="first_name" class="form-label fw-semibold">First Name</label>
                     <input type="text" class="form-control @error('first_name') is-invalid @enderror"
-                           id="first_name" name="first_name" value="{{ old('first_name', $user->first_name) }}" required>
+                           id="first_name" name="first_name" value="{{ old('first_name', $user->first_name) }}">
                     @error('first_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
@@ -118,9 +118,9 @@
                     @error('middle_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
-                    <label for="last_name" class="form-label fw-semibold">Last Name <span class="text-danger">*</span></label>
+                    <label for="last_name" class="form-label fw-semibold">Last Name</label>
                     <input type="text" class="form-control @error('last_name') is-invalid @enderror"
-                           id="last_name" name="last_name" value="{{ old('last_name', $user->last_name) }}" required>
+                           id="last_name" name="last_name" value="{{ old('last_name', $user->last_name) }}">
                     @error('last_name') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-3">
@@ -144,9 +144,9 @@
                     @error('username') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-4">
-                    <label for="email" class="form-label fw-semibold">Email <span class="text-danger">*</span></label>
+                    <label for="email" class="form-label fw-semibold">Email</label>
                     <input type="email" class="form-control @error('email') is-invalid @enderror"
-                           id="email" name="email" value="{{ old('email', $user->email) }}" required>
+                           id="email" name="email" value="{{ old('email', $user->email) }}">
                     @error('email') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-4">

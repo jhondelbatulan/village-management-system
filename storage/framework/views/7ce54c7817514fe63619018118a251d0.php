@@ -6,7 +6,7 @@
         <div>
             <h4 class="page-title mb-1">My Household</h4>
             <p class="page-subtitle text-muted mb-0">
-                <?php echo e($household->household_number); ?> | <?php echo e($household->village->village_name ?? '—'); ?>
+                <?php echo e($household->household_number); ?> | <?php echo e($household->village?->village_name ?? '—'); ?>
 
             </p>
         </div>
@@ -16,6 +16,14 @@
 <?php if(session('error')): ?>
     <div class="alert alert-danger alert-dismissible fade show" role="alert">
         <i class="bi bi-exclamation-triangle me-2"></i><?php echo e(session('error')); ?>
+
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    </div>
+<?php endif; ?>
+
+<?php if(session('success')): ?>
+    <div class="alert alert-success alert-dismissible fade show" role="alert">
+        <i class="bi bi-check-circle me-2"></i><?php echo e(session('success')); ?>
 
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     </div>
@@ -74,7 +82,7 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Village</label>
-                        <div class="fw-semibold"><?php echo e($household->village->village_name ?? '—'); ?></div>
+                        <div class="fw-semibold"><?php echo e($household->village?->village_name ?? '—'); ?></div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Block Number</label>
@@ -170,6 +178,49 @@
             </div>
         </div>
 
+        <?php if(($pendingMembers ?? collect())->isNotEmpty()): ?>
+        <div class="card border-0 shadow-sm mb-4">
+            <div class="card-header bg-white border-0 pt-4 px-4">
+                <h6 class="mb-0 fw-semibold">
+                    <i class="bi bi-hourglass-split me-2 text-warning"></i>Pending Approval Requests (<?php echo e($pendingMembers->count()); ?>)
+                </h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Relationship</th>
+                                <th>Submitted</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php $__currentLoopData = $pendingMembers; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $member): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
+                            <tr>
+                                <td class="fw-semibold">
+                                    <?php echo e($member->full_name ?? $member->first_name . ' ' . $member->last_name); ?>
+
+                                </td>
+                                <td><?php echo e($member->relationship_to_head ?? '—'); ?></td>
+                                <td><?php echo e($member->created_at?->diffForHumans() ?? '—'); ?></td>
+                                <td>
+                                    <?php if($member->approval_status === 'admin_approved'): ?>
+                                        <span class="badge bg-info">Admin Approved - Awaiting Final Approval</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-warning text-dark">Pending</span>
+                                    <?php endif; ?>
+                                </td>
+                            </tr>
+                            <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <?php endif; ?>
+
         <?php if($household->village && $household->village->isPaymentEnabled()): ?>
         <div class="card border-0 shadow-sm mb-4">
             <div class="card-header bg-white border-0 d-flex justify-content-between align-items-center pt-4 px-4">
@@ -200,7 +251,7 @@
                             <?php $__currentLoopData = $billings->take(5); $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $billing): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
                             <tr>
                                 <td class="fw-semibold"><?php echo e($billing->billing_number); ?></td>
-                                <td><?php echo e($billing->paymentType->payment_name ?? '—'); ?></td>
+                                <td><?php echo e($billing->paymentType?->payment_name ?? '—'); ?></td>
                                 <td><?php echo e($billing->billing_period); ?></td>
                                 <td><?php echo e($billing->due_date->format('M d, Y')); ?></td>
                                 <td class="text-end">₱<?php echo e(number_format($billing->total_amount, 2)); ?></td>
@@ -267,10 +318,6 @@
                         ₱<?php echo e(number_format($balance['outstanding'], 2)); ?>
 
                     </span>
-                </div>
-                <div class="d-flex justify-content-between mb-3">
-                    <span class="text-muted">Penalties</span>
-                    <span class="fw-bold text-warning">₱<?php echo e(number_format($balance['penalties'], 2)); ?></span>
                 </div>
                 <hr>
                 <a href="<?php echo e(route('household-payments.show', $household)); ?>" class="btn btn-outline-primary w-100">

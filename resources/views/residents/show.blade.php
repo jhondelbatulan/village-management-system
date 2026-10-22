@@ -514,7 +514,7 @@
                 </div>
                 @endif
 
-                @if(auth()->user()->hasRole('super_admin') && in_array($resident->approval_status, ['pending', 'admin_approved']))
+                @if(auth()->user()->hasRole('super_admin') && $resident->approval_status === 'admin_approved')
                 <div class="mt-3">
                     <button class="btn btn-success w-100 mb-2" data-bs-toggle="modal" data-bs-target="#approveModal">
                         <i class="bi bi-check-lg me-1"></i>Final Approve (Super Admin)
@@ -530,7 +530,7 @@
 </div>
 @if(
     (auth()->user()->hasRole('admin') && $resident->approval_status === 'pending') ||
-    (auth()->user()->hasRole('super_admin') && in_array($resident->approval_status, ['pending', 'admin_approved']))
+    (auth()->user()->hasRole('super_admin') && $resident->approval_status === 'admin_approved')
 )
 <!-- Approve Modal -->
 <div class="modal fade" id="approveModal" tabindex="-1">

@@ -17,6 +17,9 @@
     </div>
 </div>
 
+@php $canManageDocuments = in_array(auth()->user()->role?->role_slug, ['admin', 'secretary'], true); @endphp
+
+@if($canManageDocuments)
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-header bg-white border-0 py-3">
         <a class="btn btn-outline-primary btn-sm" data-bs-toggle="collapse" href="#uploadForm" role="button" aria-expanded="false" aria-controls="uploadForm">
@@ -60,6 +63,7 @@
         </div>
     </div>
 </div>
+@endif
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-0">
@@ -97,6 +101,7 @@
                                    class="btn btn-sm btn-outline-primary" title="Download">
                                     <i class="bi bi-download"></i>
                                 </a>
+                                @if($canManageDocuments)
                                 <form action="{{ route('villages.documents.destroy', ['village' => $village, 'document' => $document]) }}" method="POST" class="d-inline"
                                       onsubmit="return confirm('Are you sure you want to delete this document? This action cannot be undone.')">
                                     @csrf
@@ -105,6 +110,7 @@
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>
+                                @endif
                             </td>
                         </tr>
                     @empty

@@ -9,7 +9,7 @@
         <p class="page-subtitle text-muted">Manage village events and activities</p>
     </div>
     <div class="d-flex gap-2">
-        @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary']))
+        @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin']))
             <a href="{{ route('events.create') }}" class="btn btn-primary">
                 <i class="bi bi-plus-lg me-1"></i> Create Event
             </a>
@@ -109,7 +109,19 @@
                         <i class="bi bi-people me-1"></i>
                         {{ $event->going_count }} Going &middot; {{ $event->maybe_count }} Maybe
                     </small>
-                    <a href="{{ route('events.show', $event) }}" class="btn btn-sm btn-outline-primary">View</a>
+                    <div class="d-flex gap-1">
+                        <a href="{{ route('events.show', $event) }}" class="btn btn-sm btn-outline-primary">View</a>
+                        @if($event->isManagedBy(auth()->user()))
+                            <form action="{{ route('events.destroy', $event) }}" method="POST" class="d-inline"
+                                  onsubmit="return confirm('Delete this event? This cannot be undone.')">
+                                @csrf
+                                @method('DELETE')
+                                <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Event">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        @endif
+                    </div>
                 </div>
             </div>
         </div>
@@ -119,7 +131,7 @@
                 <div class="card-body text-center py-5">
                     <i class="bi bi-calendar-event fs-1 text-muted d-block mb-2"></i>
                     <p class="text-muted mb-0">No events found.</p>
-                    @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin', 'secretary']))
+                    @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin']))
                         <a href="{{ route('events.create') }}" class="btn btn-primary btn-sm mt-3">
                             <i class="bi bi-plus-lg me-1"></i> Create First Event
                         </a>

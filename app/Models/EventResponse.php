@@ -13,6 +13,7 @@ class EventResponse extends Model
     protected $fillable = [
         'event_id',
         'resident_id',
+        'household_id',
         'response',
         'note',
     ];
@@ -25,5 +26,10 @@ class EventResponse extends Model
     public function resident(): BelongsTo
     {
         return $this->belongsTo(Resident::class);
+    }
+
+    public function household(): BelongsTo
+    {
+        return $this->belongsTo(Household::class);
     }
 }

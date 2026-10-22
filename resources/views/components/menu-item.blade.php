@@ -5,7 +5,8 @@
     $isActive = $menuService->isActive($item);
     $route = $item['route'] ?? '#';
     $routeParams = $item['route_params'] ?? [];
-    $url = ($route !== '#') ? route($route, $routeParams) : '#';
+    $isUnresolved = str_contains($route, '__');
+    $url = ($route !== '#' && ! $isUnresolved) ? route($route, $routeParams) : '#';
     $itemId = 'menu-' . \Illuminate\Support\Str::slug($item['label']);
 @endphp
 

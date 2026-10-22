@@ -5,6 +5,7 @@ namespace App\Services\Analytics;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\Village;
+use App\Support\SqlHelper;
 use Illuminate\Support\Facades\DB;
 
 class HouseholdAnalyticsService
@@ -108,7 +109,7 @@ class HouseholdAnalyticsService
 
     public function getSizeDistribution(?int $villageId = null): array
     {
-        $query = Household::withCount(['residents' => fn($q) => $q->where('status', 'active')]);
+        $query = Household::withCount(['residents' => fn ($q) => $q->where('status', 'active')]);
         if ($villageId) {
             $query->where('village_id', $villageId);
         }
@@ -141,8 +142,8 @@ class HouseholdAnalyticsService
         $avgSize = $total > 0 ? round(array_sum($sizes) / $total, 2) : 0;
         $sortedSizes = $sizes;
         sort($sortedSizes);
-        $largest = !empty($sortedSizes) ? max($sortedSizes) : 0;
-        $smallest = !empty($sortedSizes) ? min($sortedSizes) : 0;
+        $largest = ! empty($sortedSizes) ? max($sortedSizes) : 0;
+        $smallest = ! empty($sortedSizes) ? min($sortedSizes) : 0;
 
         return [
             'data' => $this->stats->frequencyCount($distribution),
@@ -255,7 +256,7 @@ class HouseholdAnalyticsService
 
     public function getOccupancyStats(?int $villageId = null): array
     {
-        $query = Household::withCount(['residents' => fn($q) => $q->where('status', 'active')]);
+        $query = Household::withCount(['residents' => fn ($q) => $q->where('status', 'active')]);
         if ($villageId) {
             $query->where('village_id', $villageId);
         }
@@ -263,15 +264,15 @@ class HouseholdAnalyticsService
         $households = $query->get();
         $occupancies = $households->pluck('residents_count')->filter()->toArray();
 
-        $avgOccupancy = !empty($occupancies) ? round(array_sum($occupancies) / count($occupancies), 2) : 0;
-        $highestOccupancy = !empty($occupancies) ? max($occupancies) : 0;
-        $lowestOccupancy = !empty($occupancies) ? min($occupancies) : 0;
+        $avgOccupancy = ! empty($occupancies) ? round(array_sum($occupancies) / count($occupancies), 2) : 0;
+        $highestOccupancy = ! empty($occupancies) ? max($occupancies) : 0;
+        $lowestOccupancy = ! empty($occupancies) ? min($occupancies) : 0;
         $totalResidents = array_sum($occupancies);
         $totalHouseholds = count($households);
 
         $densityPerBlock = [];
 
-        $blockQuery = \Illuminate\Support\Facades\DB::table('households')
+        $blockQuery = DB::table('households')
             ->join('residents', function ($join) {
                 $join->on('households.id', '=', 'residents.household_id')
                     ->where('residents.status', '=', 'active')
@@ -285,7 +286,7 @@ class HouseholdAnalyticsService
         }
 
         $blockData = $blockQuery
-            ->select('households.block_number', \Illuminate\Support\Facades\DB::raw('COUNT(DISTINCT households.id) as household_count, COUNT(residents.id) as resident_count'))
+            ->select('households.block_number', DB::raw('COUNT(DISTINCT households.id) as household_count, COUNT(residents.id) as resident_count'))
             ->groupBy('households.block_number')
             ->get();
 
@@ -317,10 +318,9 @@ class HouseholdAnalyticsService
             $query->where('village_id', $villageId);
         }
 
-        $data = $query->selectRaw('
-            strftime(\'%Y-%m\', created_at) as month,
-            COUNT(*) as count
-        ')->groupBy('month')->pluck('count', 'month')->toArray();
+        $data = $query->selectRaw(
+            SqlHelper::dateFormat('created_at', '%Y-%m').' as month, COUNT(*) as count'
+        )->groupBy('month')->pluck('count', 'month')->toArray();
 
         $result = [];
         for ($i = $months - 1; $i >= 0; $i--) {
@@ -338,10 +338,9 @@ class HouseholdAnalyticsService
             $query->where('village_id', $villageId);
         }
 
-        $data = $query->selectRaw('
-            strftime(\'%Y\', created_at) as year,
-            COUNT(*) as count
-        ')->groupBy('year')->pluck('count', 'year')->toArray();
+        $data = $query->selectRaw(
+            SqlHelper::dateFormat('created_at', '%Y').' as year, COUNT(*) as count'
+        )->groupBy('year')->pluck('count', 'year')->toArray();
 
         $result = [];
         for ($i = $years - 1; $i >= 0; $i--) {
@@ -475,7 +474,7 @@ class HouseholdAnalyticsService
             ];
         }
 
-        if (!empty($blockDist['labels'])) {
+        if (! empty($blockDist['labels'])) {
             $blockValues = $blockDist['values'];
             $maxBlockKey = array_search(max($blockValues), $blockValues);
             $maxBlockLabel = $blockDist['labels'][$maxBlockKey] ?? '';
@@ -523,7 +522,7 @@ class HouseholdAnalyticsService
             $insights[] = [
                 'type' => 'warning',
                 'icon' => 'bi-graph-down',
-                'message' => "Household registrations decreased by " . abs($summary['monthly_growth']) . "% this month.",
+                'message' => 'Household registrations decreased by '.abs($summary['monthly_growth']).'% this month.',
             ];
         }
 
@@ -547,37 +546,37 @@ class HouseholdAnalyticsService
         $previousMonth = now()->subMonth()->format('Y-m');
 
         $currentCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
-            ->whereRaw('strftime(\'%Y-%m\', created_at) = ?', [$currentMonth])
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
+            ->whereRaw(SqlHelper::dateFormat('created_at', '%Y-%m').' = ?', [$currentMonth])
             ->count();
 
         $previousCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
-            ->whereRaw('strftime(\'%Y-%m\', created_at) = ?', [$previousMonth])
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
+            ->whereRaw(SqlHelper::dateFormat('created_at', '%Y-%m').' = ?', [$previousMonth])
             ->count();
 
         $thisWeekCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
             ->where('created_at', '>=', now()->startOfWeek())
             ->count();
 
         $lastWeekCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
             ->whereBetween('created_at', [now()->subWeek()->startOfWeek(), now()->subWeek()->endOfWeek()])
             ->count();
 
         $thisQuarterCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
             ->where('created_at', '>=', now()->startOfQuarter())
             ->count();
 
         $thisYearCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
             ->where('created_at', '>=', now()->startOfYear())
             ->count();
 
         $previousYearCount = Household::query()
-            ->when($villageId, fn($q) => $q->where('village_id', $villageId))
+            ->when($villageId, fn ($q) => $q->where('village_id', $villageId))
             ->whereBetween('created_at', [now()->subYear()->startOfYear(), now()->subYear()->endOfYear()])
             ->count();
 

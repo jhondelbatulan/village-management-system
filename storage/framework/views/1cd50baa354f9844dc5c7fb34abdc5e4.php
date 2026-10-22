@@ -6,8 +6,8 @@
                  class="rounded-circle sidebar-logo">
         </div>
         <p class="profile-welcome mb-1">Welcome,</p>
-        <h6 class="profile-name mb-1"><?php echo e($authUser['name'] ?? 'User'); ?></h6>
-        <span class="badge profile-role"><?php echo e($roleLabel); ?></span>
+        <h6 class="profile-name mb-1"><?php echo e($navDisplayName ?? ($authUser['name'] ?? 'User')); ?></h6>
+        <span class="badge profile-role"><?php echo e($navRoleLabel ?? $roleLabel); ?></span>
         <a href="<?php echo e(route('profile.edit')); ?>" class="btn btn-sm btn-outline-light mt-3 w-100">
             <i class="bi bi-pencil-square me-1"></i> Edit Profile
         </a>

@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Billing;
+use App\Models\GcashConfig;
 use App\Models\Household;
 use App\Models\HouseholdPayment;
+use App\Models\OnlinePayment;
 use App\Models\PaymentType;
 use App\Models\Village;
 use App\Services\PaymentPermissionService;
@@ -99,7 +101,28 @@ class PaymentController extends Controller
             return $totalPaid < (float) $billing->total_amount;
         });
 
-        return view('payments.create', compact('billings'));
+        // Approved online payment requests prefill the record-payment form
+        // with the resident's submitted details.
+        $onlinePayment = null;
+        if ($request->filled('online_payment')) {
+            $onlinePayment = OnlinePayment::find($request->input('online_payment'));
+
+            if ($onlinePayment) {
+                abort_unless(
+                    in_array($onlinePayment->village_id, $managerVillageIds),
+                    403,
+                    'This online payment belongs to another village.'
+                );
+                abort_unless(
+                    $onlinePayment->status === 'approved',
+                    403,
+                    'This online payment request has not been approved yet.'
+                );
+                abort_unless($onlinePayment->payment_id === null, 403, 'This online payment has already been recorded.');
+            }
+        }
+
+        return view('payments.create', compact('billings', 'onlinePayment'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -113,6 +136,7 @@ class PaymentController extends Controller
             'payment_method' => 'required|in:cash,gcash,maya,bank_transfer',
             'reference_number' => 'nullable|string|max:100',
             'remarks' => 'nullable|string|max:500',
+            'online_payment_id' => 'nullable|exists:online_payments,id',
         ], [
             'billing_id.required' => 'Please select a billing record.',
             'billing_id.exists' => 'The selected billing record does not exist.',
@@ -125,8 +149,40 @@ class PaymentController extends Controller
         $billing = Billing::findOrFail($request->billing_id);
         $this->permissionService->authorizeRecordPayment($user, $billing->village_id);
 
+        // When recording an approved online (GCash) payment, the request must
+        // belong to this billing and must not have been recorded already.
+        $onlinePayment = null;
+        if ($request->filled('online_payment_id')) {
+            $onlinePayment = OnlinePayment::findOrFail($request->input('online_payment_id'));
+
+            if ($onlinePayment->status !== 'approved') {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'This online payment request has not been approved yet.');
+            }
+
+            if ($onlinePayment->billing_id !== $billing->id) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'The online payment request does not match the selected billing.');
+            }
+
+            if ($onlinePayment->payment_id !== null) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'This online payment has already been recorded.');
+            }
+
+            if (abs((float) $request->input('amount') - (float) $onlinePayment->amount) > 0.01) {
+                return redirect()->back()
+                    ->withInput()
+                    ->with('error', 'The recorded amount must match the approved online payment amount of ₱'
+                        . number_format($onlinePayment->amount, 2) . '.');
+            }
+        }
+
         try {
-            $this->paymentService->recordPayment($request->only([
+            $payment = $this->paymentService->recordPayment($request->only([
                 'billing_id',
                 'amount',
                 'discount',
@@ -134,6 +190,10 @@ class PaymentController extends Controller
                 'reference_number',
                 'remarks',
             ]));
+
+            if ($onlinePayment) {
+                $onlinePayment->update(['payment_id' => $payment->id]);
+            }
 
             return redirect()->route('billings.show', $billing)
                 ->with('success', 'Payment recorded successfully. Receipt has been generated.');
@@ -194,6 +254,34 @@ class PaymentController extends Controller
         $payments = $this->paymentService->getHouseholdPayments($household->id);
         $balance = $this->paymentService->getHouseholdBalance($household->id);
 
-        return view('payments.household', compact('household', 'billings', 'payments', 'balance'));
+        $gcashConfig = GcashConfig::where('village_id', $household->village_id)->first();
+        $onlinePayments = OnlinePayment::with('billing')
+            ->where('household_id', $household->id)
+            ->latest()
+            ->get();
+
+        $activeRequestBillingIds = OnlinePayment::whereIn('billing_id', $billings->pluck('id'))
+            ->where(function ($query): void {
+                $query->where('status', 'pending')
+                    ->orWhere(function ($q): void {
+                        $q->where('status', 'approved')->whereNull('payment_id');
+                    });
+            })
+            ->pluck('billing_id')
+            ->all();
+
+        $canPayOnline = $user->role?->role_slug === 'resident'
+            && (int) $user->household_id === (int) $household->id;
+
+        return view('payments.household', compact(
+            'household',
+            'billings',
+            'payments',
+            'balance',
+            'gcashConfig',
+            'onlinePayments',
+            'activeRequestBillingIds',
+            'canPayOnline'
+        ));
     }
 }

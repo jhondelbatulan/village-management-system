@@ -91,7 +91,7 @@
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
         <x-analytics.recent-activity
-            title="Recent Activity"
+            title="My Recent Activity"
             icon="bi-activity"
             color="primary"
             :activities="$recentActivity"
@@ -200,6 +200,21 @@
             color="success"
             valueLabel="Date"
             :items="$upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+</div>
+@endif
+
+@if($dashboardWidgets['announcements'] ?? true)
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <x-analytics.ranking-card
+            title="Recent Announcements"
+            icon="bi-megaphone"
+            color="info"
+            valueLabel="Date"
+            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d')])->toArray()"
             :maxItems="5"
         />
     </div>

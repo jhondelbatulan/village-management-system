@@ -2,27 +2,47 @@
 
 namespace App\Http\Middleware;
 
+use App\Support\RoleRedirect;
 use Closure;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpFoundation\Response;
 
 class RedirectIfAuthenticated
 {
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, string ...$guards): Response
     {
-        if (auth()->check()) {
-            $role = auth()->user()->role?->role_slug;
+        $guards = empty($guards) ? [null] : $guards;
 
-            return match ($role) {
-                'super_admin' => redirect()->route('dashboard.super_admin'),
-                'admin' => redirect()->route('dashboard.admin'),
-                'secretary' => redirect()->route('dashboard.secretary'),
-                'treasurer' => redirect()->route('dashboard.treasurer'),
-                'resident' => redirect()->route('dashboard.resident'),
-                default => redirect()->route('login'),
-            };
+        foreach ($guards as $guard) {
+            if (Auth::guard($guard)->check()) {
+                return $this->redirectToDashboard($request, $guard);
+            }
         }
 
         return $next($request);
+    }
+
+    /**
+     * Send an already-signed-in user to their own dashboard. When the account
+     * cannot be resolved to a dashboard the session is destroyed, otherwise the
+     * browser would loop forever between "/" and "/login".
+     */
+    private function redirectToDashboard(Request $request, ?string $guard): Response
+    {
+        $auth = Auth::guard($guard);
+        $routeName = RoleRedirect::routeName($auth->user()?->role?->role_slug);
+
+        if ($routeName !== null) {
+            return redirect()->route($routeName);
+        }
+
+        $auth->logout();
+        $request->session()->invalidate();
+        $request->session()->regenerateToken();
+
+        return redirect()->route('login')->withErrors([
+            'username' => 'Your session is no longer valid. Please sign in again.',
+        ]);
     }
 }

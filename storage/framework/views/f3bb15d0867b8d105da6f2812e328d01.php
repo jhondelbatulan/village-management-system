@@ -31,7 +31,8 @@
 <?php endif; ?>
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    <?php if($role === 'admin' || $role === 'secretary'): ?>
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'pending' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.households', ['status' => 'pending'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-warning"><?php echo e($counts['pendingCount']); ?></div>
@@ -39,17 +40,17 @@
             </a>
         </div>
     </div>
-    <?php if($role === 'super_admin'): ?>
-    <div class="col-md-3">
+    <?php else: ?>
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'admin_approved' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.households', ['status' => 'admin_approved'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-info"><?php echo e($counts['adminApprovedCount']); ?></div>
-                <div class="text-muted small">Admin Approved</div>
+                <div class="text-muted small">Awaiting Final Approval</div>
             </a>
         </div>
     </div>
     <?php endif; ?>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'approved' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.households', ['status' => 'approved'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success"><?php echo e($counts['approvedCount']); ?></div>
@@ -57,7 +58,7 @@
             </a>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'rejected' ? 'border-primary border-2' : ''); ?>">
             <a href="<?php echo e(route('approvals.households', ['status' => 'rejected'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-danger"><?php echo e($counts['rejectedCount']); ?></div>
@@ -151,8 +152,8 @@
                                     <a href="<?php echo e(route('households.show', $household)); ?>" class="btn btn-outline-primary btn-sm" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    <?php if((in_array($role, ['admin', 'secretary']) && $household->approval_status === 'pending') ||
-                                        ($role === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved']))): ?>
+                                    <?php if(($role === 'admin' && $household->approval_status === 'pending') ||
+                                        ($role === 'super_admin' && $household->approval_status === 'admin_approved')): ?>
                                         <button type="button" class="btn btn-success btn-sm" title="Approve"
                                             data-bs-toggle="modal" data-bs-target="#approveHousehold<?php echo e($household->id); ?>">
                                             <i class="bi bi-check-lg"></i>
@@ -192,8 +193,8 @@
 </div>
 
 <?php $__currentLoopData = $households; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $household): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-    <?php if((in_array($role, ['admin', 'secretary']) && $household->approval_status === 'pending') ||
-        ($role === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved']))): ?>
+    <?php if(($role === 'admin' && $household->approval_status === 'pending') ||
+        ($role === 'super_admin' && $household->approval_status === 'admin_approved')): ?>
 
     <div class="modal fade" id="approveHousehold<?php echo e($household->id); ?>" tabindex="-1">
         <div class="modal-dialog">
@@ -207,9 +208,13 @@
                     <div class="modal-body">
                         <p>Approve household <strong><?php echo e($household->household_number); ?></strong>?</p>
                         <p class="text-muted small">Block <?php echo e($household->block_number); ?>, Lot <?php echo e($household->lot_number); ?> — <?php echo e($household->village?->village_name); ?></p>
-                        <?php if(in_array($role, ['admin', 'secretary'])): ?>
+                        <?php if($role === 'admin'): ?>
                             <div class="alert alert-info small mb-0">
                                 <i class="bi bi-info-circle me-1"></i>This will mark the household as "Admin Approved". Super Admin will need to finalize the approval.
+                            </div>
+                        <?php else: ?>
+                            <div class="alert alert-success small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>This is the final approval. The household will be officially registered.
                             </div>
                         <?php endif; ?>
                     </div>

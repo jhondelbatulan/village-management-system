@@ -31,7 +31,8 @@
 @endif
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    @if($role === 'admin' || $role === 'secretary')
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'pending' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.households', ['status' => 'pending']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-warning">{{ $counts['pendingCount'] }}</div>
@@ -39,17 +40,17 @@
             </a>
         </div>
     </div>
-    @if($role === 'super_admin')
-    <div class="col-md-3">
+    @else
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'admin_approved' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.households', ['status' => 'admin_approved']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-info">{{ $counts['adminApprovedCount'] }}</div>
-                <div class="text-muted small">Admin Approved</div>
+                <div class="text-muted small">Awaiting Final Approval</div>
             </a>
         </div>
     </div>
     @endif
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'approved' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.households', ['status' => 'approved']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success">{{ $counts['approvedCount'] }}</div>
@@ -57,7 +58,7 @@
             </a>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'rejected' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.households', ['status' => 'rejected']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-danger">{{ $counts['rejectedCount'] }}</div>
@@ -149,8 +150,8 @@
                                     <a href="{{ route('households.show', $household) }}" class="btn btn-outline-primary btn-sm" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    @if((in_array($role, ['admin', 'secretary']) && $household->approval_status === 'pending') ||
-                                        ($role === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved'])))
+                                    @if(($role === 'admin' && $household->approval_status === 'pending') ||
+                                        ($role === 'super_admin' && $household->approval_status === 'admin_approved'))
                                         <button type="button" class="btn btn-success btn-sm" title="Approve"
                                             data-bs-toggle="modal" data-bs-target="#approveHousehold{{ $household->id }}">
                                             <i class="bi bi-check-lg"></i>
@@ -189,8 +190,8 @@
 </div>
 
 @foreach($households as $household)
-    @if((in_array($role, ['admin', 'secretary']) && $household->approval_status === 'pending') ||
-        ($role === 'super_admin' && in_array($household->approval_status, ['pending', 'admin_approved'])))
+    @if(($role === 'admin' && $household->approval_status === 'pending') ||
+        ($role === 'super_admin' && $household->approval_status === 'admin_approved'))
 
     <div class="modal fade" id="approveHousehold{{ $household->id }}" tabindex="-1">
         <div class="modal-dialog">
@@ -204,9 +205,13 @@
                     <div class="modal-body">
                         <p>Approve household <strong>{{ $household->household_number }}</strong>?</p>
                         <p class="text-muted small">Block {{ $household->block_number }}, Lot {{ $household->lot_number }} — {{ $household->village?->village_name }}</p>
-                        @if(in_array($role, ['admin', 'secretary']))
+                        @if($role === 'admin')
                             <div class="alert alert-info small mb-0">
                                 <i class="bi bi-info-circle me-1"></i>This will mark the household as "Admin Approved". Super Admin will need to finalize the approval.
+                            </div>
+                        @else
+                            <div class="alert alert-success small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>This is the final approval. The household will be officially registered.
                             </div>
                         @endif
                     </div>

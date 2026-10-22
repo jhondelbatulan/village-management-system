@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PasswordHistory;
+use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\FailedLogin;
 use Illuminate\Support\Facades\Hash;

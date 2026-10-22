@@ -28,6 +28,7 @@ class Announcement extends Model
         'audience_type',
         'target_villages',
         'target_audience',
+        'visible_roles',
         'requires_attendance',
         'created_by',
     ];
@@ -41,6 +42,7 @@ class Announcement extends Model
             'requires_attendance' => 'boolean',
             'target_villages' => 'array',
             'target_audience' => 'array',
+            'visible_roles' => 'array',
         ];
     }
 
@@ -52,6 +54,23 @@ class Announcement extends Model
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    /**
+     * Only the creator can edit/manage/delete this announcement. Legacy rows
+     * without a creator stay manageable by super admins.
+     */
+    public function isManagedBy(?User $user): bool
+    {
+        if (! $user) {
+            return false;
+        }
+
+        if ($this->created_by !== null && (int) $this->created_by === (int) $user->id) {
+            return true;
+        }
+
+        return $this->created_by === null && $user->role?->role_slug === 'super_admin';
     }
 
     public function responses(): HasMany
@@ -92,6 +111,39 @@ class Announcement extends Model
     public function scopePinned($query)
     {
         return $query->where('is_pinned', true);
+    }
+
+    public function scopeVisibleToRole($query, ?string $role, ?int $userId = null)
+    {
+        if ($role === null || $role === 'super_admin') {
+            return $query;
+        }
+
+        return $query->where(function ($q) use ($role, $userId) {
+            $q->whereNull('visible_roles')
+              ->orWhereJsonContains('visible_roles', $role);
+
+            if ($userId !== null) {
+                $q->orWhere('created_by', $userId);
+            }
+        });
+    }
+
+    public function isVisibleToRole(?string $role, ?int $userId = null): bool
+    {
+        if ($userId !== null && $this->created_by === $userId) {
+            return true;
+        }
+
+        if ($role === null || $role === 'super_admin') {
+            return true;
+        }
+
+        if (empty($this->visible_roles)) {
+            return true;
+        }
+
+        return in_array($role, $this->visible_roles, true);
     }
 
     public function getTypeBadgeClass(): string

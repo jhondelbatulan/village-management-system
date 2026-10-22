@@ -21,7 +21,7 @@
 @include('partials.village-photos-slideshow')
 
 <div class="row g-4 mb-4">
-    <div class="col-xl-4 col-md-6">
+    <div class="col-xl-6 col-md-6">
         <x-analytics.summary-card
             title="Outstanding Balance"
             :value="'₱'.number_format($balance['outstanding'] ?? 0, 2)"
@@ -31,7 +31,7 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-4 col-md-6">
+    <div class="col-xl-6 col-md-6">
         <x-analytics.summary-card
             title="Total Paid"
             :value="'₱'.number_format($balance['paid'] ?? 0, 2)"
@@ -41,17 +41,32 @@
             :large="true"
         />
     </div>
-    <div class="col-xl-4 col-md-6">
-        <x-analytics.summary-card
-            title="Total Penalties"
-            :value="'₱'.number_format($balance['penalties'] ?? 0, 2)"
-            icon="bi-exclamation-triangle"
-            color="warning"
-            subtitle="Late fees"
-            :large="true"
+</div>
+
+@if($dashboardWidgets['announcements'] ?? true || $dashboardWidgets['calendar'] ?? true)
+<div class="row g-4 mb-4">
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Recent Announcements"
+            icon="bi-megaphone"
+            color="primary"
+            valueLabel="Date"
+            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d'), 'url' => route('announcements.show', $a)])->toArray()"
+            :maxItems="5"
+        />
+    </div>
+    <div class="col-lg-6">
+        <x-analytics.ranking-card
+            title="Upcoming Events"
+            icon="bi-calendar-event"
+            color="success"
+            valueLabel="Date"
+            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d'), 'url' => route('events.show', $e)])->toArray()"
+            :maxItems="5"
         />
     </div>
 </div>
+@endif
 
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
@@ -73,7 +88,7 @@
                         </div>
                         <div class="col-6">
                             <div class="bg-success-soft rounded p-3 text-center">
-                                <div class="small text-muted">Type</div>
+                                <div class="small text-muted">Family Count</div>
                                 <div class="fw-bold text-capitalize">{{ $household->household_type ?? 'N/A' }}</div>
                             </div>
                         </div>
@@ -140,26 +155,15 @@
     </div>
 </div>
 
-@if($dashboardWidgets['announcements'] ?? true || $dashboardWidgets['calendar'] ?? true)
+@if($dashboardWidgets['recent_activities'] ?? true)
 <div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <x-analytics.ranking-card
-            title="Recent Announcements"
-            icon="bi-megaphone"
+    <div class="col-12">
+        <x-analytics.recent-activity
+            title="My Recent Activity"
+            icon="bi-activity"
             color="primary"
-            valueLabel="Date"
-            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d')])->toArray()"
-            :maxItems="5"
-        />
-    </div>
-    <div class="col-lg-6">
-        <x-analytics.ranking-card
-            title="Upcoming Events"
-            icon="bi-calendar-event"
-            color="success"
-            valueLabel="Date"
-            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
-            :maxItems="5"
+            :activities="$recentActivity"
+            :maxItems="10"
         />
     </div>
 </div>

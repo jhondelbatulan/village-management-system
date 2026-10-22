@@ -63,20 +63,11 @@
             <div class="card border-0 shadow-sm mb-4">
                 <div class="card-body p-4">
                     <h6 class="fw-semibold text-primary mb-0">
-                        <i class="bi bi-exclamation-triangle me-1"></i>Penalty Rules
+                        <i class="bi bi-gear me-1"></i>Billing Settings
                     </h6>
                     <hr>
 
                     <div class="row g-3">
-                        <div class="col-md-4">
-                            <label for="penalty_rate" class="form-label fw-semibold">Penalty Rate (%)</label>
-                            <div class="input-group">
-                                <input type="number" step="0.01" class="form-control" id="penalty_rate"
-                                       name="penalty_rate" value="{{ $setting->penalty_rate ?? '0' }}" min="0" max="100">
-                                <span class="input-group-text">%</span>
-                            </div>
-                            <small class="text-muted">Per month of overdue</small>
-                        </div>
                         <div class="col-md-4">
                             <label for="grace_period_days" class="form-label fw-semibold">Grace Period</label>
                             <div class="input-group">
@@ -84,7 +75,7 @@
                                        name="grace_period_days" value="{{ $setting->grace_period_days ?? '0' }}" min="0">
                                 <span class="input-group-text">days</span>
                             </div>
-                            <small class="text-muted">After due date before penalty applies</small>
+                            <small class="text-muted">After due date before billing is marked overdue</small>
                         </div>
                         <div class="col-md-4">
                             <label for="billing_prefix" class="form-label fw-semibold">Billing # Prefix</label>

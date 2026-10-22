@@ -31,7 +31,8 @@
 @endif
 
 <div class="row g-3 mb-4">
-    <div class="col-md-3">
+    @if($role === 'admin' || $role === 'secretary')
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'pending' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.residents', ['status' => 'pending']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-warning">{{ $counts['pendingCount'] }}</div>
@@ -39,17 +40,17 @@
             </a>
         </div>
     </div>
-    @if($role === 'super_admin')
-    <div class="col-md-3">
+    @else
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'admin_approved' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.residents', ['status' => 'admin_approved']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-info">{{ $counts['adminApprovedCount'] }}</div>
-                <div class="text-muted small">Admin Approved</div>
+                <div class="text-muted small">Awaiting Final Approval</div>
             </a>
         </div>
     </div>
     @endif
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'approved' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.residents', ['status' => 'approved']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success">{{ $counts['approvedCount'] }}</div>
@@ -57,7 +58,7 @@
             </a>
         </div>
     </div>
-    <div class="col-md-3">
+    <div class="col-md-4">
         <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'rejected' ? 'border-primary border-2' : '' }}">
             <a href="{{ route('approvals.residents', ['status' => 'rejected']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-danger">{{ $counts['rejectedCount'] }}</div>
@@ -113,7 +114,7 @@
                         <th>Code</th>
                         <th>Name</th>
                         <th>Gender</th>
-                        <th>Household</th>
+                        <th>Block / Lot</th>
                         <th>Village</th>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
@@ -137,7 +138,7 @@
                                     {{ $resident->gender ?? '—' }}
                                 @endif
                             </td>
-                            <td>{{ $resident->household?->household_number ?? '—' }}</td>
+                            <td>{{ $resident->household ? 'Block ' . ($resident->household->block_number ?? '—') . ' - Lot ' . ($resident->household->lot_number ?? '—') : '—' }}</td>
                             <td>{{ $resident->village?->village_name ?? '—' }}</td>
                             <td>
                                 @if($resident->approval_status === 'approved')
@@ -157,8 +158,8 @@
                                     <a href="{{ route('residents.show', $resident) }}" class="btn btn-outline-primary btn-sm" title="View">
                                         <i class="bi bi-eye"></i>
                                     </a>
-                                    @if((in_array($role, ['admin', 'secretary']) && $resident->approval_status === 'pending') ||
-                                        ($role === 'super_admin' && in_array($resident->approval_status, ['pending', 'admin_approved'])))
+                                    @if(($role === 'admin' && $resident->approval_status === 'pending') ||
+                                        ($role === 'super_admin' && $resident->approval_status === 'admin_approved'))
                                         <button type="button" class="btn btn-success btn-sm" title="Approve"
                                             data-bs-toggle="modal" data-bs-target="#approveResident{{ $resident->id }}">
                                             <i class="bi bi-check-lg"></i>
@@ -197,14 +198,13 @@
 </div>
 
 @foreach($residents as $resident)
-    @if((in_array($role, ['admin', 'secretary']) && $resident->approval_status === 'pending') ||
-        ($role === 'super_admin' && in_array($resident->approval_status, ['pending', 'admin_approved'])))
+    @if(($role === 'admin' && $resident->approval_status === 'pending') ||
+        ($role === 'super_admin' && $resident->approval_status === 'admin_approved'))
 
     <div class="modal fade" id="approveResident{{ $resident->id }}" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="{{ route($role === 'secretary' ? 'approvals.approve-resident-secretary' : 'approvals.approve-resident', $resident) }}" method="POST">
-                @csrf
+                <form action="{{ route('approvals.approve-resident', $resident) }}" method="POST">
                     @csrf
                     <div class="modal-header bg-success text-white">
                         <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Approve Resident</h5>
@@ -213,9 +213,13 @@
                     <div class="modal-body">
                         <p>Approve resident <strong>{{ $resident->full_name }}</strong>?</p>
                         <p class="text-muted small">{{ $resident->resident_code }} — {{ $resident->village?->village_name }}</p>
-                        @if(in_array($role, ['admin', 'secretary']))
+                        @if($role === 'admin')
                             <div class="alert alert-info small mb-0">
-                                <i class="bi bi-info-circle me-1"></i>{{ $role === 'secretary' ? 'This will approve the resident immediately.' : 'This will mark the resident as "Admin Approved". Super Admin will need to finalize the approval.' }}
+                                <i class="bi bi-info-circle me-1"></i>This will mark the resident as "Admin Approved". Super Admin will need to finalize the approval.
+                            </div>
+                        @else
+                            <div class="alert alert-success small mb-0">
+                                <i class="bi bi-info-circle me-1"></i>This is the final approval. The resident will be officially registered.
                             </div>
                         @endif
                     </div>
@@ -231,7 +235,7 @@
     <div class="modal fade" id="rejectResident{{ $resident->id }}" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content">
-                <form action="{{ route($role === 'secretary' ? 'approvals.reject-resident-secretary' : 'approvals.reject-resident', $resident) }}" method="POST">
+                <form action="{{ route('approvals.reject-resident', $resident) }}" method="POST">
                     @csrf
                     <div class="modal-header bg-danger text-white">
                         <h5 class="modal-title"><i class="bi bi-x-circle me-2"></i>Reject Resident</h5>

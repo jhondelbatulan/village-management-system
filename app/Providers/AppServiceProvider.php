@@ -68,6 +68,20 @@ class AppServiceProvider extends ServiceProvider
 
             $menuService = app(MenuService::class);
 
+            $roleSlug = $user?->role?->role_slug;
+            $villageName = $user?->village?->village_name;
+
+            if ($roleSlug === 'secretary' && $villageName) {
+                $navRoleLabel = 'Village Secretary';
+                $navDisplayName = $villageName . ' Secretary';
+            } elseif ($roleSlug === 'treasurer' && $villageName) {
+                $navRoleLabel = 'Village Treasurer';
+                $navDisplayName = $villageName . ' Treasurer';
+            } else {
+                $navRoleLabel = $user?->role?->role_name ?? 'Guest';
+                $navDisplayName = $authUser['name'];
+            }
+
             $bodyClasses = 'dashboard-body';
             if ($prefs) {
                 $bodyClasses .= ' theme-' . $prefs->theme;
@@ -101,6 +115,8 @@ class AppServiceProvider extends ServiceProvider
                 'menuService' => $menuService,
                 'systemName' => $brandingService->get('system_name', SystemHelper::systemName()),
                 'roleLabel' => $user?->role?->role_name ?? 'Guest',
+                'navRoleLabel' => $navRoleLabel,
+                'navDisplayName' => $navDisplayName,
                 'branding' => $brandingService,
                 'userPrefs' => $prefs,
                 'bodyClasses' => $bodyClasses,

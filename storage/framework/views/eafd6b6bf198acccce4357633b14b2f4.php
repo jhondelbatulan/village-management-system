@@ -19,7 +19,7 @@
 <?php echo $__env->make('partials.village-photos-slideshow', array_diff_key(get_defined_vars(), ['__data' => 1, '__path' => 1]))->render(); ?>
 
 <div class="row g-4 mb-4">
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Collected This Month','value' => '₱'.number_format($paymentStats['collected'] ?? 0, 2),'icon' => 'bi-cash-stack','color' => 'success','previousValue' => $paymentStats['previous'] ?? null,'change' => $paymentStats['change'] ?? null,'subtitle' => 'Total collections','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -41,7 +41,29 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
+        <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Monthly Dues Collected','value' => '₱'.number_format($monthlyDues['collected'] ?? 0, 2),'icon' => 'bi-calendar-check','color' => 'warning','change' => $monthlyDues['change'] ?? null,'subtitle' => 'Monthly dues · '.e($monthlyDues['label'] ?? now()->format('F Y')).'','large' => true,'route' => route('billings.index')]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.summary-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Monthly Dues Collected','value' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute('₱'.number_format($monthlyDues['collected'] ?? 0, 2)),'icon' => 'bi-calendar-check','color' => 'warning','change' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($monthlyDues['change'] ?? null),'subtitle' => 'Monthly dues · '.e($monthlyDues['label'] ?? now()->format('F Y')).'','large' => true,'route' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute(route('billings.index'))]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c)): ?>
+<?php $attributes = $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c; ?>
+<?php unset($__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c)): ?>
+<?php $component = $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c; ?>
+<?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
+<?php endif; ?>
+    </div>
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Outstanding Balance','value' => '₱'.number_format($paymentStats['outstanding'] ?? 0, 2),'icon' => 'bi-exclamation-triangle','color' => 'danger','subtitle' => 'Unpaid billings','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -63,7 +85,7 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Total Billings','value' => number_format($paymentStats['total_billings'] ?? 0),'icon' => 'bi-receipt','color' => 'primary','subtitle' => 'All billing records','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -85,7 +107,7 @@
 <?php unset($__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c); ?>
 <?php endif; ?>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-12 col-md-6 col-xl">
         <?php if (isset($component)) { $__componentOriginal81cd247fb7bb4bcc092b56aeeb65006c = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal81cd247fb7bb4bcc092b56aeeb65006c = $attributes; } ?>
 <?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.summary-card','data' => ['title' => 'Collection Rate','value' => ($paymentStats['collection_rate'] ?? 0).'%','icon' => 'bi-graph-up-arrow','color' => 'info','subtitle' => 'Of total billings','large' => true]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
@@ -108,6 +130,59 @@
 <?php endif; ?>
     </div>
 </div>
+
+<?php if(($dashboardWidgets['announcements'] ?? true) || ($dashboardWidgets['calendar'] ?? true)): ?>
+<div class="row g-4 mb-4">
+    <?php if($dashboardWidgets['announcements'] ?? true): ?>
+    <div class="col-lg-6">
+        <?php if (isset($component)) { $__componentOriginal7ec549346b1bac202822fb3c000f6e04 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal7ec549346b1bac202822fb3c000f6e04 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.ranking-card','data' => ['title' => 'Recent Announcements','icon' => 'bi-megaphone','color' => 'primary','valueLabel' => 'Date','items' => $recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d')])->toArray(),'maxItems' => 5]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.ranking-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Recent Announcements','icon' => 'bi-megaphone','color' => 'primary','valueLabel' => 'Date','items' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($recentAnnouncements->map(fn($a) => ['name' => $a->title, 'value' => $a->created_at->format('M d')])->toArray()),'maxItems' => 5]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $attributes = $__attributesOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $component = $__componentOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__componentOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+    </div>
+    <?php endif; ?>
+    <?php if($dashboardWidgets['calendar'] ?? true): ?>
+    <div class="col-lg-6">
+        <?php if (isset($component)) { $__componentOriginal7ec549346b1bac202822fb3c000f6e04 = $component; } ?>
+<?php if (isset($attributes)) { $__attributesOriginal7ec549346b1bac202822fb3c000f6e04 = $attributes; } ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.ranking-card','data' => ['title' => 'Upcoming Events','icon' => 'bi-calendar-event','color' => 'success','valueLabel' => 'Date','items' => $upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray(),'maxItems' => 5]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component->withName('analytics.ranking-card'); ?>
+<?php if ($component->shouldRender()): ?>
+<?php $__env->startComponent($component->resolveView(), $component->data()); ?>
+<?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
+<?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
+<?php endif; ?>
+<?php $component->withAttributes(['title' => 'Upcoming Events','icon' => 'bi-calendar-event','color' => 'success','valueLabel' => 'Date','items' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($upcomingEvents->map(fn($e) => ['name' => $e->title, 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()),'maxItems' => 5]); ?>
+<?php echo $__env->renderComponent(); ?>
+<?php endif; ?>
+<?php if (isset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $attributes = $__attributesOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__attributesOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+<?php if (isset($__componentOriginal7ec549346b1bac202822fb3c000f6e04)): ?>
+<?php $component = $__componentOriginal7ec549346b1bac202822fb3c000f6e04; ?>
+<?php unset($__componentOriginal7ec549346b1bac202822fb3c000f6e04); ?>
+<?php endif; ?>
+    </div>
+    <?php endif; ?>
+</div>
+<?php endif; ?>
 
 <?php if($dashboardWidgets['analytics_summary'] ?? true): ?>
 <div class="row g-4 mb-4">
@@ -163,14 +238,14 @@
     <div class="col-lg-6">
         <?php if (isset($component)) { $__componentOriginal00ee5f815e4606cfdb60d04f3d02a82d = $component; } ?>
 <?php if (isset($attributes)) { $__attributesOriginal00ee5f815e4606cfdb60d04f3d02a82d = $attributes; } ?>
-<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.recent-activity','data' => ['title' => 'Recent Activity','icon' => 'bi-activity','color' => 'success','activities' => $recentActivity,'maxItems' => 10]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
+<?php $component = Illuminate\View\AnonymousComponent::resolve(['view' => 'components.analytics.recent-activity','data' => ['title' => 'My Recent Activity','icon' => 'bi-activity','color' => 'success','activities' => $recentActivity,'maxItems' => 10]] + (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag ? $attributes->all() : [])); ?>
 <?php $component->withName('analytics.recent-activity'); ?>
 <?php if ($component->shouldRender()): ?>
 <?php $__env->startComponent($component->resolveView(), $component->data()); ?>
 <?php if (isset($attributes) && $attributes instanceof Illuminate\View\ComponentAttributeBag): ?>
 <?php $attributes = $attributes->except(\Illuminate\View\AnonymousComponent::ignoredParameterNames()); ?>
 <?php endif; ?>
-<?php $component->withAttributes(['title' => 'Recent Activity','icon' => 'bi-activity','color' => 'success','activities' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($recentActivity),'maxItems' => 10]); ?>
+<?php $component->withAttributes(['title' => 'My Recent Activity','icon' => 'bi-activity','color' => 'success','activities' => \Illuminate\View\Compilers\BladeCompiler::sanitizeComponentAttribute($recentActivity),'maxItems' => 10]); ?>
 <?php echo $__env->renderComponent(); ?>
 <?php endif; ?>
 <?php if (isset($__attributesOriginal00ee5f815e4606cfdb60d04f3d02a82d)): ?>

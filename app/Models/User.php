@@ -77,7 +77,7 @@ class User extends Authenticatable
             $this->suffix,
         ]);
 
-        return implode(' ', $parts);
+        return implode(' ', $parts) ?: $this->username;
     }
 
     public function getProfilePictureUrlAttribute(): string

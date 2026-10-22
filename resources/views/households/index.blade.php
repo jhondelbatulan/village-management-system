@@ -93,7 +93,8 @@
                 <div class="col-md-2">
                     <label class="form-label fw-semibold">Sort</label>
                     <select name="sort" class="form-select">
-                        <option value="">Newest First</option>
+                        <option value="" {{ request('sort') == '' ? 'selected' : '' }}>Block / Lot</option>
+                        <option value="newest" {{ request('sort') == 'newest' ? 'selected' : '' }}>Newest First</option>
                         <option value="az" {{ request('sort') == 'az' ? 'selected' : '' }}>A – Z (Head Name)</option>
                         <option value="za" {{ request('sort') == 'za' ? 'selected' : '' }}>Z – A (Head Name)</option>
                     </select>
@@ -205,7 +206,7 @@
                                             </a>
                                         @endif
                                         @if($household->approval_status === 'active')
-                                            <form action="{{ route('households.destroy', $household) }}" method="POST" class="d-inline" onsubmit="return confirm('Archive this household?')">
+                                            <form action="{{ route('households.destroy', $household) }}" method="POST" class="d-inline" onsubmit="return confirm('Archive this household? All of its residents will be archived as well.')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="btn btn-outline-danger" title="Archive">
@@ -213,6 +214,15 @@
                                                 </button>
                                             </form>
                                         @endif
+                                    @endif
+                                    @if(auth()->user()->role?->role_slug === 'super_admin')
+                                        <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger" title="Delete Permanently">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </form>
                                     @endif
                                 </div>
                             </td>
@@ -278,6 +288,15 @@
                                             @csrf
                                             <button type="submit" class="btn btn-sm btn-outline-success" title="Restore">
                                                 <i class="bi bi-arrow-counterclockwise me-1"></i> Restore
+                                            </button>
+                                        </form>
+                                    @endif
+                                    @if(auth()->user()->role?->role_slug === 'super_admin')
+                                        <form action="{{ route('households.force-delete', $archived) }}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household {{ $archived->household_number }} and all of its residents? This cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Permanently">
+                                                <i class="bi bi-trash me-1"></i> Delete Permanently
                                             </button>
                                         </form>
                                     @endif

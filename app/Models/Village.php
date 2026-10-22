@@ -116,24 +116,26 @@ class Village extends Model
     public function getLogoUrlAttribute(): string
     {
         if ($this->logo) {
-            return asset('storage/' . $this->logo);
+            return asset('storage/'.$this->logo);
         }
+
         return asset(config('app_settings.assets.default_village_logo'));
     }
 
     public function getCoverPhotoUrlAttribute(): string
     {
         if ($this->cover_photo) {
-            return asset('storage/' . $this->cover_photo);
+            return asset('storage/'.$this->cover_photo);
         }
+
         return asset(config('app_settings.assets.default_village_cover'));
     }
 
     public function recalculateCounts(): void
     {
         $this->update([
-            'total_households' => $this->households()->count(),
-            'total_population' => $this->residents()->where('status', 'active')->count(),
+            'total_households' => $this->households()->where('approval_status', 'approved')->count(),
+            'total_population' => $this->residents()->where('status', 'active')->where('approval_status', 'approved')->count(),
         ]);
     }
 }

@@ -73,12 +73,25 @@ class DashboardController extends Controller
         $paymentComparison = $this->dashboard->getPayment()->getVillageComparison();
         $participationComparison = $this->dashboard->getParticipation()->getVillageComparison();
 
-        $pendingHouseholds = Household::with('village', 'submittedBy')
-            ->whereIn('approval_status', ['pending', 'admin_approved'])
+        $recentAnnouncements = Announcement::with('village:id,village_name')
+            ->active()
+            ->latest()
+            ->take(5)
+            ->get();
+
+        $upcomingEvents = Event::with('village:id,village_name')
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->where('event_date', '>=', now()->toDateString())
+            ->orderBy('event_date')
+            ->take(5)
+            ->get();
+
+        $pendingHouseholds = Household::with('village', 'submittedBy', 'adminApprovedBy')
+            ->where('approval_status', 'admin_approved')
             ->latest()->take(5)->get();
 
-        $pendingResidents = Resident::with('village', 'submittedBy')
-            ->whereIn('approval_status', ['pending', 'admin_approved'])
+        $pendingResidents = Resident::with('village', 'submittedBy', 'adminApprovedBy')
+            ->where('approval_status', 'admin_approved')
             ->latest()->take(5)->get();
 
         $populationSummary = $this->populationAnalytics->getPopulationSummary();
@@ -131,6 +144,7 @@ class DashboardController extends Controller
             'participationStats', 'approvalStats', 'recentActivity', 'insights',
             'villageComparison', 'paymentComparison', 'participationComparison',
             'pendingHouseholds', 'pendingResidents',
+            'recentAnnouncements', 'upcomingEvents',
             'populationSummary', 'populationInsights', 'genderDist', 'monthlyTrend',
             'householdSummary', 'householdComposition', 'householdSizeDist',
             'householdInsights', 'householdVillageComparison',
@@ -147,6 +161,25 @@ class DashboardController extends Controller
         ));
     }
 
+    public function monthlyCollection(): View
+    {
+        $system = $this->paymentAnalytics->getSystemStats();
+
+        $rows = Village::where('status', 'active')->orderBy('village_name')->get()->map(function ($village) {
+            $stats = $this->paymentAnalytics->getVillageStats($village->id);
+
+            return [
+                'village' => $village,
+                'this_month' => $stats['this_month_collected'],
+                'previous_month' => $stats['previous_month_collected'],
+                'change' => $stats['change'],
+                'total_collected' => $stats['total_collected'],
+            ];
+        });
+
+        return view('dashboard.super-admin-monthly-collection', compact('system', 'rows'));
+    }
+
     public function admin(): View
     {
         $user = auth()->user();
@@ -159,20 +192,27 @@ class DashboardController extends Controller
         $participationStats = $this->dashboard->getParticipation()->getVillageStats($villageId);
         $announcementStats = $this->dashboard->getAnnouncement()->getVillageStats($villageId);
         $approvalStats = $this->dashboard->getApproval()->getVillageStats($villageId);
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivity($villageId, 10);
+        $monthlyDues = $villageId
+            ? $this->paymentService->getMonthlyDuesCollections($villageId)
+            : [];
+        $recentActivity = $villageId
+            ? $this->dashboard->getActivity()->getRecentActivity($villageId, 10)
+            : collect();
+
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
         $pendingHouseholds = Household::with('village', 'submittedBy')
             ->where('village_id', $villageId)
-            ->whereIn('approval_status', ['pending', 'admin_approved'])
+            ->where('approval_status', 'pending')
             ->latest()->take(5)->get();
 
         $pendingResidents = Resident::with('household', 'village', 'submittedBy')
             ->where('village_id', $villageId)
-            ->whereIn('approval_status', ['pending', 'admin_approved'])
+            ->where('approval_status', 'pending')
             ->latest()->take(5)->get();
 
         $recentAnnouncements = Announcement::where('village_id', $villageId)
+            ->visibleToRole($user->role?->role_slug, $user->id)
             ->active()->latest()->take(5)->get();
 
         $upcomingEvents = Event::where('village_id', $villageId)
@@ -185,7 +225,7 @@ class DashboardController extends Controller
         return view('dashboard.admin', compact(
             'village', 'populationStats', 'householdStats', 'paymentStats',
             'participationStats', 'announcementStats', 'approvalStats',
-            'recentActivity', 'insights', 'pendingHouseholds', 'pendingResidents',
+            'monthlyDues', 'recentActivity', 'insights', 'pendingHouseholds', 'pendingResidents',
             'recentAnnouncements', 'upcomingEvents', 'ageDistribution'
         ));
     }
@@ -200,7 +240,7 @@ class DashboardController extends Controller
         $householdStats = $this->dashboard->getHousehold()->getVillageStats($villageId);
         $approvalStats = $this->dashboard->getApproval()->getVillageStats($villageId);
         $announcementStats = $this->dashboard->getAnnouncement()->getVillageStats($villageId);
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivity($villageId, 10);
+        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
         $pendingHouseholds = Household::with('village', 'submittedBy')
@@ -218,7 +258,8 @@ class DashboardController extends Controller
             ->latest()->take(5)->get();
 
         $recentAnnouncements = Announcement::where('village_id', $villageId)
-            ->latest()->take(5)->get();
+            ->visibleToRole($user->role?->role_slug, $user->id)
+            ->active()->latest()->take(5)->get();
 
         $upcomingEvents = Event::where('village_id', $villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
@@ -242,7 +283,7 @@ class DashboardController extends Controller
         $village = Village::find($villageId);
 
         $paymentStats = $this->dashboard->getPayment()->getVillageStats($villageId);
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivity($villageId, 10);
+        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
         $recentPayments = HouseholdPayment::with(['household', 'paymentType'])
@@ -251,6 +292,7 @@ class DashboardController extends Controller
 
         $collectionStats = $this->paymentService->getVillageCollections($villageId);
         $monthlyStats = $this->paymentService->getMonthlyCollections($villageId);
+        $monthlyDues = $this->paymentService->getMonthlyDuesCollections($villageId);
 
         $monthlyPaymentTrend = $this->paymentAnalytics->getMonthlyTrend($villageId, 12);
 
@@ -262,10 +304,20 @@ class DashboardController extends Controller
             ->pluck('total', 'payment_name')
             ->toArray();
 
+        $recentAnnouncements = Announcement::where('village_id', $villageId)
+            ->visibleToRole($user->role?->role_slug, $user->id)
+            ->active()->latest()->take(5)->get();
+
+        $upcomingEvents = Event::where('village_id', $villageId)
+            ->whereIn('status', ['upcoming', 'ongoing'])
+            ->where('event_date', '>=', now()->toDateString())
+            ->orderBy('event_date')->take(5)->get();
+
         return view('dashboard.treasurer', compact(
             'village', 'paymentStats', 'recentActivity', 'insights',
-            'recentPayments', 'collectionStats', 'monthlyStats',
-            'monthlyPaymentTrend', 'revenueByType'
+            'recentPayments', 'collectionStats', 'monthlyStats', 'monthlyDues',
+            'monthlyPaymentTrend', 'revenueByType',
+            'recentAnnouncements', 'upcomingEvents'
         ));
     }
 
@@ -279,13 +331,14 @@ class DashboardController extends Controller
             ? $this->paymentService->getHouseholdBalance($household->id)
             : ['outstanding' => 0, 'paid' => 0, 'penalties' => 0];
 
-        $recentAnnouncements = [];
-        $upcomingEvents = [];
+        $recentAnnouncements = collect();
+        $upcomingEvents = collect();
         $insights = [];
 
         if ($village) {
             $recentAnnouncements = Announcement::where('village_id', $village->id)
-                ->active()->latest()->take(5)->get();
+                ->visibleToRole('resident', $user->id)
+                ->active()->orderByDesc('is_pinned')->latest()->take(5)->get();
 
             $upcomingEvents = Event::where('village_id', $village->id)
                 ->whereIn('status', ['upcoming', 'ongoing'])
@@ -295,9 +348,11 @@ class DashboardController extends Controller
             $insights = $this->dashboard->getInsight()->getVillageInsights($village->id);
         }
 
+        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
+
         return view('dashboard.resident', compact(
             'user', 'household', 'village', 'balance',
-            'recentAnnouncements', 'upcomingEvents', 'insights'
+            'recentAnnouncements', 'upcomingEvents', 'insights', 'recentActivity'
         ));
     }
 }

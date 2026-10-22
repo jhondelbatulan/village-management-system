@@ -91,9 +91,66 @@
     var badge = document.getElementById('notificationBadge');
     var list = document.getElementById('notificationList');
     var markAllBtn = document.getElementById('markAllRead');
+    var highestSeenId = 0;
+    var firstPoll = true;
+    var soundContext = null;
+
+    function unlockSound() {
+        if (soundContext) {
+            if (soundContext.state === 'suspended') {
+                soundContext.resume().catch(function() {});
+            }
+            return;
+        }
+        var AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        try { soundContext = new AudioCtx(); } catch (e) { soundContext = null; }
+    }
+
+    ['pointerdown', 'keydown', 'touchstart'].forEach(function (evt) {
+        window.addEventListener(evt, unlockSound, { once: true, passive: true });
+    });
+
+    function playNotificationSound() {
+        unlockSound();
+        if (!soundContext) return;
+        if (soundContext.state === 'suspended') {
+            soundContext.resume().catch(function() {});
+        }
+        try {
+            var ctx = soundContext;
+            var start = ctx.currentTime;
+            [[880, 0], [1174.66, 0.12]].forEach(function (tone) {
+                var oscillator = ctx.createOscillator();
+                var gain = ctx.createGain();
+                oscillator.type = 'sine';
+                oscillator.frequency.value = tone[0];
+                var at = start + tone[1];
+                gain.gain.setValueAtTime(0.0001, at);
+                gain.gain.exponentialRampToValueAtTime(0.2, at + 0.02);
+                gain.gain.exponentialRampToValueAtTime(0.0001, at + 0.35);
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                oscillator.start(at);
+                oscillator.stop(at + 0.4);
+            });
+        } catch (e) {}
+    }
 
     function fetchNotifications() {
         fetch('/notifications/unread').then(function(r) { return r.json(); }).then(function(data) {
+            var newCount = 0;
+            var maxId = highestSeenId;
+            if (data.notifications && data.notifications.length > 0) {
+                data.notifications.forEach(function(n) {
+                    var id = parseInt(n.id, 10);
+                    if (id > maxId) maxId = id;
+                    if (!firstPoll && id > highestSeenId) newCount++;
+                });
+            }
+            if (newCount > 0) playNotificationSound();
+            highestSeenId = maxId;
+            firstPoll = false;
             if (data.count > 0) {
                 badge.textContent = data.count;
                 badge.style.display = '';

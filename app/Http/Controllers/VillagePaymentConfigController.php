@@ -22,7 +22,20 @@ class VillagePaymentConfigController extends Controller
 
     public function index(): View
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $user = auth()->user();
+
+        if ($user->role?->role_slug === 'treasurer') {
+            $this->permissionService->authorizePaymentConfig($user, $user->village_id);
+
+            $settings = PaymentConfiguration::where('village_id', $user->village_id)->get();
+            $villages = $user->village_id
+                ? Village::where('id', $user->village_id)->get()
+                : collect();
+
+            return view('payments.config.index', compact('settings', 'villages'));
+        }
+
+        $this->permissionService->authorizeViewPaymentConfig($user);
 
         $settings = PaymentConfiguration::with('village')->get();
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
@@ -32,7 +45,7 @@ class VillagePaymentConfigController extends Controller
 
     public function show(Village $village): View
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizeViewPaymentConfig(auth()->user(), $village->id);
 
         $setting = PaymentConfiguration::where('village_id', $village->id)->first();
         $paymentTypes = PaymentType::where('village_id', $village->id)->get();
@@ -42,7 +55,7 @@ class VillagePaymentConfigController extends Controller
 
     public function edit(Village $village): View
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         $setting = PaymentConfiguration::where('village_id', $village->id)->first();
         $paymentTypes = PaymentType::where('village_id', $village->id)->get();
@@ -52,7 +65,7 @@ class VillagePaymentConfigController extends Controller
 
     public function update(StoreVillagePaymentSettingRequest $request, Village $village): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $village->id);
 
         $validated = $request->validated();
 
@@ -60,7 +73,6 @@ class VillagePaymentConfigController extends Controller
             'village_id' => $village->id,
             'payment_enabled' => $request->input('payment_enabled') ? true : false,
             'payment_manager_role' => $validated['payment_manager_role'] ?? null,
-            'penalty_rate' => $validated['penalty_rate'] ?? 0,
             'grace_period_days' => $validated['grace_period_days'] ?? 0,
             'billing_prefix' => $validated['billing_prefix'] ?? 'BILL',
             'receipt_prefix' => $validated['receipt_prefix'] ?? 'RCPT',
@@ -88,13 +100,13 @@ class VillagePaymentConfigController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()
                 ->withInput()
-                ->with('error', 'Failed to save configuration: ' . $e->getMessage());
+                ->with('error', 'Failed to save configuration: '.$e->getMessage());
         }
     }
 
     public function storePaymentType(Request $request): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $request->input('village_id'));
 
         $request->validate([
             'village_id' => ['required', 'exists:villages,id'],
@@ -125,7 +137,7 @@ class VillagePaymentConfigController extends Controller
 
     public function destroyPaymentType(PaymentType $paymentType): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $paymentType->village_id);
 
         $villageId = $paymentType->village_id;
         $name = $paymentType->payment_name;
@@ -144,7 +156,7 @@ class VillagePaymentConfigController extends Controller
 
     public function updatePaymentType(Request $request, PaymentType $paymentType): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $paymentType->village_id);
 
         $request->validate([
             'payment_name' => ['required', 'string', 'max:255'],
@@ -176,7 +188,7 @@ class VillagePaymentConfigController extends Controller
 
     public function storePaymentTypeFromEdit(Request $request): RedirectResponse
     {
-        $this->permissionService->authorizePaymentConfig(auth()->user());
+        $this->permissionService->authorizePaymentConfig(auth()->user(), $request->input('village_id'));
 
         $request->validate([
             'village_id' => ['required', 'exists:villages,id'],
