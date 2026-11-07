@@ -201,19 +201,32 @@
                             </td>
                             <td>
                                 @php
+                                    $actionKey = strtolower($log->action ?? '');
                                     $actionColors = [
                                         'login' => 'success',
                                         'logout' => 'info',
+                                        'created' => 'primary',
                                         'create' => 'primary',
+                                        'updated' => 'warning',
                                         'update' => 'warning',
+                                        'deleted' => 'danger',
                                         'delete' => 'danger',
+                                        'resident approved' => 'success',
+                                        'resident rejected' => 'danger',
+                                        'resident updated' => 'warning',
+                                        'household approved' => 'success',
+                                        'household rejected' => 'danger',
+                                        'household updated' => 'warning',
+                                        'payment recorded' => 'success',
+                                        'payment updated' => 'warning',
+                                        'payment deleted' => 'danger',
                                     ];
-                                    $actionColor = $actionColors[$log->action] ?? 'secondary';
+                                    $actionColor = $actionColors[$actionKey] ?? 'secondary';
                                 @endphp
-                                <span class="badge bg-{{ $actionColor }}">{{ ucfirst(str_replace('_', ' ', $log->action)) }}</span>
+                                <span class="badge bg-{{ $actionColor }}">{{ ucwords($log->action ?? '') }}</span>
                             </td>
                             <td>{{ $log->module ?? '—' }}</td>
-                            <td>{{ $log->subject ?? '—' }}</td>
+                            <td>{{ $log->subject_label ?? '—' }}</td>
                             <td>
                                 <span class="text-truncate d-inline-block" style="max-width: 250px;" title="{{ $log->description }}">
                                     {{ $log->description ?? '—' }}

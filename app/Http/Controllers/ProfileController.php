@@ -5,11 +5,14 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProfileRequest\ChangePasswordRequest;
 use App\Http\Requests\ProfileRequest\UpdateProfileRequest;
 use App\Services\AuditLogService;
+use App\Services\PasswordService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
 {
+    public function __construct(protected PasswordService $passwordService) {}
+
     public function index(): View
     {
         $user = auth()->user();
@@ -47,22 +50,44 @@ class ProfileController extends Controller
             unset($data['profile_picture']);
         }
 
+        $oldUsername = $user->username;
+
         $user->update($data);
 
         AuditLogService::log('Update Profile', 'Profile', 'User updated their profile information.');
+
+        if ($user->wasChanged('username')) {
+            AuditLogService::log(
+                'Change Username',
+                'Profile',
+                "User changed their username to \"{$user->username}\".",
+                'User',
+                $user->id,
+                ['username' => $oldUsername],
+                ['username' => $user->username],
+            );
+        }
 
         return redirect()->route('profile.index')->with('success', 'Profile updated successfully.');
     }
 
     public function changePasswordForm(): View
     {
-        return view('profile.change-password');
+        $requirements = $this->passwordService->passwordRequirements();
+
+        return view('profile.change-password', compact('requirements'));
     }
 
     public function changePassword(ChangePasswordRequest $request): RedirectResponse
     {
         $user = auth()->user();
+
+        // Apply the admin-configured password policy (length, character
+        // classes, and recent-password history) before saving.
+        $this->passwordService->enforcePolicy($request->password, $user);
+
         $user->update(['password' => $request->password]);
+        $this->passwordService->recordPassword($user, $request->password);
 
         AuditLogService::log('Change Password', 'Profile', 'User changed their password.');
 

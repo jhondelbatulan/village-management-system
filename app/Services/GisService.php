@@ -12,6 +12,7 @@ class GisService
     public function getVillageHouseholds(int $villageId)
     {
         return Household::where('village_id', $villageId)
+            ->where('approval_status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with('village:id,village_name,village_code,latitude,longitude')
@@ -29,7 +30,8 @@ class GisService
 
     public function getAllHouseholdsWithCoords()
     {
-        return Household::whereNotNull('latitude')
+        return Household::where('approval_status', 'approved')
+            ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with('village:id,village_name,village_code,latitude,longitude')
             ->select([
@@ -47,7 +49,8 @@ class GisService
 
     public function getLatestMappedHouseholds(?int $villageId = null, int $limit = 10)
     {
-        $builder = Household::whereNotNull('latitude')
+        $builder = Household::where('approval_status', 'approved')
+            ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with('village:id,village_name,village_code,latitude,longitude')
             ->select([
@@ -93,7 +96,8 @@ class GisService
 
     public function searchHouseholds(string $query, ?int $villageId = null)
     {
-        $builder = Household::whereNotNull('latitude')
+        $builder = Household::where('approval_status', 'approved')
+            ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with('village:id,village_name,village_code,latitude,longitude');
 
@@ -123,7 +127,8 @@ class GisService
     {
         $builder = Resident::whereNotNull('household_id')
             ->whereHas('household', function ($q) {
-                $q->whereNotNull('latitude')->whereNotNull('longitude');
+                $q->where('approval_status', 'approved')
+                    ->whereNotNull('latitude')->whereNotNull('longitude');
             })
             ->with(['household' => function ($q) {
                 $q->select([
@@ -152,7 +157,8 @@ class GisService
 
     public function filterHouseholds(array $filters)
     {
-        $builder = Household::with('village:id,village_name,village_code,latitude,longitude');
+        $builder = Household::where('approval_status', 'approved')
+            ->with('village:id,village_name,village_code,latitude,longitude');
 
         if (! empty($filters['village_id'])) {
             $builder->where('village_id', $filters['village_id']);
@@ -465,7 +471,8 @@ class GisService
 
     public function getExportData(?int $villageId = null)
     {
-        $builder = Household::with('village:id,village_name,village_code');
+        $builder = Household::where('approval_status', 'approved')
+            ->with('village:id,village_name,village_code');
 
         if ($villageId) {
             $builder->where('village_id', $villageId);

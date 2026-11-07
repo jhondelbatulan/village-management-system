@@ -45,6 +45,27 @@ class ActivityLog extends Model
         return $this->morphTo();
     }
 
+    /**
+     * Human-readable label for the morphed subject (instead of dumping the
+     * raw model). Returns null when there is no subject.
+     */
+    public function getSubjectLabelAttribute(): ?string
+    {
+        $subject = $this->subject;
+
+        if (! $subject) {
+            return null;
+        }
+
+        return match (true) {
+            $subject instanceof Resident => $subject->full_name,
+            $subject instanceof Household => $subject->household_number,
+            $subject instanceof HouseholdPayment => '₱' . number_format((float) ($subject->amount ?? 0), 2),
+            $subject instanceof Billing => $subject->billing_number,
+            default => class_basename($subject),
+        };
+    }
+
     public function getBrowserNameAttribute(): string
     {
         if (!$this->user_agent) return 'Unknown';

@@ -267,6 +267,7 @@ class GisDashboardService
         $paymentEnabled = $village->isPaymentEnabled();
 
         $households = Household::where('village_id', $villageId)
+            ->where('approval_status', 'approved')
             ->whereNotNull('latitude')
             ->whereNotNull('longitude')
             ->with([

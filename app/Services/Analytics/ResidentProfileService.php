@@ -143,9 +143,9 @@ class ResidentProfileService
                 WHEN years_of_residency BETWEEN 6 AND 10 THEN '6-10 years'
                 WHEN years_of_residency BETWEEN 11 AND 20 THEN '11-20 years'
                 ELSE '20+ years'
-            END as range, COUNT(*) as count")
-            ->groupBy('range')
-            ->pluck('count', 'range')
+            END as residency_range, COUNT(*) as count")
+            ->groupBy('residency_range')
+            ->pluck('count', 'residency_range')
             ->toArray();
 
         return $this->stats->frequencyCount($counts);

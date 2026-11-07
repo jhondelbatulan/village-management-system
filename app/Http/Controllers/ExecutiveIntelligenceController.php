@@ -48,18 +48,37 @@ class ExecutiveIntelligenceController extends Controller
 
             return response()->stream(function () use ($data) {
                 $handle = fopen('php://output', 'w');
-                fputcsv($handle, ['Type', 'Detail', 'Value']);
+                fputcsv($handle, ['Type', 'Name', 'Detail', 'Extra']);
 
                 foreach ($data['topInsights'] as $insight) {
-                    fputcsv($handle, ['Insight', $insight->title ?? '', $insight->value ?? '']);
+                    fputcsv($handle, [
+                        'Insight',
+                        ucfirst($insight['type'] ?? ''),
+                        $insight['message'] ?? '',
+                        ($insight['recommendation'] ?? '') . ' [' . ucfirst($insight['priority'] ?? '') . ' priority]',
+                    ]);
                 }
 
                 foreach ($data['villageHighlights'] as $highlight) {
-                    fputcsv($handle, ['Highlight', $highlight->village_name ?? '', $highlight->summary ?? '']);
+                    fputcsv($handle, [
+                        'Village',
+                        $highlight['village']['name'] ?? '',
+                        'Population: ' . ($highlight['population'] ?? 0) . '; Employment: ' . ($highlight['employment_rate'] ?? 0) . '%',
+                        'Income: ₱' . number_format((float) ($highlight['average_income'] ?? 0), 2)
+                            . '; Readiness: ' . ($highlight['readiness_score'] ?? 0) . '/100',
+                    ]);
                 }
 
-                foreach ($data['comparativeAnalysis'] as $analysis) {
-                    fputcsv($handle, ['Analysis', $analysis->metric ?? '', $analysis->value ?? '']);
+                $analysis = $data['comparativeAnalysis'];
+                if (! empty($analysis['villages'])) {
+                    foreach ($analysis['villages'] as $metrics) {
+                        fputcsv($handle, [
+                            'Comparison',
+                            $metrics['village_name'] ?? '',
+                            'Employment: ' . ($metrics['employment_rate'] ?? 0) . '%; Income: ₱' . number_format((float) ($metrics['average_income'] ?? 0), 2),
+                            'Skills: ' . ($metrics['skill_coverage'] ?? 0) . '%; Education: ' . ($metrics['education_rate'] ?? 0) . '%',
+                        ]);
+                    }
                 }
 
                 fclose($handle);

@@ -20,16 +20,30 @@ class ApprovalController extends Controller
 
         // Stage 1 (Admin): pending submissions from their village.
         // Stage 2 (Super Admin): admin-approved records awaiting final decision.
+        // The secretary manages everything that is not yet final here, because the
+        // household list only shows super-admin-approved records.
+        // Finalized records leave the queue and are kept in the history section.
+        $isHistory = request('view') === 'history' || request('status') === 'approved';
+
         $query = Household::with(['village', 'submittedBy', 'adminApprovedBy', 'approvedBy']);
 
-        if ($role === 'admin' || $role === 'secretary') {
+        if ($isHistory) {
+            $query->where('approval_status', 'approved');
+
+            if (in_array($role, ['admin', 'secretary'])) {
+                $query->where('village_id', $user->village_id);
+            }
+        } elseif ($role === 'secretary') {
+            $query->where('village_id', $user->village_id);
+            $query->whereIn('approval_status', ['draft', 'pending', 'admin_approved', 'rejected']);
+        } elseif ($role === 'admin') {
             $query->where('village_id', $user->village_id);
             $query->whereIn('approval_status', ['pending']);
         } elseif ($role === 'super_admin') {
-            $query->whereIn('approval_status', ['admin_approved', 'approved', 'rejected']);
+            $query->whereIn('approval_status', ['admin_approved', 'rejected']);
         }
 
-        if (request('status')) {
+        if (! $isHistory && request('status')) {
             $query->where('approval_status', request('status'));
         }
 
@@ -51,24 +65,24 @@ class ApprovalController extends Controller
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
 
         $pendingCount = Household::where('approval_status', 'pending')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $adminApprovedCount = Household::where('approval_status', 'admin_approved')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $approvedCount = Household::where('approval_status', 'approved')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $rejectedCount = Household::where('approval_status', 'rejected')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $counts = compact('pendingCount', 'adminApprovedCount', 'approvedCount', 'rejectedCount');
 
-        return view('approvals.households', compact('households', 'villages', 'counts', 'role'));
+        return view('approvals.households', compact('households', 'villages', 'counts', 'role', 'isHistory'));
     }
 
     public function approveHousehold(Household $household): RedirectResponse
@@ -186,16 +200,25 @@ class ApprovalController extends Controller
         $user = auth()->user();
         $role = $user->role?->role_slug;
 
+        // Finalized records leave the queue and are kept in the history section.
+        $isHistory = request('view') === 'history' || request('status') === 'approved';
+
         $query = Resident::with(['village', 'household', 'submittedBy', 'adminApprovedBy', 'approvedBy']);
 
-        if ($role === 'admin' || $role === 'secretary') {
+        if ($isHistory) {
+            $query->where('approval_status', 'approved');
+
+            if (in_array($role, ['admin', 'secretary'])) {
+                $query->where('village_id', $user->village_id);
+            }
+        } elseif ($role === 'admin' || $role === 'secretary') {
             $query->where('village_id', $user->village_id);
             $query->whereIn('approval_status', ['pending']);
         } elseif ($role === 'super_admin') {
-            $query->whereIn('approval_status', ['admin_approved', 'approved', 'rejected']);
+            $query->whereIn('approval_status', ['admin_approved', 'rejected']);
         }
 
-        if (request('status')) {
+        if (! $isHistory && request('status')) {
             $query->where('approval_status', request('status'));
         }
 
@@ -216,24 +239,24 @@ class ApprovalController extends Controller
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
 
         $pendingCount = Resident::where('approval_status', 'pending')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $adminApprovedCount = Resident::where('approval_status', 'admin_approved')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $approvedCount = Resident::where('approval_status', 'approved')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $rejectedCount = Resident::where('approval_status', 'rejected')
-            ->when($role === 'admin', fn ($q) => $q->where('village_id', $user->village_id))
+            ->when(in_array($role, ['admin', 'secretary']), fn ($q) => $q->where('village_id', $user->village_id))
             ->count();
 
         $counts = compact('pendingCount', 'adminApprovedCount', 'approvedCount', 'rejectedCount');
 
-        return view('approvals.residents', compact('residents', 'villages', 'counts', 'role'));
+        return view('approvals.residents', compact('residents', 'villages', 'counts', 'role', 'isHistory'));
     }
 
     public function approveResident(Resident $resident): RedirectResponse

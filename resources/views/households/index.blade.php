@@ -81,16 +81,6 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-semibold">Approval</label>
-                    <select name="approval_status" class="form-select">
-                        <option value="">All</option>
-                        <option value="draft" {{ request('approval_status') == 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('approval_status') == 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('approval_status') == 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('approval_status') == 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
                     <label class="form-label fw-semibold">Sort</label>
                     <select name="sort" class="form-select">
                         <option value="" {{ request('sort') == '' ? 'selected' : '' }}>Block / Lot</option>
@@ -108,7 +98,7 @@
                     <a href="{{ route('households.index') }}" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                     </a>
-                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'status', 'approval_status', 'sort']))
+                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'status', 'sort']))
                         <span class="text-muted small align-self-center ms-1">
                             <i class="bi bi-info-circle me-1"></i>{{ $households->total() }} result(s) found
                         </span>

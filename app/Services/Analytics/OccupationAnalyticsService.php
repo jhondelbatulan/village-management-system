@@ -103,9 +103,9 @@ class OccupationAnalyticsService
         return $result;
     }
 
-    public function getOccupationRankings(): array
+    public function getOccupationRankings(?int $villageId = null): array
     {
-        $dist = $this->getOccupationDistribution();
+        $dist = $this->getOccupationDistribution($villageId);
         $rank = 1;
         $result = [];
         foreach ($dist as $occ => $data) {

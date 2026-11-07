@@ -34,7 +34,7 @@ class ActivityLogService
 
     public static function getFiltered(array $filters = [], int $perPage = 25)
     {
-        $query = ActivityLog::with('user.role', 'village');
+        $query = ActivityLog::with('user.role', 'village', 'subject');
 
         if (!empty($filters['user_id'])) {
             $query->where('user_id', $filters['user_id']);
@@ -64,6 +64,13 @@ class ActivityLogService
     public static function getStats(): array
     {
         return [
+            // Keys consumed by the activity-logs stat cards.
+            'total' => ActivityLog::count(),
+            'today' => ActivityLog::whereDate('created_at', today())->count(),
+            'active_users' => ActivityLog::whereDate('created_at', today())->distinct()->count('user_id'),
+            'unique_actions' => ActivityLog::distinct()->count('action'),
+
+            // Additional aggregates.
             'total_today' => ActivityLog::whereDate('created_at', today())->count(),
             'total_week' => ActivityLog::where('created_at', '>=', now()->subWeek())->count(),
             'total_month' => ActivityLog::where('created_at', '>=', now()->subMonth())->count(),

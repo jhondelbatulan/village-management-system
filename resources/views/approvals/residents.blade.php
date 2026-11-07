@@ -51,10 +51,10 @@
     </div>
     @endif
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center p-3 {{ request('status') === 'approved' ? 'border-primary border-2' : '' }}">
-            <a href="{{ route('approvals.residents', ['status' => 'approved']) }}" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-3 {{ $isHistory ? 'border-primary border-2' : '' }}">
+            <a href="{{ route('approvals.residents', ['view' => 'history']) }}" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success">{{ $counts['approvedCount'] }}</div>
-                <div class="text-muted small">Approved</div>
+                <div class="text-muted small">Approved History</div>
             </a>
         </div>
     </div>
@@ -68,11 +68,28 @@
     </div>
 </div>
 
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link {{ $isHistory ? '' : 'active' }}"
+           href="{{ route('approvals.residents', array_filter(['search' => request('search'), 'village_id' => request('village_id')])) }}">
+            <i class="bi bi-list-check me-1"></i>All Approval Records
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link {{ $isHistory ? 'active' : '' }}"
+           href="{{ route('approvals.residents', array_filter(['view' => 'history', 'search' => request('search'), 'village_id' => request('village_id')])) }}">
+            <i class="bi bi-clock-history me-1"></i>Approved History
+        </a>
+    </li>
+</ul>
+
 <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-list-check me-2 text-primary"></i>
-            @if(request('status'))
+            <i class="bi {{ $isHistory ? 'bi-clock-history' : 'bi-list-check' }} me-2 text-primary"></i>
+            @if($isHistory)
+                History of Approved Residents
+            @elseif(request('status'))
                 {{ ucfirst(str_replace('_', ' ', request('status'))) }} Records
             @else
                 All Approval Records
@@ -86,6 +103,7 @@
             @endif
             @if($role === 'super_admin')
             <form action="{{ route('approvals.residents') }}" method="GET" class="d-flex gap-2">
+                <input type="hidden" name="view" value="{{ request('view') }}">
                 <input type="hidden" name="status" value="{{ request('status') }}">
                 <input type="hidden" name="search" value="{{ request('search') }}">
                 <select name="village_id" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -99,6 +117,7 @@
             </form>
             @endif
             <form action="{{ route('approvals.residents') }}" method="GET" class="d-flex gap-1">
+                <input type="hidden" name="view" value="{{ request('view') }}">
                 <input type="hidden" name="status" value="{{ request('status') }}">
                 <input type="hidden" name="village_id" value="{{ request('village_id') }}">
                 <input type="search" name="search" class="form-control form-control-sm" placeholder="Search residents..." value="{{ request('search') }}">
@@ -116,6 +135,10 @@
                         <th>Gender</th>
                         <th>Block / Lot</th>
                         <th>Village</th>
+                        @if($isHistory)
+                            <th>Approved By</th>
+                            <th>Approved On</th>
+                        @endif
                         <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -140,6 +163,10 @@
                             </td>
                             <td>{{ $resident->household ? 'Block ' . ($resident->household->block_number ?? '—') . ' - Lot ' . ($resident->household->lot_number ?? '—') : '—' }}</td>
                             <td>{{ $resident->village?->village_name ?? '—' }}</td>
+                            @if($isHistory)
+                                <td>{{ $resident->approvedBy?->full_name ?? '—' }}</td>
+                                <td>{{ optional($resident->approved_at)->format('M d, Y h:i A') ?? '—' }}</td>
+                            @endif
                             <td>
                                 @if($resident->approval_status === 'approved')
                                     <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
@@ -174,10 +201,12 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="{{ $isHistory ? 9 : 7 }}" class="text-center py-5">
                                 <i class="bi bi-check-circle fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">
-                                    @if(request('status'))
+                                    @if($isHistory)
+                                        No approved residents in history yet.
+                                    @elseif(request('status'))
                                         No {{ str_replace('_', ' ', request('status')) }} records found.
                                     @else
                                         No approval records found.

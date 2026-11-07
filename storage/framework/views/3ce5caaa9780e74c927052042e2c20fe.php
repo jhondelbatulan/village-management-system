@@ -8,11 +8,6 @@
             <p class="page-subtitle text-muted mb-0">Manage and track all registered residents across villages.</p>
         </div>
         <div class="d-flex gap-2">
-            <?php if(auth()->user()->role?->role_slug === 'secretary'): ?>
-                <a href="<?php echo e(route('residents.import')); ?>" class="btn btn-info btn-sm">
-                    <i class="bi bi-upload me-1"></i>Import
-                </a>
-            <?php endif; ?>
             <a href="<?php echo e(route('residents.export')); ?>" class="btn btn-success btn-sm">
                 <i class="bi bi-download me-1"></i>Export CSV
             </a>

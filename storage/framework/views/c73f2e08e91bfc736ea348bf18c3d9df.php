@@ -47,7 +47,7 @@ endif;
 unset($__errorArgs, $__bag); ?>" required>
                         <option value="">Select Village</option>
                         <?php $__currentLoopData = $villages; $__env->addLoop($__currentLoopData); foreach($__currentLoopData as $village): $__env->incrementLoopIndices(); $loop = $__env->getLastLoop(); ?>
-                            <option value="<?php echo e($village->id); ?>" <?php echo e(old('village_id') == $village->id ? 'selected' : ''); ?>>
+                            <option value="<?php echo e($village->id); ?>" <?php echo e(old('village_id', $autoVillageId) == $village->id ? 'selected' : ''); ?>>
                                 <?php echo e($village->village_name); ?>
 
                             </option>
@@ -200,7 +200,7 @@ unset($__errorArgs, $__bag); ?>
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12">
-                    <label for="address" class="form-label fw-semibold">Address <span class="text-danger">*</span></label>
+                    <label for="address" class="form-label fw-semibold">Address <small class="text-muted fw-normal">(optional)</small></label>
                     <textarea name="address" id="address" rows="2"
                         class="form-control <?php $__errorArgs = ['address'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
@@ -210,7 +210,7 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>"
-                        required placeholder="Full address"><?php echo e(old('address')); ?></textarea>
+                        placeholder="Full address"><?php echo e(old('address')); ?></textarea>
                     <?php $__errorArgs = ['address'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
@@ -348,7 +348,6 @@ $message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
 if (isset($__messageOriginal)) { $message = $__messageOriginal; }
 endif;
 unset($__errorArgs, $__bag); ?>" required>
-                        <option value="">Select Material</option>
                         <option value="concrete" <?php echo e(old('house_status') == 'concrete' ? 'selected' : ''); ?>>Concrete</option>
                         <option value="wood_timber" <?php echo e(old('house_status') == 'wood_timber' ? 'selected' : ''); ?>>Wood/Timber</option>
                         <option value="steel" <?php echo e(old('house_status') == 'steel' ? 'selected' : ''); ?>>Steel</option>
@@ -383,31 +382,6 @@ unset($__errorArgs, $__bag); ?>"
                         aria-describedby="registration_date-hint">
                     <div class="form-text" id="registration_date-hint">Set automatically to today's date. Cannot be edited.</div>
                     <?php $__errorArgs = ['registration_date'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?>
-                        <div class="invalid-feedback"><?php echo e($message); ?></div>
-                    <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                </div>
-                <div class="col-md-4">
-                    <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select name="status" id="status" class="form-select <?php $__errorArgs = ['status'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>" required>
-                        <option value="active" <?php echo e(old('status', 'active') == 'active' ? 'selected' : ''); ?>>Active</option>
-                        <option value="inactive" <?php echo e(old('status') == 'inactive' ? 'selected' : ''); ?>>Inactive</option>
-                        <option value="relocated" <?php echo e(old('status') == 'relocated' ? 'selected' : ''); ?>>Relocated</option>
-                    </select>
-                    <?php $__errorArgs = ['status'];
 $__bag = $errors->getBag($__errorArgs[1] ?? 'default');
 if ($__bag->has($__errorArgs[0])) :
 if (isset($message)) { $__messageOriginal = $message; }
@@ -476,8 +450,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderReferenceMarkers(list) {
+        var vid = villageSelect ? villageSelect.value : '';
         referenceLayer.clearLayers();
+        if (!vid) return;
         list.forEach(function(h) {
+            if (String(h.village_id) !== String(vid)) return;
             if (!h.latitude || !h.longitude) return;
             L.marker([h.latitude, h.longitude], { icon: referenceIcon })
                 .bindPopup('<div class="gis-popup"><span class="badge bg-secondary">Latest saved</span><br><strong>' + escHtml(h.household_number) + '</strong><br><small>' + escHtml(h.household_head_name || '') + '</small><br><small>' + escHtml(h.village ? h.village.village_name : '') + '</small></div>')
@@ -492,37 +469,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function loadReferenceMarkers() {
+    function loadReferenceMarkers(keepView) {
         var vid = villageSelect ? villageSelect.value : '';
         if (!vid) {
-            renderReferenceMarkers(latestHouseholds);
+            referenceLayer.clearLayers();
             return;
         }
+
+        renderReferenceMarkers(latestHouseholds);
+
         fetch('/gis/village/' + vid)
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success && res.households) {
                     renderReferenceMarkers(res.households);
-                    fitToReference();
+                    if (keepView) return;
                     if (res.center && res.center.lat) {
                         pickerMap.setView([res.center.lat, res.center.lng], 15);
+                    } else {
+                        fitToReference();
                     }
                 }
             })
             .catch(function() {});
     }
 
-    renderReferenceMarkers(latestHouseholds);
-    if (latIn.value && lngIn.value) {
+    var hasExistingPin = !!(latIn.value && lngIn.value);
+
+    if (hasExistingPin) {
         pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)]).addTo(pickerMap);
         pickerMap.setView([parseFloat(latIn.value), parseFloat(lngIn.value)], 15);
         setHint('Click anywhere to pin location', false);
-    } else if (latestHouseholds.length > 0) {
-        fitToReference();
+    }
+
+    if (villageSelect && villageSelect.value) {
+        loadReferenceMarkers(hasExistingPin);
+    } else {
+        referenceLayer.clearLayers();
     }
 
     if (villageSelect) {
-        villageSelect.addEventListener('change', loadReferenceMarkers);
+        villageSelect.addEventListener('change', function() {
+            loadReferenceMarkers(false);
+        });
     }
 
     function setPin(lat, lng, moveMap) {
@@ -594,17 +583,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function titleCaseName(value) {
-        value = value.replace(/\s+/g, ' ').trim();
+        // Collapse repeated spaces and drop leading spaces, but keep ONE trailing
+        // space so the user can continue typing the next word.
+        value = value.replace(/\s+/g, ' ').replace(/^\s+/, '');
 
         if (value === '') return '';
 
-        if (value === value.toUpperCase() || value === value.toLowerCase()) {
-            value = value.toLowerCase();
+        var keepTrailingSpace = value.charAt(value.length - 1) === ' ';
+
+        if (keepTrailingSpace) {
+            value = value.slice(0, -1);
         }
 
-        return value.split(' ').map(function(word) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+        if (value === '') return '';
+
+        // First letter of every word capitalized, the rest lowercased.
+        var cased = value.split(' ').map(function(word) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         }).join(' ');
+
+        return keepTrailingSpace ? cased + ' ' : cased;
     }
 
     ['block_number', 'lot_number'].forEach(function(id) {
@@ -621,12 +619,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (headName) {
         headName.addEventListener('input', function() {
-            headName.value = headName.value.replace(/[^\p{L} ]/gu, '').replace(/ {2,}/g, ' ');
+            var pos = headName.selectionStart;
+            headName.value = titleCaseName(headName.value.replace(/[^\p{L} ]/gu, ''));
+            headName.setSelectionRange(pos, pos);
             clearInvalid(headName);
         });
 
         headName.addEventListener('blur', function() {
-            headName.value = titleCaseName(headName.value);
+            headName.value = headName.value.replace(/\s+$/, '');
         });
     }
 });

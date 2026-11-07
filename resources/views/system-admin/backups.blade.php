@@ -124,17 +124,17 @@
                                     <span class="fw-semibold">{{ $backup->filename }}</span>
                                 </div>
                             </td>
-                            <td><span class="text-muted">{{ $backup->size ?? '—' }}</span></td>
+                            <td><span class="text-muted">{{ $backup->size_formatted ?? '—' }}</span></td>
                             <td>
                                 <small class="text-muted">{{ $backup->created_at->format('M d, Y H:i:s') }}</small>
                             </td>
                             <td>
-                                <span class="text-muted">{{ $backup->generatedBy?->full_name ?? 'System' }}</span>
+                                <span class="text-muted">{{ $backup->user?->full_name ?? 'System' }}</span>
                             </td>
                             <td>
                                 @if($backup->status === 'completed')
                                     <span class="badge bg-success">Completed</span>
-                                @elseif($backup->status === 'in_progress')
+                                @elseif($backup->status === 'processing' || $backup->status === 'in_progress')
                                     <span class="badge bg-warning">In Progress</span>
                                 @elseif($backup->status === 'failed')
                                     <span class="badge bg-danger">Failed</span>
@@ -272,10 +272,14 @@
             <div class="modal-body">
                 <div class="alert alert-danger mb-3">
                     <i class="bi bi-exclamation-triangle me-2"></i>
-                    <strong>This action cannot be undone.</strong> All households, residents, billings, payments, announcements, events, and related records will be permanently deleted.
+                    <strong>This action cannot be undone.</strong> All households, residents, billings, payments, online payments, announcements, events, and related records will be permanently deleted.
                 </div>
-                <p>To confirm, type <strong>RESET</strong> in the field below:</p>
-                <input type="text" class="form-control" id="resetConfirmInput" placeholder="Type RESET to confirm">
+                <p class="mb-2">To confirm, enter your <strong>Super Admin password</strong> below:</p>
+                <input type="password" class="form-control" id="resetPasswordInput" name="password"
+                       placeholder="Enter your Super Admin password" autocomplete="current-password" required>
+                @error('password')
+                    <div class="text-danger small mt-2">{{ $message }}</div>
+                @enderror
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -293,11 +297,11 @@
 @push('scripts')
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var input = document.getElementById('resetConfirmInput');
+    var input = document.getElementById('resetPasswordInput');
     var btn = document.getElementById('resetSubmitBtn');
     if (input && btn) {
         input.addEventListener('input', function() {
-            btn.disabled = this.value !== 'RESET';
+            btn.disabled = this.value.trim().length === 0;
         });
     }
 });

@@ -60,6 +60,10 @@ Route::middleware('guest')->group(function (): void {
     Route::get('/forgot-password', [ForgotPasswordController::class, 'showLinkRequestForm'])->name('password.request');
     Route::post('/forgot-password', [ForgotPasswordController::class, 'sendResetLinkEmail'])->name('password.email')->middleware('throttle:5,1');
 
+    Route::get('/verify-otp', [ForgotPasswordController::class, 'showVerifyForm'])->name('password.otp.show');
+    Route::post('/verify-otp', [ForgotPasswordController::class, 'verify'])->name('password.otp.verify')->middleware('throttle:10,1');
+    Route::post('/verify-otp/resend', [ForgotPasswordController::class, 'resend'])->name('password.otp.resend')->middleware('throttle:5,1');
+
     Route::get('/reset-password/{token}', [ResetPasswordController::class, 'showResetForm'])->name('password.reset');
     Route::post('/reset-password', [ResetPasswordController::class, 'reset'])->name('password.update');
 });
@@ -247,9 +251,6 @@ Route::middleware(['auth'])->group(function (): void {
     */
     Route::middleware('role:super_admin,admin,secretary')->prefix('residents')->name('residents.')->group(function (): void {
         Route::get('/', [ResidentController::class, 'index'])->name('index');
-        Route::get('/import', [ResidentController::class, 'import'])->name('import');
-        Route::post('/import', [ResidentController::class, 'processImport'])->name('process-import');
-        Route::get('/download-template', [ResidentController::class, 'downloadTemplate'])->name('download-template');
         Route::get('/export', [ResidentController::class, 'export'])->name('export');
 
         Route::middleware('role:secretary')->group(function (): void {

@@ -238,4 +238,80 @@ class GisMapTest extends TestCase
             ->assertSee('nominatim', false)
             ->assertSee('btn-latest', false);
     }
+
+    public function test_village_markers_are_bigger_than_household_markers_on_all_gis_maps(): void
+    {
+        foreach ([$this->superAdmin, $this->secretary] as $user) {
+            $this->actingAs($user)
+                ->get(route('gis.index'))
+                ->assertOk()
+                ->assertSee('width:34px;height:34px;background:#1a73e8', false)
+                ->assertSee('width:12px;height:12px;background:', false);
+        }
+
+        $this->actingAs($this->residentA)
+            ->get(route('gis.index'))
+            ->assertOk()
+            ->assertSee('width:34px;height:34px;background:#1a73e8', false)
+            ->assertSee('width:12px;height:12px;background:', false);
+    }
+
+    public function test_secretary_sees_all_village_markers_but_only_own_household_pinpoints(): void
+    {
+        $page = $this->actingAs($this->secretary)->get(route('gis.index'));
+
+        $page->assertOk()
+            ->assertSee('Your Village', false)      // own big marker
+            ->assertSee('VLA-00001', false)         // own household pins
+            ->assertSee('Beta Village')             // other village's big marker location
+            ->assertDontSee('VLB-00001', false)     // other village's household pins
+            ->assertDontSee('Head Of VLB-00001', false);
+    }
+
+    public function test_village_apis_never_expose_other_villages_household_locations(): void
+    {
+        $secretary = $this->actingAs($this->secretary);
+
+        $search = $secretary->get(route('gis.search', ['q' => 'VLB']));
+        $search->assertOk();
+        $this->assertSame(0, $search->json('count'));
+
+        $filter = $secretary->get(route('gis.filter'));
+        $filter->assertOk();
+        $this->assertFalse(collect($filter->json('data'))->pluck('id')->contains($this->householdB1->id));
+
+        $latest = $secretary->get(route('gis.latest', ['limit' => 50]));
+        $latest->assertOk();
+        $this->assertFalse(collect($latest->json('data'))->pluck('id')->contains($this->householdB1->id));
+
+        $villages = $secretary->get(route('gis.villages-api'));
+        $villages->assertOk();
+        $names = collect($villages->json('villages'))->pluck('village_name');
+        $this->assertTrue($names->contains('Alpha Village'));
+        $this->assertTrue($names->contains('Beta Village'));
+    }
+
+    public function test_secretary_household_map_picker_autolocates_to_their_village(): void
+    {
+        $page = $this->actingAs($this->secretary)->get(route('households.create'));
+
+        $page->assertOk()
+            ->assertSee('value="' . $this->villageA->id . '" selected', false)
+            ->assertSee('loadReferenceMarkers(hasExistingPin)', false)
+            ->assertSee('"household_number":"VLA-00001"', false)
+            ->assertDontSee('"household_number":"VLB-00001"', false);
+    }
+
+    public function test_household_edit_map_falls_back_to_village_mapped_coordinates(): void
+    {
+        $unmapped = $this->makeHousehold($this->villageA, 'VLA-00004', '2', '1', null, null, now());
+
+        $page = $this->actingAs($this->secretary)->get(route('households.edit', $unmapped));
+
+        $page->assertOk()
+            ->assertSee('var latVal = ' . $this->villageA->latitude . ';', false)
+            ->assertSee('var lngVal = ' . $this->villageA->longitude . ';', false)
+            ->assertDontSee('var latVal = 9.2372;', false)
+            ->assertDontSee('"household_number":"VLB-00001"', false);
+    }
 }

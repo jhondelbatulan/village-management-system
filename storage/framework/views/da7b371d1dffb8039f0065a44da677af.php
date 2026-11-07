@@ -93,30 +93,6 @@ unset($__errorArgs, $__bag); ?>
                     </div>
                 <?php endif; ?>
 
-                <div class="col-md-4">
-                    <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select class="form-select <?php $__errorArgs = ['status'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> is-invalid <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>"
-                            id="status" name="status" required>
-                        <option value="active" <?php echo e(old('status', 'active') === 'active' ? 'selected' : ''); ?>>Active</option>
-                        <option value="inactive" <?php echo e(old('status') === 'inactive' ? 'selected' : ''); ?>>Inactive</option>
-                    </select>
-                    <?php $__errorArgs = ['status'];
-$__bag = $errors->getBag($__errorArgs[1] ?? 'default');
-if ($__bag->has($__errorArgs[0])) :
-if (isset($message)) { $__messageOriginal = $message; }
-$message = $__bag->first($__errorArgs[0]); ?> <div class="invalid-feedback"><?php echo e($message); ?></div> <?php unset($message);
-if (isset($__messageOriginal)) { $message = $__messageOriginal; }
-endif;
-unset($__errorArgs, $__bag); ?>
-                </div>
-
                 <div class="col-12" id="household-section" style="display: <?php echo e(old('role_id') == $residentRoleId ? 'block' : 'none'); ?>;">
                     <h6 class="fw-semibold text-primary mb-0 mt-3">
                         <i class="bi bi-house me-1"></i>Household Assignment

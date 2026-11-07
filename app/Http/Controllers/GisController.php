@@ -55,8 +55,10 @@ class GisController extends Controller
         $stats = $this->gis->getVillageStatistics($villageId);
         $center = $this->gis->getVillageCenter($villageId);
         $dashboardData = $this->dashboard->getComprehensiveVillageData($villageId);
+        // Every mapped village gets a big marker; household pins stay scoped to this village.
+        $villageMarkers = $this->gis->getVillagesWithCoords();
 
-        return view('gis.village', compact('village', 'households', 'stats', 'center', 'dashboardData'));
+        return view('gis.village', compact('village', 'households', 'stats', 'center', 'dashboardData', 'villageMarkers'));
     }
 
     private function residentView($user): View
@@ -69,7 +71,9 @@ class GisController extends Controller
             : collect();
 
         $center = null;
-        if ($household && $household->latitude && $household->longitude) {
+        $ownApproved = $household && $household->approval_status === 'approved';
+
+        if ($ownApproved && $household->latitude && $household->longitude) {
             $center = [
                 'lat' => (float) $household->latitude,
                 'lng' => (float) $household->longitude,
@@ -78,7 +82,7 @@ class GisController extends Controller
             $center = $this->gis->getVillageCenter($villageId);
         }
 
-        $hasMapData = ($household && $household->latitude && $household->longitude)
+        $hasMapData = ($ownApproved && $household->latitude && $household->longitude)
             || $neighbors->isNotEmpty();
 
         if ($center && $hasMapData) {
@@ -102,7 +106,7 @@ class GisController extends Controller
 
         if ($role === 'resident') {
             $household = $user->household;
-            if ($household && $household->latitude && $household->longitude) {
+            if ($household && $household->approval_status === 'approved' && $household->latitude && $household->longitude) {
                 return response()->json([
                     'success' => true,
                     'data' => collect([$household->only([
@@ -164,7 +168,7 @@ class GisController extends Controller
 
         if ($role === 'resident') {
             $household = $user->household;
-            if ($household && $household->latitude && $household->longitude) {
+            if ($household && $household->approval_status === 'approved' && $household->latitude && $household->longitude) {
                 return response()->json([
                     'success' => true,
                     'data' => collect([$household->only([

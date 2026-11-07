@@ -42,7 +42,7 @@
                     <select name="village_id" id="village_id" class="form-select @error('village_id') is-invalid @enderror" required>
                         <option value="">Select Village</option>
                         @foreach($villages as $village)
-                            <option value="{{ $village->id }}" {{ old('village_id') == $village->id ? 'selected' : '' }}>
+                            <option value="{{ $village->id }}" {{ old('village_id', $autoVillageId) == $village->id ? 'selected' : '' }}>
                                 {{ $village->village_name }}
                             </option>
                         @endforeach
@@ -117,10 +117,10 @@
         <div class="card-body">
             <div class="row g-3">
                 <div class="col-12">
-                    <label for="address" class="form-label fw-semibold">Address <span class="text-danger">*</span></label>
+                    <label for="address" class="form-label fw-semibold">Address <small class="text-muted fw-normal">(optional)</small></label>
                     <textarea name="address" id="address" rows="2"
                         class="form-control @error('address') is-invalid @enderror"
-                        required placeholder="Full address">{{ old('address') }}</textarea>
+                        placeholder="Full address">{{ old('address') }}</textarea>
                     @error('address')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -188,7 +188,6 @@
                 <div class="col-md-4">
                     <label for="house_status" class="form-label fw-semibold">House Material <span class="text-danger">*</span></label>
                     <select name="house_status" id="house_status" class="form-select @error('house_status') is-invalid @enderror" required>
-                        <option value="">Select Material</option>
                         <option value="concrete" {{ old('house_status') == 'concrete' ? 'selected' : '' }}>Concrete</option>
                         <option value="wood_timber" {{ old('house_status') == 'wood_timber' ? 'selected' : '' }}>Wood/Timber</option>
                         <option value="steel" {{ old('house_status') == 'steel' ? 'selected' : '' }}>Steel</option>
@@ -209,17 +208,6 @@
                         aria-describedby="registration_date-hint">
                     <div class="form-text" id="registration_date-hint">Set automatically to today's date. Cannot be edited.</div>
                     @error('registration_date')
-                        <div class="invalid-feedback">{{ $message }}</div>
-                    @enderror
-                </div>
-                <div class="col-md-4">
-                    <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select name="status" id="status" class="form-select @error('status') is-invalid @enderror" required>
-                        <option value="active" {{ old('status', 'active') == 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ old('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
-                        <option value="relocated" {{ old('status') == 'relocated' ? 'selected' : '' }}>Relocated</option>
-                    </select>
-                    @error('status')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
                 </div>
@@ -281,8 +269,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function renderReferenceMarkers(list) {
+        var vid = villageSelect ? villageSelect.value : '';
         referenceLayer.clearLayers();
+        if (!vid) return;
         list.forEach(function(h) {
+            if (String(h.village_id) !== String(vid)) return;
             if (!h.latitude || !h.longitude) return;
             L.marker([h.latitude, h.longitude], { icon: referenceIcon })
                 .bindPopup('<div class="gis-popup"><span class="badge bg-secondary">Latest saved</span><br><strong>' + escHtml(h.household_number) + '</strong><br><small>' + escHtml(h.household_head_name || '') + '</small><br><small>' + escHtml(h.village ? h.village.village_name : '') + '</small></div>')
@@ -297,37 +288,49 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    function loadReferenceMarkers() {
+    function loadReferenceMarkers(keepView) {
         var vid = villageSelect ? villageSelect.value : '';
         if (!vid) {
-            renderReferenceMarkers(latestHouseholds);
+            referenceLayer.clearLayers();
             return;
         }
+
+        renderReferenceMarkers(latestHouseholds);
+
         fetch('/gis/village/' + vid)
             .then(function(r) { return r.json(); })
             .then(function(res) {
                 if (res.success && res.households) {
                     renderReferenceMarkers(res.households);
-                    fitToReference();
+                    if (keepView) return;
                     if (res.center && res.center.lat) {
                         pickerMap.setView([res.center.lat, res.center.lng], 15);
+                    } else {
+                        fitToReference();
                     }
                 }
             })
             .catch(function() {});
     }
 
-    renderReferenceMarkers(latestHouseholds);
-    if (latIn.value && lngIn.value) {
+    var hasExistingPin = !!(latIn.value && lngIn.value);
+
+    if (hasExistingPin) {
         pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)]).addTo(pickerMap);
         pickerMap.setView([parseFloat(latIn.value), parseFloat(lngIn.value)], 15);
         setHint('Click anywhere to pin location', false);
-    } else if (latestHouseholds.length > 0) {
-        fitToReference();
+    }
+
+    if (villageSelect && villageSelect.value) {
+        loadReferenceMarkers(hasExistingPin);
+    } else {
+        referenceLayer.clearLayers();
     }
 
     if (villageSelect) {
-        villageSelect.addEventListener('change', loadReferenceMarkers);
+        villageSelect.addEventListener('change', function() {
+            loadReferenceMarkers(false);
+        });
     }
 
     function setPin(lat, lng, moveMap) {
@@ -399,17 +402,26 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     function titleCaseName(value) {
-        value = value.replace(/\s+/g, ' ').trim();
+        // Collapse repeated spaces and drop leading spaces, but keep ONE trailing
+        // space so the user can continue typing the next word.
+        value = value.replace(/\s+/g, ' ').replace(/^\s+/, '');
 
         if (value === '') return '';
 
-        if (value === value.toUpperCase() || value === value.toLowerCase()) {
-            value = value.toLowerCase();
+        var keepTrailingSpace = value.charAt(value.length - 1) === ' ';
+
+        if (keepTrailingSpace) {
+            value = value.slice(0, -1);
         }
 
-        return value.split(' ').map(function(word) {
-            return word.charAt(0).toUpperCase() + word.slice(1);
+        if (value === '') return '';
+
+        // First letter of every word capitalized, the rest lowercased.
+        var cased = value.split(' ').map(function(word) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
         }).join(' ');
+
+        return keepTrailingSpace ? cased + ' ' : cased;
     }
 
     ['block_number', 'lot_number'].forEach(function(id) {
@@ -426,12 +438,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (headName) {
         headName.addEventListener('input', function() {
-            headName.value = headName.value.replace(/[^\p{L} ]/gu, '').replace(/ {2,}/g, ' ');
+            var pos = headName.selectionStart;
+            headName.value = titleCaseName(headName.value.replace(/[^\p{L} ]/gu, ''));
+            headName.setSelectionRange(pos, pos);
             clearInvalid(headName);
         });
 
         headName.addEventListener('blur', function() {
-            headName.value = titleCaseName(headName.value);
+            headName.value = headName.value.replace(/\s+$/, '');
         });
     }
 });

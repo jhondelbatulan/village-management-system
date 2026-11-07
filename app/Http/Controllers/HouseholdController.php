@@ -26,6 +26,9 @@ class HouseholdController extends Controller
         $user = auth()->user();
         $query = Household::with('village', 'householdHead', 'submittedBy', 'approvedBy', 'adminApprovedBy');
 
+        // Only households finally approved by the super admin are part of the official list.
+        $query->where('approval_status', 'approved');
+
         if (in_array($user->role?->role_slug, ['admin', 'secretary', 'treasurer'])) {
             $query->where('village_id', $user->village_id);
         }
@@ -48,10 +51,6 @@ class HouseholdController extends Controller
 
         if (request('status')) {
             $query->where('status', request('status'));
-        }
-
-        if (request('approval_status')) {
-            $query->where('approval_status', request('approval_status'));
         }
 
         if (request('block_number')) {
@@ -77,14 +76,16 @@ class HouseholdController extends Controller
         $archivedHouseholds = Household::onlyTrashed()->latest()->paginate(10);
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
 
-        $blockNumbers = Household::where('block_number', '!=', null)
+        $blockNumbers = Household::where('approval_status', 'approved')
+            ->where('block_number', '!=', null)
             ->where('block_number', '!=', '')
             ->distinct()
             ->pluck('block_number')
             ->sort(fn ($a, $b) => strnatcmp((string) $a, (string) $b))
             ->values();
 
-        $lotNumbers = Household::where('lot_number', '!=', null)
+        $lotNumbers = Household::where('approval_status', 'approved')
+            ->where('lot_number', '!=', null)
             ->where('lot_number', '!=', '')
             ->distinct()
             ->pluck('lot_number')
@@ -98,14 +99,16 @@ class HouseholdController extends Controller
     {
         $user = auth()->user();
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
+        $autoVillageId = null;
 
         if (in_array($user->role?->role_slug, ['admin', 'secretary', 'treasurer'])) {
             $villages = $villages->where('id', $user->village_id);
+            $autoVillageId = $user->village_id;
         }
 
-        $latestHouseholds = app(GisService::class)->getLatestMappedHouseholds(null, 25);
+        $latestHouseholds = app(GisService::class)->getLatestMappedHouseholds($autoVillageId, 25);
 
-        return view('households.create', compact('villages', 'latestHouseholds'));
+        return view('households.create', compact('villages', 'latestHouseholds', 'autoVillageId'));
     }
 
     public function store(StoreHouseholdRequest $request): RedirectResponse
@@ -115,6 +118,7 @@ class HouseholdController extends Controller
         $data['registration_date'] = $data['registration_date'] ?? now()->toDateString();
         $data['approval_status'] = 'draft';
         $data['submitted_by'] = null;
+        $data['status'] = 'active';
 
         $household = Household::create($data);
 
@@ -125,7 +129,7 @@ class HouseholdController extends Controller
 
         AuditLogService::log('Create Household', 'Household Management', "Created household: {$household->household_number}");
 
-        return redirect()->route('households.index')->with('success', "Household {$household->household_number} created successfully. Please submit it for approval.");
+        return redirect()->route('households.show', $household)->with('success', "Household {$household->household_number} created successfully. Please submit it for approval.");
     }
 
     public function show(Household $household): View
@@ -196,7 +200,7 @@ class HouseholdController extends Controller
 
         AuditLogService::log('Update Household', 'Household Management', "Updated household: {$household->household_number}");
 
-        return redirect()->route('households.index')->with('success', 'Household updated successfully.');
+        return redirect()->route('households.show', $household)->with('success', 'Household updated successfully.');
     }
 
     public function destroy(Household $household): RedirectResponse

@@ -269,9 +269,11 @@ class ExecutiveIntelligenceService
         return array_slice($allInsights, 0, $limit);
     }
 
-    public function getVillageHighlights(): array
+    public function getVillageHighlights(?int $villageId = null): array
     {
-        $villages = Village::where('status', 'active')->get();
+        $villages = Village::where('status', 'active')
+            ->when($villageId, fn ($q) => $q->where('id', $villageId))
+            ->get();
         $highlights = [];
 
         foreach ($villages as $village) {
@@ -300,9 +302,11 @@ class ExecutiveIntelligenceService
         return $highlights;
     }
 
-    public function getComparativeAnalysis(): array
+    public function getComparativeAnalysis(?int $villageId = null): array
     {
-        $villages = Village::where('status', 'active')->get();
+        $villages = Village::where('status', 'active')
+            ->when($villageId, fn ($q) => $q->where('id', $villageId))
+            ->get();
         $metrics = [];
 
         foreach ($villages as $village) {

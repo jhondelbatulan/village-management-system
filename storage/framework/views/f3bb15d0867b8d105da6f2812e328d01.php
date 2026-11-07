@@ -51,10 +51,10 @@
     </div>
     <?php endif; ?>
     <div class="col-md-4">
-        <div class="card border-0 shadow-sm text-center p-3 <?php echo e(request('status') === 'approved' ? 'border-primary border-2' : ''); ?>">
-            <a href="<?php echo e(route('approvals.households', ['status' => 'approved'])); ?>" class="text-decoration-none">
+        <div class="card border-0 shadow-sm text-center p-3 <?php echo e($isHistory ? 'border-primary border-2' : ''); ?>">
+            <a href="<?php echo e(route('approvals.households', ['view' => 'history'])); ?>" class="text-decoration-none">
                 <div class="fs-3 fw-bold text-success"><?php echo e($counts['approvedCount']); ?></div>
-                <div class="text-muted small">Approved</div>
+                <div class="text-muted small">Approved History</div>
             </a>
         </div>
     </div>
@@ -68,11 +68,28 @@
     </div>
 </div>
 
+<ul class="nav nav-pills mb-3">
+    <li class="nav-item">
+        <a class="nav-link <?php echo e($isHistory ? '' : 'active'); ?>"
+           href="<?php echo e(route('approvals.households', array_filter(['search' => request('search'), 'village_id' => request('village_id')]))); ?>">
+            <i class="bi bi-list-check me-1"></i>All Approval Records
+        </a>
+    </li>
+    <li class="nav-item">
+        <a class="nav-link <?php echo e($isHistory ? 'active' : ''); ?>"
+           href="<?php echo e(route('approvals.households', array_filter(['view' => 'history', 'search' => request('search'), 'village_id' => request('village_id')]))); ?>">
+            <i class="bi bi-clock-history me-1"></i>Approved History
+        </a>
+    </li>
+</ul>
+
 <div class="card shadow-sm">
     <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
         <h6 class="mb-0 fw-semibold">
-            <i class="bi bi-list-check me-2 text-primary"></i>
-            <?php if(request('status')): ?>
+            <i class="bi <?php echo e($isHistory ? 'bi-clock-history' : 'bi-list-check'); ?> me-2 text-primary"></i>
+            <?php if($isHistory): ?>
+                History of Approved Households
+            <?php elseif(request('status')): ?>
                 <?php echo e(ucfirst(str_replace('_', ' ', request('status')))); ?> Records
             <?php else: ?>
                 All Approval Records
@@ -86,6 +103,7 @@
             <?php endif; ?>
             <?php if($role === 'super_admin'): ?>
             <form action="<?php echo e(route('approvals.households')); ?>" method="GET" class="d-flex gap-2">
+                <input type="hidden" name="view" value="<?php echo e(request('view')); ?>">
                 <input type="hidden" name="status" value="<?php echo e(request('status')); ?>">
                 <input type="hidden" name="search" value="<?php echo e(request('search')); ?>">
                 <select name="village_id" class="form-select form-select-sm" onchange="this.form.submit()">
@@ -100,6 +118,7 @@
             </form>
             <?php endif; ?>
             <form action="<?php echo e(route('approvals.households')); ?>" method="GET" class="d-flex gap-1">
+                <input type="hidden" name="view" value="<?php echo e(request('view')); ?>">
                 <input type="hidden" name="status" value="<?php echo e(request('status')); ?>">
                 <input type="hidden" name="village_id" value="<?php echo e(request('village_id')); ?>">
                 <input type="search" name="search" class="form-control form-control-sm" placeholder="Search households..." value="<?php echo e(request('search')); ?>">
@@ -116,7 +135,12 @@
                         <th>Block / Lot</th>
                         <th>Head</th>
                         <th>Village</th>
-                        <th>Submitted By</th>
+                        <?php if($isHistory): ?>
+                            <th>Approved By</th>
+                            <th>Approved On</th>
+                        <?php else: ?>
+                            <th>Submitted By</th>
+                        <?php endif; ?>
                         <th>Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -133,7 +157,12 @@
                             <td>B<?php echo e($household->block_number ?? '—'); ?> / L<?php echo e($household->lot_number ?? '—'); ?></td>
                             <td><?php echo e($household->household_head_name ?? '—'); ?></td>
                             <td><?php echo e($household->village?->village_name ?? '—'); ?></td>
-                            <td><?php echo e($household->submittedBy?->full_name ?? '—'); ?></td>
+                            <?php if($isHistory): ?>
+                                <td><?php echo e($household->approvedBy?->full_name ?? '—'); ?></td>
+                                <td><?php echo e(optional($household->approved_at)->format('M d, Y h:i A') ?? '—'); ?></td>
+                            <?php else: ?>
+                                <td><?php echo e($household->submittedBy?->full_name ?? '—'); ?></td>
+                            <?php endif; ?>
                             <td>
                                 <?php if($household->approval_status === 'approved'): ?>
                                     <span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Approved</span>
@@ -168,10 +197,12 @@
                         </tr>
                     <?php endforeach; $__env->popLoop(); $loop = $__env->getLastLoop(); if ($__empty_1): ?>
                         <tr>
-                            <td colspan="7" class="text-center py-5">
+                            <td colspan="<?php echo e($isHistory ? 8 : 7); ?>" class="text-center py-5">
                                 <i class="bi bi-check-circle fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">
-                                    <?php if(request('status')): ?>
+                                    <?php if($isHistory): ?>
+                                        No approved households in history yet.
+                                    <?php elseif(request('status')): ?>
                                         No <?php echo e(str_replace('_', ' ', request('status'))); ?> records found.
                                     <?php else: ?>
                                         No approval records found.

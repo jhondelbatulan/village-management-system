@@ -230,9 +230,9 @@
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-    var latVal = {{ $household->latitude ? $household->latitude : '9.2372' }};
-    var lngVal = {{ $household->longitude ? $household->longitude : '125.5415' }};
-    var zoom = {{ $household->latitude ? 15 : 13 }};
+    var latVal = {{ $household->latitude ?: ($household->village?->latitude ?: '9.2372') }};
+    var lngVal = {{ $household->longitude ?: ($household->village?->longitude ?: '125.5415') }};
+    var zoom = {{ ($household->latitude || $household->village?->latitude) ? 15 : 13 }};
     var pickerMap = L.map('map-picker').setView([latVal, lngVal], zoom);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(pickerMap);
     var pickerMarker = null;
@@ -280,11 +280,6 @@ document.addEventListener('DOMContentLoaded', function() {
     if (latIn.value && lngIn.value) {
         pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)]).addTo(pickerMap);
         setHint('Click anywhere to update location', false);
-    } else {
-        var layers = referenceLayer.getLayers();
-        if (layers.length > 0) {
-            pickerMap.fitBounds(L.featureGroup(layers).getBounds().pad(0.2));
-        }
     }
 
     function setPin(lat, lng, moveMap) {
@@ -340,6 +335,43 @@ document.addEventListener('DOMContentLoaded', function() {
         addressIn.addEventListener('blur', function() {
             clearTimeout(addrTimer);
             autoPinFromAddress();
+        });
+    }
+
+    var headName = document.getElementById('household_head_name');
+
+    function titleCaseName(value) {
+        // Collapse repeated spaces and drop leading spaces, but keep ONE trailing
+        // space so the user can continue typing the next word.
+        value = value.replace(/\s+/g, ' ').replace(/^\s+/, '');
+
+        if (value === '') return '';
+
+        var keepTrailingSpace = value.charAt(value.length - 1) === ' ';
+
+        if (keepTrailingSpace) {
+            value = value.slice(0, -1);
+        }
+
+        if (value === '') return '';
+
+        // First letter of every word capitalized, the rest lowercased.
+        var cased = value.split(' ').map(function(word) {
+            return word.charAt(0).toUpperCase() + word.slice(1).toLowerCase();
+        }).join(' ');
+
+        return keepTrailingSpace ? cased + ' ' : cased;
+    }
+
+    if (headName) {
+        headName.addEventListener('input', function() {
+            var pos = headName.selectionStart;
+            headName.value = titleCaseName(headName.value.replace(/[^\p{L} ]/gu, ''));
+            headName.setSelectionRange(pos, pos);
+        });
+
+        headName.addEventListener('blur', function() {
+            headName.value = headName.value.replace(/\s+$/, '');
         });
     }
 });

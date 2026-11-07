@@ -87,7 +87,6 @@ class StoreUserRequest extends FormRequest
             'suffix' => ['nullable', 'string', 'max:10', Rule::in(self::SUFFIXES)],
             'contact_number' => ['nullable', 'string', 'max:20'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
-            'status' => ['required', 'in:active,inactive'],
             'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];
     }

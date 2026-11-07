@@ -76,6 +76,15 @@ class LoginController extends Controller
             return $this->loginRedirect($username, 'Invalid username or password. Please try again.');
         }
 
+        // An active account must still wait for its assigned household to be activated.
+        if ($user->household && $user->household->status !== 'active') {
+            Auth::logout();
+
+            $this->recordLoginFailure($username, $request, 'Household inactive');
+
+            return $this->loginRedirect($username, 'Your assigned household is not yet activated. Please wait until your household is activated before logging in.');
+        }
+
         $this->lockout->clear($username);
 
         $user->update(['last_login' => now(), 'locked_at' => null]);

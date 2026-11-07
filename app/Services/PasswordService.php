@@ -7,10 +7,17 @@ use App\Models\SystemSetting;
 use App\Models\User;
 use App\Models\FailedLogin;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 class PasswordService
 {
-    public function validatePassword(string $password, User $user): array
+    /**
+     * Validate a password against the configured policy (length, character
+     * classes) and, when a user is given, the recent-password history.
+     *
+     * @return array<int, string> list of human-readable error messages (empty = valid)
+     */
+    public function validatePassword(string $password, ?User $user = null): array
     {
         $errors = [];
         $minLength = (int) SystemSetting::getValue('password_min_length', '8');
@@ -36,7 +43,7 @@ class PasswordService
         }
 
         $historyLimit = (int) SystemSetting::getValue('password_history_limit', '5');
-        if ($historyLimit > 0) {
+        if ($user && $historyLimit > 0) {
             $recentPasswords = PasswordHistory::where('user_id', $user->id)
                 ->orderByDesc('created_at')
                 ->limit($historyLimit)
@@ -51,6 +58,54 @@ class PasswordService
         }
 
         return $errors;
+    }
+
+    /**
+     * Enforce the configured password policy, throwing a ValidationException
+     * (keyed to $field) when the password does not comply. Used by every
+     * password-change flow so the admin-configured policy is always applied.
+     *
+     * @throws ValidationException
+     */
+    public function enforcePolicy(string $password, ?User $user = null, string $field = 'password'): void
+    {
+        $errors = $this->validatePassword($password, $user);
+
+        if (! empty($errors)) {
+            throw ValidationException::withMessages([$field => $errors]);
+        }
+    }
+
+    /**
+     * Human-readable summary of the active password policy (for display on
+     * password-change forms).
+     *
+     * @return array<int, string>
+     */
+    public function passwordRequirements(): array
+    {
+        $minLength = (int) SystemSetting::getValue('password_min_length', '8');
+        $requirements = ["At least {$minLength} characters"];
+
+        if (SystemSetting::getValue('password_require_uppercase', '1') === '1') {
+            $requirements[] = 'One uppercase letter';
+        }
+        if (SystemSetting::getValue('password_require_lowercase', '1') === '1') {
+            $requirements[] = 'One lowercase letter';
+        }
+        if (SystemSetting::getValue('password_require_number', '1') === '1') {
+            $requirements[] = 'One number';
+        }
+        if (SystemSetting::getValue('password_require_special', '0') === '1') {
+            $requirements[] = 'One special character';
+        }
+
+        $historyLimit = (int) SystemSetting::getValue('password_history_limit', '5');
+        if ($historyLimit > 0) {
+            $requirements[] = "Cannot reuse the last {$historyLimit} passwords";
+        }
+
+        return $requirements;
     }
 
     public function recordPassword(User $user, string $password): void

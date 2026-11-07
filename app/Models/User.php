@@ -31,10 +31,13 @@ class User extends Authenticatable
         'last_login',
         'locked_at',
         'last_activity_at',
+        'password_otp',
+        'password_otp_expires_at',
     ];
 
     protected $hidden = [
         'password',
+        'password_otp',
         'remember_token',
     ];
 
@@ -45,6 +48,7 @@ class User extends Authenticatable
             'last_login' => 'datetime',
             'locked_at' => 'datetime',
             'last_activity_at' => 'datetime',
+            'password_otp_expires_at' => 'datetime',
         ];
     }
 

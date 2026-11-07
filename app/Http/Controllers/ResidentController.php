@@ -8,14 +8,11 @@ use App\Http\Requests\ResidentRequest\UpdateResidentRequest;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\Village;
-use App\Rules\ProperName;
-use App\Rules\SafeText;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Validator;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -440,129 +437,6 @@ class ResidentController extends Controller
             || ($userRole === 'admin' && $resident->approval_status === 'admin_approved');
     }
 
-    public function import(): View
-    {
-        $user = auth()->user();
-        $role = $user->role?->role_slug ?? '';
-
-        if ($role === 'secretary' && $user->village_id) {
-            $villages = Village::where('id', $user->village_id)->where('status', 'active')->get();
-        } else {
-            $villages = Village::where('status', 'active')->orderBy('village_name')->get();
-        }
-
-        return view('residents.import', compact('villages'));
-    }
-
-    public function processImport(Request $request): RedirectResponse
-    {
-        $request->validate([
-            'village_id' => ['required', 'exists:villages,id'],
-            'csv_file' => ['required', 'file', 'mimes:csv,txt', 'max:10240'],
-        ]);
-
-        $user = auth()->user();
-        $villageId = (int) $request->village_id;
-
-        if (($user->role?->role_slug ?? '') !== 'super_admin') {
-            if ($user->village_id && $user->village_id != $villageId) {
-                abort(403, 'You do not have access to import residents to this village.');
-            }
-        }
-
-        $file = $request->file('csv_file');
-        $villageId = $request->village_id;
-        $rows = [];
-        $errors = [];
-        $imported = 0;
-        $lineNumber = 0;
-
-        $handle = fopen($file->getPathname(), 'r');
-        $header = fgetcsv($handle);
-
-        while (($row = fgetcsv($handle)) !== false) {
-            $lineNumber++;
-            $data = array_combine($header, $row);
-
-            $validation = Validator::make($data, [
-                'first_name' => ['required', 'string', 'max:255', new ProperName],
-                'middle_name' => ['nullable', 'string', 'max:255', new ProperName],
-                'last_name' => ['required', 'string', 'max:255', new ProperName],
-                'suffix' => ['nullable', 'string', 'max:50', new SafeText],
-                'gender' => 'required|in:Male,Female,Other',
-                'birthdate' => 'required|date|before:today',
-                'civil_status' => 'required|in:Single,Married,Widowed,Separated,Divorced',
-            ]);
-
-            if ($validation->fails()) {
-                $errors[] = "Line {$lineNumber}: ".implode(', ', $validation->errors()->all());
-
-                continue;
-            }
-
-            $residentCode = Resident::generateResidentCode();
-
-            Resident::create([
-                'village_id' => $villageId,
-                'resident_code' => $residentCode,
-                'first_name' => $data['first_name'] ?? '',
-                'middle_name' => $data['middle_name'] ?? null,
-                'last_name' => $data['last_name'] ?? '',
-                'suffix' => $data['suffix'] ?? null,
-                'gender' => $data['gender'] ?? 'Male',
-                'birthdate' => $data['birthdate'] ?? null,
-                'civil_status' => $data['civil_status'] ?? 'Single',
-                'nationality' => $data['nationality'] ?? 'Filipino',
-                'occupation' => $data['occupation'] ?? null,
-                'educational_attainment' => $data['educational_attainment'] ?? null,
-                'contact_number' => $data['contact_number'] ?? null,
-                'email' => $data['email'] ?? null,
-                'status' => 'active',
-                'approval_status' => 'draft',
-            ]);
-
-            $imported++;
-        }
-
-        fclose($handle);
-
-        $village = Village::find($villageId);
-        if ($village) {
-            $village->recalculateCounts();
-        }
-
-        AuditLogService::log('Import Residents', 'Resident Management', "Imported {$imported} residents");
-
-        $message = "{$imported} residents imported successfully.";
-        if (! empty($errors)) {
-            $errorCount = count($errors);
-            $message .= " {$errorCount} rows had errors.";
-            session(['import_errors' => $errors]);
-        }
-
-        return redirect()->route('residents.index')->with('success', $message);
-    }
-
-    public function downloadTemplate(): StreamedResponse
-    {
-        $headers = [
-            'Content-type' => 'text/csv',
-            'Content-Disposition' => 'attachment; filename="resident_import_template.csv"',
-        ];
-
-        $callback = function () {
-            $file = fopen('php://output', 'w');
-            fputcsv($file, [
-                'first_name', 'middle_name', 'last_name', 'suffix', 'gender',
-                'birthdate', 'civil_status', 'nationality', 'occupation',
-                'educational_attainment', 'contact_number', 'email',
-            ]);
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
     public function export(Request $request): StreamedResponse
     {
         $user = auth()->user();
@@ -618,6 +492,9 @@ class ResidentController extends Controller
     {
         $user = auth()->user();
         $query = Household::with('village');
+
+        // Mirrors the household list: only super-admin-approved records are exported.
+        $query->where('approval_status', 'approved');
 
         if (in_array($user->role?->role_slug, ['admin', 'secretary', 'treasurer'])) {
             $query->where('village_id', $user->village_id);

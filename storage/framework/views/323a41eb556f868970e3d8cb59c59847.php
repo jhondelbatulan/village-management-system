@@ -30,7 +30,12 @@
             </div>
         </div>
 
-        <?php if(! $household || ! $household->latitude || ! $household->longitude): ?>
+        <?php if($household && $household->approval_status !== 'approved'): ?>
+            <div class="alert alert-info mt-3 mb-0">
+                <i class="bi bi-hourglass-split me-1"></i>
+                Your household is still awaiting final approval — its location will be shown here once the Super Admin approves it.
+            </div>
+        <?php elseif(! $household || ! $household->latitude || ! $household->longitude): ?>
             <div class="alert alert-warning mt-3 mb-0">
                 <i class="bi bi-exclamation-triangle me-1"></i>
                 Your household does not have a saved pinpoint yet — contact your village secretary to set it.
@@ -77,9 +82,11 @@
                 <h6 class="mb-0 fw-semibold"><i class="bi bi-geo-alt me-2"></i> Coordinates</h6>
             </div>
             <div class="card-body">
-                <?php if($household && $household->latitude && $household->longitude): ?>
+                <?php if($household && $household->approval_status === 'approved' && $household->latitude && $household->longitude): ?>
                     <p class="mb-1"><strong>Latitude:</strong> <?php echo e($household->latitude); ?></p>
                     <p class="mb-0"><strong>Longitude:</strong> <?php echo e($household->longitude); ?></p>
+                <?php elseif($household && $household->approval_status !== 'approved'): ?>
+                    <p class="mb-0 text-muted">Hidden until Super Admin approval.</p>
                 <?php else: ?>
                     <p class="mb-0 text-muted">Not set yet.</p>
                 <?php endif; ?>
@@ -109,6 +116,25 @@ document.addEventListener('DOMContentLoaded', function() {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
     }).addTo(map);
+
+    var ownVillage = <?php echo json_encode($village && $village->latitude !== null && $village->longitude !== null ? [
+        'id' => $village->id,
+        'village_name' => $village->village_name,
+        'latitude' => (float) $village->latitude,
+        'longitude' => (float) $village->longitude,
+    ] : null, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT); ?>;
+
+    if (ownVillage && ownVillage.latitude && ownVillage.longitude) {
+        var villageMarkerIcon = L.divIcon({
+            className: 'gis-marker',
+            html: '<div style="width:34px;height:34px;background:#1a73e8;border:4px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;"><i class="bi bi-building" style="color:#fff;font-size:15px;"></i></div>',
+            iconSize: [42, 42], iconAnchor: [21, 21],
+        });
+
+        L.marker([ownVillage.latitude, ownVillage.longitude], { icon: villageMarkerIcon })
+            .bindPopup('<div class="gis-popup"><span class="badge bg-primary">Village</span><br><strong style="color:#1a73e8;">' + escHtml(ownVillage.village_name) + '</strong></div>')
+            .addTo(map);
+    }
 
     function escHtml(s) {
         return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');

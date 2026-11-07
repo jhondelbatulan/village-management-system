@@ -83,11 +83,12 @@ class HouseholdStoreValidationTest extends TestCase
 
     public function test_household_head_name_is_auto_capitalized(): void
     {
-        $this->actingAs($this->secretary)
-            ->post(route('households.store'), $this->payload(['household_head_name' => '  juan   dela   cruz  ']))
-            ->assertRedirect(route('households.index'));
+        $response = $this->actingAs($this->secretary)
+            ->post(route('households.store'), $this->payload(['household_head_name' => '  juan   dela   cruz  ']));
 
         $household = Household::firstOrFail();
+
+        $response->assertRedirect(route('households.show', $household));
 
         $this->assertSame('Juan Dela Cruz', $household->household_head_name);
         $this->assertSame('7', $household->block_number);
@@ -96,11 +97,12 @@ class HouseholdStoreValidationTest extends TestCase
 
     public function test_registration_date_is_not_editable_on_create(): void
     {
-        $this->actingAs($this->secretary)
-            ->post(route('households.store'), $this->payload(['registration_date' => '2000-01-01']))
-            ->assertRedirect(route('households.index'));
+        $response = $this->actingAs($this->secretary)
+            ->post(route('households.store'), $this->payload(['registration_date' => '2000-01-01']));
 
         $household = Household::firstOrFail();
+
+        $response->assertRedirect(route('households.show', $household));
 
         $this->assertSame(now()->toDateString(), $household->registration_date->toDateString());
     }
@@ -173,10 +175,24 @@ class HouseholdStoreValidationTest extends TestCase
         $response->assertSee('Letters only. First letter of every word is capitalized automatically.', false);
         $response->assertSee('Cannot be edited.', false);
         $response->assertSee("replace(/[^0-9]/g, '')", false);
+        $this->assertDoesNotMatchRegularExpression('/<textarea name="address"[^>]*\brequired\b/', $response->getContent());
 
         $this->assertMatchesRegularExpression(
             '/<input type="date" name="registration_date"[^>]*readonly/',
             $response->getContent()
         );
+    }
+
+    public function test_address_is_optional_on_create(): void
+    {
+        $response = $this->actingAs($this->secretary)
+            ->post(route('households.store'), $this->payload(['address' => '']));
+
+        $response->assertSessionHasNoErrors();
+
+        $household = Household::firstOrFail();
+
+        $response->assertRedirect(route('households.show', $household));
+        $this->assertNull($household->address);
     }
 }

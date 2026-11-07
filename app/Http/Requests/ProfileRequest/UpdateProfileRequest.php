@@ -16,6 +16,7 @@ class UpdateProfileRequest extends FormRequest
         $userId = auth()->id();
 
         return [
+            'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $userId],
             'first_name' => ['required', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
@@ -29,6 +30,8 @@ class UpdateProfileRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'username.required' => 'Username is required.',
+            'username.unique' => 'This username is already taken.',
             'first_name.required' => 'First name is required.',
             'last_name.required' => 'Last name is required.',
             'email.required' => 'Email address is required.',

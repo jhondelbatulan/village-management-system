@@ -9,6 +9,7 @@ use App\Models\Role;
 use App\Models\User;
 use App\Models\Village;
 use App\Services\AuditLogService;
+use App\Services\PasswordService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -16,6 +17,8 @@ use Illuminate\View\View;
 
 class UserManagementController extends Controller
 {
+    public function __construct(protected PasswordService $passwordService) {}
+
     public function index(): View
     {
         $user = auth()->user();
@@ -86,6 +89,10 @@ class UserManagementController extends Controller
     public function store(StoreUserRequest $request): RedirectResponse
     {
         $data = $request->validated();
+
+        // Apply the configured password policy to the account being created.
+        $this->passwordService->enforcePolicy($data['password']);
+
         $data['password'] = bcrypt($data['password']);
 
         $currentUser = auth()->user();
@@ -104,7 +111,13 @@ class UserManagementController extends Controller
 
         unset($data['role_name']);
 
+        // New accounts are always created active; status changes happen afterwards.
+        $data['status'] = 'active';
+
         $user = User::create($data);
+
+        // Seed the password history so the initial password cannot be reused.
+        $this->passwordService->recordPassword($user, $request->password);
 
         AuditLogService::log(
             'Create User',
@@ -162,7 +175,11 @@ class UserManagementController extends Controller
             $data['village_id'] = $currentUser->village_id;
         }
 
+        $plainPassword = null;
         if (! empty($data['password'])) {
+            // Apply the configured password policy to the user being edited.
+            $this->passwordService->enforcePolicy($data['password'], $user);
+            $plainPassword = $data['password'];
             $data['password'] = bcrypt($data['password']);
         } else {
             unset($data['password']);
@@ -183,6 +200,10 @@ class UserManagementController extends Controller
         }
 
         $user->update($data);
+
+        if ($plainPassword !== null) {
+            $this->passwordService->recordPassword($user, $plainPassword);
+        }
 
         AuditLogService::log(
             'Update User',

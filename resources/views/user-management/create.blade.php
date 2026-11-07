@@ -65,16 +65,6 @@
                     </div>
                 @endif
 
-                <div class="col-md-4">
-                    <label for="status" class="form-label fw-semibold">Status <span class="text-danger">*</span></label>
-                    <select class="form-select @error('status') is-invalid @enderror"
-                            id="status" name="status" required>
-                        <option value="active" {{ old('status', 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ old('status') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
-                    @error('status') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                </div>
-
                 <div class="col-12" id="household-section" style="display: {{ old('role_id') == $residentRoleId ? 'block' : 'none' }};">
                     <h6 class="fw-semibold text-primary mb-0 mt-3">
                         <i class="bi bi-house me-1"></i>Household Assignment

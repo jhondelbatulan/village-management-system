@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PasswordHistory extends Model
 {
+    protected $table = 'password_history';
+
     protected $fillable = [
         'user_id',
         'password',

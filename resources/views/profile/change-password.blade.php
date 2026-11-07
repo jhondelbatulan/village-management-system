@@ -57,7 +57,7 @@
                                    class="form-control @error('password') is-invalid @enderror"
                                    id="password"
                                    name="password"
-                                   placeholder="Enter new password (min. 8 characters)"
+                                   placeholder="Enter new password"
                                    required>
                             <button class="btn btn-outline-secondary toggle-password" type="button">
                                 <i class="bi bi-eye"></i>
@@ -96,11 +96,10 @@
                     <i class="bi bi-info-circle text-primary me-1"></i>Password Requirements
                 </h6>
                 <ul class="list-unstyled mb-0">
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Minimum 8 characters</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Mix of letters and numbers recommended</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Special characters encouraged</li>
-                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Must not be a commonly used password</li>
-                    <li><i class="bi bi-check-circle text-success me-2"></i>Must be confirmed correctly</li>
+                    @foreach(($requirements ?? []) as $requirement)
+                        <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>{{ $requirement }}</li>
+                    @endforeach
+                    <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Must be confirmed correctly</li>
                 </ul>
             </div>
         </div>

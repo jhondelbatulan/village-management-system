@@ -175,8 +175,8 @@
                     <hr class="my-3">
                     <h6 class="fw-semibold text-primary mb-2"><i class="bi bi-legend me-1"></i> Legend</h6>
                     <div class="d-flex align-items-center mb-1">
-                        <span style="width:14px;height:14px;background:#1a73e8;border-radius:4px;display:inline-block;margin-right:8px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
-                        <small>Village</small>
+        <span style="width:20px;height:20px;background:#1a73e8;border-radius:4px;display:inline-block;margin-right:8px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
+        <small>Village</small>
                     </div>
                     <div class="d-flex align-items-center mb-1">
                         <span style="width:12px;height:12px;background:#28a745;border-radius:50%;display:inline-block;margin-right:8px;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,.3);"></span>
@@ -278,6 +278,7 @@ document.addEventListener('DOMContentLoaded', function() {
     var households = @json($dashboardData['households']);
     var dashboardData = @json($dashboardData);
     var villageId = {{ $village->id }};
+    var villageMarkersData = @json($villageMarkers);
     var paymentEnabled = {{ $dashboardData['village_profile']['payment_enabled'] ? 'true' : 'false' }};
 
     var isMobile = window.innerWidth < 768;
@@ -310,15 +311,32 @@ document.addEventListener('DOMContentLoaded', function() {
 
     var villageIcon = L.divIcon({
         className: 'gis-marker',
-        html: '<div style="width:26px;height:26px;background:#1a73e8;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;"><i class="bi bi-building" style="color:#fff;font-size:11px;"></i></div>',
-        iconSize: [32, 32], iconAnchor: [16, 16],
+        html: '<div style="width:34px;height:34px;background:#1a73e8;border:4px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;"><i class="bi bi-building" style="color:#fff;font-size:15px;"></i></div>',
+        iconSize: [42, 42], iconAnchor: [21, 21],
     });
 
     if (center.lat && center.lng) {
         L.marker([center.lat, center.lng], { icon: villageIcon })
-            .bindPopup('<strong style="color:#1a73e8;">{{ $village->village_name }}</strong>')
+            .bindPopup('<div class="gis-popup"><span class="badge bg-primary">Your Village</span><br><strong style="color:#1a73e8;">{{ $village->village_name }}</strong></div>')
             .addTo(map);
     }
+
+    // Big markers for every other mapped village - their location is visible,
+    // but their household pins stay hidden from this village's account.
+    villageMarkersData.forEach(function(v) {
+        if (!v.latitude || !v.longitude || v.id == villageId) return;
+
+        L.marker([v.latitude, v.longitude], { icon: villageIcon })
+            .bindPopup(
+                '<div class="gis-popup">' +
+                '<strong style="font-size:1rem;color:#1a73e8;">' + escHtml(v.village_name) + '</strong><br>' +
+                '<small class="text-muted">' + escHtml(v.address || '') + '</small><hr class="my-1">' +
+                '<div class="d-flex justify-content-between mb-1"><small>Households:</small><strong>' + (v.household_count || 0) + '</strong></div>' +
+                '<div class="d-flex justify-content-between mb-1"><small>Residents:</small><strong>' + (v.resident_count || 0) + '</strong></div>' +
+                '</div>'
+            )
+            .addTo(map);
+    });
 
     var householdLayer = L.layerGroup().addTo(map);
     var geocodeLayer = L.layerGroup().addTo(map);

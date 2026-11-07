@@ -575,4 +575,35 @@ class ApprovalWorkflowTest extends TestCase
             'Submitter must be notified when the record is rejected.'
         );
     }
+
+    public function test_resident_approval_records_leave_the_queue_for_the_history_section(): void
+    {
+        $household = $this->makeHousehold('approved');
+        $approved = $this->makeResident('approved', $household);
+        $adminApproved = $this->makeResident('admin_approved', $household);
+        $rejected = $this->makeResident('rejected', $household);
+
+        $main = $this->actingAs($this->superAdmin)->get(route('approvals.residents'));
+        $main->assertOk()->assertSee('All Approval Records');
+        $mainIds = $main->viewData('residents')->pluck('id')->all();
+
+        $this->assertNotContains($approved->id, $mainIds);
+        $this->assertContains($adminApproved->id, $mainIds);
+        $this->assertContains($rejected->id, $mainIds);
+
+        $history = $this->actingAs($this->superAdmin)
+            ->get(route('approvals.residents', ['view' => 'history']))
+            ->assertOk()
+            ->assertSee('History of Approved Residents');
+
+        $this->assertSame([$approved->id], $history->viewData('residents')->pluck('id')->all());
+
+        // The old ?status=approved link must land on the history section too.
+        $viaStatus = $this->actingAs($this->superAdmin)
+            ->get(route('approvals.residents', ['status' => 'approved']))
+            ->assertOk()
+            ->assertSee('History of Approved Residents');
+
+        $this->assertSame([$approved->id], $viaStatus->viewData('residents')->pluck('id')->all());
+    }
 }

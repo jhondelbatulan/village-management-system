@@ -107,6 +107,40 @@ class UserManagementTest extends TestCase
             ->assertOk();
     }
 
+    public function test_new_accounts_are_created_active_without_asking_for_status(): void
+    {
+        $this->actingAs($this->superAdmin)
+            ->get(route('users.create'))
+            ->assertOk()
+            ->assertDontSee('name="status"', false);
+
+        $payload = $this->createUserPayload();
+        unset($payload['status']);
+
+        $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), $payload)
+            ->assertSessionHasNoErrors()
+            ->assertRedirect(route('users.index'));
+
+        $this->assertSame(
+            'active',
+            User::where('username', $payload['username'])->firstOrFail()->status
+        );
+
+        // A crafted status input must not be able to create an inactive account.
+        $secondVillage = Village::forceCreate(['village_name' => 'Auto Active Village', 'village_code' => 'AAV']);
+        $crafted = $this->createUserPayload(['status' => 'inactive', 'village_id' => $secondVillage->id]);
+
+        $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), $crafted)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(
+            'active',
+            User::where('username', $crafted['username'])->firstOrFail()->status
+        );
+    }
+
     public function test_create_user_rejects_numbers_and_special_characters_in_names(): void
     {
         $payload = $this->createUserPayload([
@@ -270,8 +304,8 @@ class UserManagementTest extends TestCase
                 'email' => Str::random(8) . '@gmail.com',
                 'first_name' => 'Juan',
                 'last_name' => 'Dela Cruz',
-                'password' => 'password123',
-                'password_confirmation' => 'password123',
+                'password' => 'Password123',
+                'password_confirmation' => 'Password123',
                 'status' => 'active',
             ]);
 
@@ -374,8 +408,8 @@ class UserManagementTest extends TestCase
             'email' => Str::random(8) . '@gmail.com',
             'first_name' => 'Juan',
             'last_name' => 'Dela Cruz',
-            'password' => 'password123',
-            'password_confirmation' => 'password123',
+            'password' => 'Password123',
+            'password_confirmation' => 'Password123',
         ], $overrides);
     }
 }

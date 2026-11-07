@@ -93,9 +93,9 @@ class HouseholdAnalyticsService
         }
 
         $counts = $query->selectRaw('
-            COALESCE(approval_status, \'draft\') as status,
+            COALESCE(approval_status, \'draft\') as approval_status_label,
             COUNT(*) as count
-        ')->groupBy('status')->pluck('count', 'status')->toArray();
+        ')->groupByRaw('COALESCE(approval_status, \'draft\')')->pluck('count', 'approval_status_label')->toArray();
 
         $total = array_sum($counts);
 
@@ -212,7 +212,7 @@ class HouseholdAnalyticsService
         }
 
         $counts = $query->selectRaw('
-            block_number || \'-\' || lot_number as block_lot,
+            CONCAT(block_number, \'-\', lot_number) as block_lot,
             COUNT(*) as count
         ')->groupBy('block_lot')
             ->pluck('count', 'block_lot')

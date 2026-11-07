@@ -82,16 +82,6 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label fw-semibold">Approval</label>
-                    <select name="approval_status" class="form-select">
-                        <option value="">All</option>
-                        <option value="draft" <?php echo e(request('approval_status') == 'draft' ? 'selected' : ''); ?>>Draft</option>
-                        <option value="pending" <?php echo e(request('approval_status') == 'pending' ? 'selected' : ''); ?>>Pending</option>
-                        <option value="approved" <?php echo e(request('approval_status') == 'approved' ? 'selected' : ''); ?>>Approved</option>
-                        <option value="rejected" <?php echo e(request('approval_status') == 'rejected' ? 'selected' : ''); ?>>Rejected</option>
-                    </select>
-                </div>
-                <div class="col-md-2">
                     <label class="form-label fw-semibold">Sort</label>
                     <select name="sort" class="form-select">
                         <option value="" <?php echo e(request('sort') == '' ? 'selected' : ''); ?>>Block / Lot</option>
@@ -109,7 +99,7 @@
                     <a href="<?php echo e(route('households.index')); ?>" class="btn btn-outline-secondary">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                     </a>
-                    <?php if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'status', 'approval_status', 'sort'])): ?>
+                    <?php if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'status', 'sort'])): ?>
                         <span class="text-muted small align-self-center ms-1">
                             <i class="bi bi-info-circle me-1"></i><?php echo e($households->total()); ?> result(s) found
                         </span>

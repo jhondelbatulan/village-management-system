@@ -24,6 +24,13 @@
                     @method('PUT')
 
                     <div class="row g-3">
+                        <div class="col-12">
+                            <label for="username" class="form-label fw-semibold">Username <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control @error('username') is-invalid @enderror"
+                                   id="username" name="username" value="{{ old('username', $user->username) }}" required>
+                            @error('username') <div class="invalid-feedback">{{ $message }}</div> @enderror
+                            <small class="text-muted">Used to log in to your account.</small>
+                        </div>
                         <div class="col-md-4">
                             <label for="first_name" class="form-label fw-semibold">First Name <span class="text-danger">*</span></label>
                             <input type="text" class="form-control @error('first_name') is-invalid @enderror"

@@ -134,7 +134,7 @@ class EmploymentAnalyticsService
     public function getIncomeByEmployment(?int $villageId = null): array
     {
         $rows = $this->baseQuery($villageId)
-            ->selectRaw('employment_status, AVG(monthly_income) as avg_income, COUNT(income_data) as count')
+            ->selectRaw('employment_status, AVG(monthly_income) as avg_income, COUNT(monthly_income) as count')
             ->whereNotNull('monthly_income')
             ->groupBy('employment_status')
             ->pluck('avg_income', 'employment_status')
@@ -153,9 +153,9 @@ class EmploymentAnalyticsService
                 WHEN years_of_experience BETWEEN 4 AND 10 THEN '4-10 years'
                 WHEN years_of_experience BETWEEN 11 AND 20 THEN '11-20 years'
                 ELSE '20+ years'
-            END as range, COUNT(*) as count")
-            ->groupBy('range')
-            ->pluck('count', 'range')
+            END as exp_range, COUNT(*) as count")
+            ->groupBy('exp_range')
+            ->pluck('count', 'exp_range')
             ->toArray();
 
         return $this->stats->frequencyCount($counts);

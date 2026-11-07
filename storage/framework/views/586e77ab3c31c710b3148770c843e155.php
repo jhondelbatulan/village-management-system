@@ -16,7 +16,7 @@
                                  class="auth-logo mb-3">
                             <h4 class="auth-title fw-bold text-primary mb-1">Forgot Password</h4>
                             <p class="auth-subtitle text-muted small mb-0">
-                                Enter your account email and we'll send your username and a new password to sign in with.
+                                Enter your account email and we'll send a verification code first, then your username and a new password.
                             </p>
                         </div>
 
@@ -69,7 +69,7 @@ unset($__errorArgs, $__bag); ?>
                             </div>
 
                             <button type="submit" class="btn btn-primary btn-lg w-100 login-btn">
-                                <i class="bi bi-send me-2"></i>Send Login Credentials
+                                <i class="bi bi-send me-2"></i>Send Verification Code
                             </button>
                         </form>
 
