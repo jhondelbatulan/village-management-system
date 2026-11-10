@@ -6,7 +6,17 @@
 :root {
     --auth-primary: #1a4b8c;
     --auth-primary-dark: #0f3460;
-    --auth-overlay: rgba(15, 52, 96, 0.75);
+    /*
+     * Wash laid over the rotating village photos. It is deliberately light
+     * near the top so the imagery stays visible, and deepens toward the
+     * bottom so the footer text keeps its contrast.
+     */
+    --auth-overlay: linear-gradient(
+        180deg,
+        rgba(15, 52, 96, 0.40) 0%,
+        rgba(15, 52, 96, 0.48) 55%,
+        rgba(8, 28, 52, 0.66) 100%
+    );
 }
 
 body.auth-body {
@@ -20,13 +30,31 @@ body.auth-body {
     overflow: hidden;
 }
 
-.auth-background {
+/*
+ * Rotating village cover photos. Each photo sits in its own full-screen
+ * layer and only its opacity changes, so images cross-fade instead of
+ * sliding across the screen.
+ */
+.auth-background-stack {
     position: fixed;
+    inset: 0;
+    z-index: 0;
+    background: var(--auth-primary-dark);
+}
+
+.auth-background-layer {
+    position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
     background-repeat: no-repeat;
-    z-index: 0;
+    opacity: 0;
+    transition: opacity 1.8s ease-in-out;
+    will-change: opacity;
+}
+
+.auth-background-layer.is-active {
+    opacity: 1;
 }
 
 .auth-overlay {
@@ -104,7 +132,10 @@ body.auth-body {
 }
 
 .auth-footer p {
-    text-shadow: 0 1px 3px rgba(0, 0, 0, 0.3);
+    /* Overrides Bootstrap's text-white-50 so the footer stays legible
+       against the lighter photo background. */
+    color: rgba(255, 255, 255, 0.92) !important;
+    text-shadow: 0 1px 4px rgba(0, 0, 0, 0.55);
 }
 
 .toggle-password {

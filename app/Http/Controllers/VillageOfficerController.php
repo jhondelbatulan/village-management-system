@@ -8,6 +8,7 @@ use App\Models\Village;
 use App\Models\VillageOfficer;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class VillageOfficerController extends Controller
@@ -52,7 +53,7 @@ class VillageOfficerController extends Controller
 
         if ($request->hasFile('photo')) {
             if ($officer->photo) {
-                $oldPath = storage_path('app/public/' . $officer->photo);
+                $oldPath = Storage::disk('public')->path($officer->photo);
                 if (file_exists($oldPath)) unlink($oldPath);
             }
             $file = $request->file('photo');

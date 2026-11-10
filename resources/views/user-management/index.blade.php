@@ -141,7 +141,7 @@
                                                 <i class="bi bi-{{ $user->status === 'active' ? 'pause-circle' : 'play-circle' }}"></i>
                                             </button>
                                         </form>
-                                        <form action="{{ route('users.destroy', $user) }}" method="POST" class="d-inline"
+                                        <form action="{{ route('users.destroy', $user) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your password to delete this user account."
                                               onsubmit="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')">
                                             @csrf
                                             @method('DELETE')

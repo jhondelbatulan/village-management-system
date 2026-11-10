@@ -295,13 +295,16 @@ class ApprovalWorkflowTest extends TestCase
     public function test_admin_can_reject_pending_and_super_admin_can_reject_admin_approved(): void
     {
         $household = $this->makeHousehold('pending');
+        $member = $this->makeResident('pending', $household);
 
         $this->actingAs($this->admin)
             ->post(route('approvals.reject-household', [$household, 'remarks' => 'Incomplete documents']))
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $this->assertSame('rejected', $household->fresh()->approval_status);
+        // Rejected requests are removed completely, not kept as "rejected" rows.
+        $this->assertDatabaseMissing('households', ['id' => $household->id]);
+        $this->assertDatabaseMissing('residents', ['id' => $member->id]);
 
         $resident = $this->makeResident('pending');
 
@@ -314,7 +317,7 @@ class ApprovalWorkflowTest extends TestCase
             ->assertRedirect()
             ->assertSessionHas('success');
 
-        $this->assertSame('rejected', $resident->fresh()->approval_status);
+        $this->assertDatabaseMissing('residents', ['id' => $resident->id]);
     }
 
     public function test_pending_resident_is_hidden_from_household_until_final_approval(): void

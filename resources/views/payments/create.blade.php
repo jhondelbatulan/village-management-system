@@ -54,7 +54,7 @@
     <div class="col-lg-8">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('payments.store') }}" method="POST" novalidate id="paymentForm">
+                <form action="{{ route('payments.store') }}" method="POST" novalidate id="paymentForm" data-password-confirm data-password-confirm-message="Enter your treasurer password to record this payment.">
                     @csrf
                     @if(!empty($onlinePayment))
                         <input type="hidden" name="online_payment_id" value="{{ $onlinePayment->id }}">

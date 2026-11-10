@@ -216,9 +216,28 @@ document.addEventListener('DOMContentLoaded', function() {
     var zoom = {{ $village->latitude ? 15 : 12 }};
 
     var pickerMap = L.map('village-map-picker').setView([latVal, lngVal], zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: 'OpenStreetMap', maxZoom: 19
-    }).addTo(pickerMap);
+
+    // Satellite imagery (default) and the street map, switchable live through
+    // the layer control — no page reload, position and pins are kept.
+    // Esri World Imagery Wayback (release WB_2026_R04) is cloud-free over the
+    // three villages and serves real imagery through z18 only.
+    var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 18,
+    });
+
+    var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    });
+
+    satelliteLayer.addTo(pickerMap);
+
+    L.control.layers(
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        null,
+        { position: 'topleft', collapsed: window.innerWidth < 768 }
+    ).addTo(pickerMap);
 
     var pickerMarker = null;
     var latIn = document.getElementById('latitude');

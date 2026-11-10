@@ -105,6 +105,7 @@ class PasswordPolicyTest extends TestCase
 
         // Weak password (no uppercase) must be rejected.
         $response = $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->from(route('users.edit', $secretary->id))
             ->put(route('users.update', $secretary->id), [
                 'role_id' => $secretaryRole->id,
@@ -123,6 +124,7 @@ class PasswordPolicyTest extends TestCase
 
         // Compliant password must be accepted.
         $response = $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->from(route('users.edit', $secretary->id))
             ->put(route('users.update', $secretary->id), [
                 'role_id' => $secretaryRole->id,

@@ -26,7 +26,7 @@
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('billings.generate') }}" method="POST">
+                <form action="{{ route('billings.generate') }}" method="POST" data-password-confirm data-password-confirm-message="Enter your treasurer password to generate these billings.">
                     @csrf
                     <div class="mb-3">
                         <label for="village_id" class="form-label fw-semibold">Village <span class="text-danger">*</span></label>

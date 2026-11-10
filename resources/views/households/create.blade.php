@@ -204,9 +204,9 @@
                     <label for="registration_date" class="form-label fw-semibold">Registration Date <span class="text-danger">*</span></label>
                     <input type="date" name="registration_date" id="registration_date"
                         class="form-control @error('registration_date') is-invalid @enderror"
-                        value="{{ old('registration_date', date('Y-m-d')) }}" required readonly
+                        value="{{ old('registration_date', date('Y-m-d')) }}" required
                         aria-describedby="registration_date-hint">
-                    <div class="form-text" id="registration_date-hint">Set automatically to today's date. Cannot be edited.</div>
+                    <div class="form-text" id="registration_date-hint">Defaults to today's date. You can change it.</div>
                     @error('registration_date')
                         <div class="invalid-feedback">{{ $message }}</div>
                     @enderror
@@ -239,7 +239,28 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var pickerMap = L.map('map-picker').setView([9.2372, 125.5415], 13);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(pickerMap);
+
+    // Satellite imagery (default) and the street map, switchable live through
+    // the layer control — no page reload, position and pins are kept.
+    // Esri World Imagery Wayback (release WB_2026_R04) is cloud-free over the
+    // three villages and serves real imagery through z18 only.
+    var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 18,
+    });
+
+    var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    });
+
+    satelliteLayer.addTo(pickerMap);
+
+    L.control.layers(
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        null,
+        { position: 'topleft', collapsed: window.innerWidth < 768 }
+    ).addTo(pickerMap);
     var pickerMarker = null;
     var latIn = document.getElementById('latitude');
     var lngIn = document.getElementById('longitude');

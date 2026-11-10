@@ -4,8 +4,7 @@
 
 @section('content')
 <div class="auth-wrapper">
-    <div class="auth-background" style="background-image: url('{{ asset(config('app_settings.assets.login_background')) }}');"></div>
-    <div class="auth-overlay"></div>
+    @include('partials.auth-background')
 
     <div class="container">
         <div class="row justify-content-center align-items-center min-vh-100 py-5">

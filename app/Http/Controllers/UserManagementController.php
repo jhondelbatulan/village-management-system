@@ -12,6 +12,7 @@ use App\Services\AuditLogService;
 use App\Services\PasswordService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\View\View;
 
@@ -114,6 +115,11 @@ class UserManagementController extends Controller
         // New accounts are always created active; status changes happen afterwards.
         $data['status'] = 'active';
 
+        // Fresh accounts must finish the one-time account setup (personal
+        // information, email, contact number and their own password) the first
+        // time they sign in, before reaching their dashboard.
+        $data['must_setup'] = true;
+
         $user = User::create($data);
 
         // Seed the password history so the initial password cannot be reused.
@@ -187,7 +193,7 @@ class UserManagementController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($user->profile_picture) {
-                $oldPath = storage_path('app/public/' . $user->profile_picture);
+                $oldPath = Storage::disk('public')->path($user->profile_picture);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }

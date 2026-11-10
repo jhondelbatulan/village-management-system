@@ -9,6 +9,7 @@ use App\Models\VillagePhoto;
 use App\Services\AuditLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class VillageController extends Controller
@@ -98,7 +99,7 @@ class VillageController extends Controller
 
         if ($request->hasFile('logo')) {
             if ($village->logo) {
-                $oldPath = storage_path('app/public/'.$village->logo);
+                $oldPath = Storage::disk('public')->path($village->logo);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }
@@ -111,7 +112,7 @@ class VillageController extends Controller
 
         if ($request->hasFile('cover_photo')) {
             if ($village->cover_photo) {
-                $oldPath = storage_path('app/public/'.$village->cover_photo);
+                $oldPath = Storage::disk('public')->path($village->cover_photo);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }
@@ -184,7 +185,7 @@ class VillageController extends Controller
             abort(404);
         }
 
-        $oldPath = storage_path('app/public/'.$photo->photo_path);
+        $oldPath = Storage::disk('public')->path($photo->photo_path);
         if (file_exists($oldPath)) {
             unlink($oldPath);
         }

@@ -28,6 +28,7 @@ class User extends Authenticatable
         'contact_number',
         'profile_picture',
         'status',
+        'must_setup',
         'last_login',
         'locked_at',
         'last_activity_at',
@@ -45,6 +46,7 @@ class User extends Authenticatable
     {
         return [
             'password' => 'hashed',
+            'must_setup' => 'boolean',
             'last_login' => 'datetime',
             'locked_at' => 'datetime',
             'last_activity_at' => 'datetime',

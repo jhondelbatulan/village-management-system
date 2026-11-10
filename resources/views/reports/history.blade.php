@@ -51,7 +51,7 @@
                     <td class="small text-muted">{{ $report->created_at->format('M d, Y h:i A') }}</td>
                     <td>
                         @if($report->file_path && file_exists($report->file_path))
-                        <a href="{{ route('reports.generate', ['report_type' => $report->report_type, 'format' => $report->format, 'village_id' => $report->village_id]) }}" class="btn btn-sm btn-outline-primary" title="Download">
+                        <a href="{{ route('reports.generate', ['report_type' => $report->report_type, 'format' => $report->format, 'village_id' => $report->village_id]) }}" class="btn btn-sm btn-outline-primary" data-password-confirm data-password-confirm-message="Enter your password to download this report." title="Download">
                             <i class="bi bi-download"></i>
                         </a>
                         @endif

@@ -110,7 +110,7 @@ class ResidentNotificationTest extends TestCase
     {
         $period = now()->format('Y-m');
 
-        $this->actingAs($this->treasurer)->post(route('billings.generate.store'), [
+        $this->actingAs($this->treasurer)->withSession(['auth.password_confirmed_at' => time()])->post(route('billings.generate.store'), [
             'village_id' => $this->village->id,
             'billing_period' => $period,
             'payment_type_ids' => [$this->monthlyDues->id],

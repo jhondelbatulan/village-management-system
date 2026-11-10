@@ -191,5 +191,6 @@
     setInterval(fetchNotifications, 15000);
 })();
     </script>
+    @include('partials.password-confirm')
 </body>
 </html>

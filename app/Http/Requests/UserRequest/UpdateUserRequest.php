@@ -49,7 +49,7 @@ class UpdateUserRequest extends FormRequest
                 'exists:households,id',
             ],
             'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $userId],
-            'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:users,email,' . $userId],
+            'email' => ['nullable', 'email:rfc', 'max:255', 'unique:users,email,' . $userId],
             'first_name' => ['nullable', 'string', 'max:255'],
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['nullable', 'string', 'max:255'],

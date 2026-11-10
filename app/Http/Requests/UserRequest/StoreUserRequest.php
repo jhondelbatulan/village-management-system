@@ -80,7 +80,7 @@ class StoreUserRequest extends FormRequest
                 'exists:households,id',
             ],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
-            'email' => ['nullable', 'email:rfc,dns', 'max:255', 'unique:users,email'],
+            'email' => ['nullable', 'email:rfc', 'max:255', 'unique:users,email'],
             'first_name' => ['nullable', 'string', 'max:255', 'regex:/^[\p{L}]+(?: [\p{L}]+)*$/u'],
             'middle_name' => ['nullable', 'string', 'regex:/^\p{Lu}$/u'],
             'last_name' => ['nullable', 'string', 'max:255', 'regex:/^[\p{L}]+(?: [\p{L}]+)*$/u'],

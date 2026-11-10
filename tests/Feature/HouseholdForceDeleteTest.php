@@ -67,6 +67,7 @@ class HouseholdForceDeleteTest extends TestCase
     public function test_super_admin_can_permanently_delete_a_household(): void
     {
         $response = $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.force-delete', $this->household));
 
         $response->assertRedirect(route('households.index'));
@@ -80,6 +81,7 @@ class HouseholdForceDeleteTest extends TestCase
         $this->household->delete();
 
         $response = $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.force-delete', $this->household->id));
 
         $response->assertRedirect(route('households.index'));
@@ -115,6 +117,7 @@ class HouseholdForceDeleteTest extends TestCase
         ]);
 
         $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.force-delete', $this->household))
             ->assertRedirect(route('households.index'));
 
@@ -139,6 +142,7 @@ class HouseholdForceDeleteTest extends TestCase
         $otherResident = $this->makeResident($otherHousehold->id, 'approved');
 
         $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.force-delete', $this->household))
             ->assertRedirect(route('households.index'));
 
@@ -153,6 +157,7 @@ class HouseholdForceDeleteTest extends TestCase
         $resident->delete();
 
         $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.force-delete', $this->household->id))
             ->assertRedirect(route('households.index'));
 

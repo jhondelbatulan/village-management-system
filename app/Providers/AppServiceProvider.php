@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Helpers\SystemHelper;
 use App\Http\View\Composers\PaymentPermissionsComposer;
+use App\Http\View\Composers\VillageBackgroundComposer;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\HouseholdPayment;
@@ -130,6 +131,14 @@ class AppServiceProvider extends ServiceProvider
             'payments.*',
         ];
         View::composer($paymentViews, PaymentPermissionsComposer::class);
+
+        // Village cover photos rotate behind the login and recovery screens.
+        View::composer([
+            'auth.login',
+            'auth.forgot-password',
+            'auth.verify-otp',
+            'auth.reset-password',
+        ], VillageBackgroundComposer::class);
 
         Blade::component('stat-card', 'components.stat-card');
         Blade::component('menu-item', 'components.menu-item');

@@ -21,7 +21,7 @@ class UpdateProfileRequest extends FormRequest
             'middle_name' => ['nullable', 'string', 'max:255'],
             'last_name' => ['required', 'string', 'max:255'],
             'suffix' => ['nullable', 'string', 'max:50'],
-            'email' => ['required', 'email:rfc,dns', 'max:255', 'unique:users,email,' . $userId],
+            'email' => ['required', 'email:rfc', 'max:255', 'unique:users,email,' . $userId],
             'contact_number' => ['nullable', 'string', 'max:20'],
             'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
         ];

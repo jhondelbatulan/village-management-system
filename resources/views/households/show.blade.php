@@ -67,7 +67,7 @@
             </button>
         @endif
         @if(auth()->user()->role?->role_slug === 'super_admin')
-            <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline"
+                                         <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your super admin password to permanently delete this household."
                   onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone and will remove all of its billing, payment, and participation records.')">
                 @csrf
                 @method('DELETE')

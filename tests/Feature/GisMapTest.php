@@ -268,6 +268,65 @@ class GisMapTest extends TestCase
             ->assertDontSee('Head Of VLB-00001', false);
     }
 
+    public function test_gis_maps_default_to_satellite_view_with_a_layer_switcher(): void
+    {
+        // Esri World Imagery Wayback release WB_2026_R04 — cloud-free over the
+        // three villages and available through z18 only.
+        $satelliteUrl = 'https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}';
+
+        // Super admin sees the system-wide map, the secretary the village map,
+        // and the resident their own household map — all three must default to
+        // satellite imagery and expose the Satellite/Street layer switcher.
+        foreach ([$this->superAdmin, $this->secretary, $this->residentA] as $user) {
+            $page = $this->actingAs($user)
+                ->get(route('gis.index'))
+                ->assertOk()
+                ->assertSee($satelliteUrl, false)
+                ->assertSee("'Satellite View'", false)
+                ->assertSee("'Street Map'", false)
+                ->assertSee('L.control.layers', false)
+                ->assertSee('satelliteLayer.addTo(map)', false)
+                ->assertSee('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', false);
+
+            // Satellite is the base layer actually added to the map first.
+            $this->assertMatchesRegularExpression(
+                '/satelliteLayer\.addTo\(map\);\s*L\.control\.layers/s',
+                $page->getContent()
+            );
+        }
+    }
+
+    public function test_gis_maps_keep_esri_attribution_and_no_api_key_is_required(): void
+    {
+        $page = $this->actingAs($this->superAdmin)
+            ->get(route('gis.index'))
+            ->assertOk()
+            ->assertSee('Tiles &copy; Esri', false)
+            ->assertSee('&copy; OpenStreetMap contributors', false);
+
+        $content = $page->getContent();
+
+        // No invented credentials are baked into the tile URLs.
+        $this->assertDoesNotMatchRegularExpression('/Imagery[^\'"]*(api_key|apiKey|token|Token)=/', $content);
+    }
+
+    public function test_satellite_layer_stops_at_z18_so_no_missing_tile_message_appears(): void
+    {
+        // Esri's imagery service returns 404 (rendered as "map data not
+        // available") from z19 up, so the satellite layer must cap at z18.
+        $page = $this->actingAs($this->superAdmin)
+            ->get(route('gis.index'))
+            ->assertOk()
+            ->assertSee('maxZoom: 18', false);
+
+        $content = $page->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\s*=\s*L\.tileLayer\(.*?maxZoom:\s*18/s',
+            $content
+        );
+    }
+
     public function test_village_apis_never_expose_other_villages_household_locations(): void
     {
         $secretary = $this->actingAs($this->secretary);
@@ -302,6 +361,37 @@ class GisMapTest extends TestCase
             ->assertDontSee('"household_number":"VLB-00001"', false);
     }
 
+    public function test_household_create_map_picker_defaults_to_satellite_with_layer_switcher(): void
+    {
+        $page = $this->actingAs($this->secretary)->get(route('households.create'));
+
+        $page->assertOk()
+            ->assertSee('wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', false)
+            ->assertSee("'Satellite View'", false)
+            ->assertSee("'Street Map'", false)
+            ->assertSee('L.control.layers', false)
+            ->assertSee('satelliteLayer.addTo(pickerMap)', false)
+            ->assertSee('&copy; OpenStreetMap contributors', false);
+
+        $content = $page->getContent();
+
+        // Satellite must be the base layer actually added to the picker map.
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\.addTo\(pickerMap\);\s*L\.control\.layers/s',
+            $content
+        );
+
+        // The satellite layer is capped at z18: Wayback has no z19 tiles, and
+        // requesting them produced the "map data not available" message.
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\s*=\s*L\.tileLayer\(.*?maxZoom:\s*18/s',
+            $content
+        );
+
+        // Existing pin-dropping and reference markers are untouched.
+        $page->assertSee('var pickerMarker = null;', false);
+    }
+
     public function test_household_edit_map_falls_back_to_village_mapped_coordinates(): void
     {
         $unmapped = $this->makeHousehold($this->villageA, 'VLA-00004', '2', '1', null, null, now());
@@ -313,5 +403,41 @@ class GisMapTest extends TestCase
             ->assertSee('var lngVal = ' . $this->villageA->longitude . ';', false)
             ->assertDontSee('var latVal = 9.2372;', false)
             ->assertDontSee('"household_number":"VLB-00001"', false);
+    }
+
+    public function test_village_edit_coordinate_map_defaults_to_satellite_with_layer_switcher(): void
+    {
+        // Editing a village's coordinates must offer the same satellite view
+        // (Esri Wayback 49059, capped at z18) with the live layer switcher as
+        // every other map in the system.
+        $page = $this->actingAs($this->superAdmin)->get(route('villages.edit', $this->villageA));
+
+        $page->assertOk()
+            ->assertSee('wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', false)
+            ->assertSee("'Satellite View'", false)
+            ->assertSee("'Street Map'", false)
+            ->assertSee('L.control.layers', false)
+            ->assertSee('satelliteLayer.addTo(pickerMap)', false)
+            ->assertSee('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', false)
+            ->assertSee('Tiles &copy; Esri', false);
+
+        $content = $page->getContent();
+
+        // Satellite is the base layer actually added to the picker map first.
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\.addTo\(pickerMap\);\s*L\.control\.layers/s',
+            $content
+        );
+
+        // The satellite layer stops at z18 so no "map data not available"
+        // placeholder ever appears when zooming in on a village coordinate.
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\s*=\s*L\.tileLayer\(.*?maxZoom:\s*18/s',
+            $content
+        );
+
+        // The pickable coordinate inputs are untouched.
+        $page->assertSee('id="latitude"', false)
+            ->assertSee('id="longitude"', false);
     }
 }

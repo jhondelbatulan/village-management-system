@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Household;
 use App\Models\Resident;
+use App\Models\User;
 use App\Models\Village;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
+use App\Services\RecordDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -178,20 +180,31 @@ class ApprovalController extends Controller
                 return back()->with('error', 'Remarks are required when rejecting.');
             }
 
-            $household->update([
-                'approval_status' => 'rejected',
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-                'remarks' => $remarks,
-            ]);
+            $number = $household->household_number;
+            $label = $household->notification_label;
+            $villageId = $household->village_id;
+            $submittedBy = $household->submitted_by;
+            $linkedUserIds = User::where('household_id', $household->id)->pluck('id');
 
-            AuditLogService::log('Reject Household', 'Approvals', "Rejected household: {$household->household_number}. Reason: {$remarks}");
-            app(NotificationService::class)->notifyUser($household->submitted_by, 'approval', 'Household Update', "Household has been rejected ({$household->notification_label}). Reason: {$remarks}", route('households.show', $household));
-            if ($role === 'super_admin') {
-                app(NotificationService::class)->notifyAdmins($household->village_id, 'Approval Required', "Household was rejected by Super Admin ({$household->notification_label}). Reason: {$remarks}", route('approvals.households'), 'warning');
+            // A rejected request is removed completely — it must not linger in
+            // queues, statistics, GIS layers, or dashboards.
+            app(RecordDeletionService::class)->purgeHousehold($household);
+
+            $village = Village::find($villageId);
+            if ($village) {
+                $village->recalculateCounts();
             }
 
-            return redirect()->route('approvals.households')->with('success', "Household {$household->household_number} has been rejected.");
+            AuditLogService::log('Reject Household', 'Approvals', "Rejected household: {$number}. Reason: {$remarks}");
+            app(NotificationService::class)->notifyUser($submittedBy, 'approval', 'Household Update', "Household has been rejected ({$label}). Reason: {$remarks}", route('approvals.households'));
+            if ($role === 'super_admin') {
+                app(NotificationService::class)->notifyAdmins($villageId, 'Approval Required', "Household was rejected by Super Admin ({$label}). Reason: {$remarks}", route('approvals.households'), 'warning');
+            }
+            foreach ($linkedUserIds as $userId) {
+                app(NotificationService::class)->notifyUser($userId, 'warning', 'Household Removed', "Your household request has been rejected and removed from the system. Reason: {$remarks}", route('approvals.households'));
+            }
+
+            return redirect()->route('approvals.households')->with('success', "Household {$number} has been rejected and removed from the system.");
         });
     }
 
@@ -351,20 +364,27 @@ class ApprovalController extends Controller
                 return back()->with('error', 'Remarks are required when rejecting.');
             }
 
-            $resident->update([
-                'approval_status' => 'rejected',
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-                'remarks' => $remarks,
-            ]);
+            $name = $resident->full_name;
+            $code = $resident->resident_code;
+            $villageId = $resident->village_id;
+            $submittedBy = $resident->submitted_by;
 
-            AuditLogService::log('Reject Resident', 'Approvals', "Rejected resident: {$resident->full_name}. Reason: {$remarks}");
-            app(NotificationService::class)->notifyUser($resident->submitted_by, 'approval', 'Resident Update', "Resident {$resident->full_name} has been rejected. Reason: {$remarks}", route('residents.show', $resident));
-            if ($role === 'super_admin') {
-                app(NotificationService::class)->notifyAdmins($resident->village_id, 'Approval Required', "Resident {$resident->full_name} was rejected by Super Admin. Reason: {$remarks}", route('approvals.residents'), 'warning');
+            // A rejected request is removed completely — it must not linger in
+            // queues, statistics, GIS layers, or dashboards.
+            app(RecordDeletionService::class)->purgeResident($resident);
+
+            $village = Village::find($villageId);
+            if ($village) {
+                $village->recalculateCounts();
             }
 
-            return redirect()->route('approvals.residents')->with('success', "Resident {$resident->full_name} has been rejected.");
+            AuditLogService::log('Reject Resident', 'Approvals', "Rejected resident: {$name} ({$code}). Reason: {$remarks}");
+            app(NotificationService::class)->notifyUser($submittedBy, 'approval', 'Resident Update', "Resident {$name} has been rejected and removed from the system. Reason: {$remarks}", route('approvals.residents'));
+            if ($role === 'super_admin') {
+                app(NotificationService::class)->notifyAdmins($villageId, 'Approval Required', "Resident {$name} was rejected by Super Admin. Reason: {$remarks}", route('approvals.residents'), 'warning');
+            }
+
+            return redirect()->route('approvals.residents')->with('success', "Resident \"{$name}\" has been rejected and removed from the system.");
         });
     }
 }

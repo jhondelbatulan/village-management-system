@@ -17,7 +17,7 @@
 
 <div class="card border-0 shadow-sm">
     <div class="card-body p-4">
-        <form action="{{ route('users.update', $user) }}" method="POST" enctype="multipart/form-data" novalidate>
+        <form action="{{ route('users.update', $user) }}" method="POST" enctype="multipart/form-data" novalidate data-password-confirm data-password-confirm-message="Enter your password to save changes to this user account.">
             @csrf
             @method('PUT')
 

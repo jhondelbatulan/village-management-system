@@ -129,6 +129,7 @@
                                 <th>Civil Status</th>
                                 <th>Relationship</th>
                                 <th>Status</th>
+                                <th class="text-end">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -162,10 +163,37 @@
                                         <span class="badge bg-secondary">—</span>
                                     @endif
                                 </td>
+                                <td class="text-end text-nowrap">
+                                    <a href="{{ route('households.members.edit', $resident) }}"
+                                       class="btn btn-sm btn-outline-primary"
+                                       title="Edit this member">
+                                        <i class="bi bi-pencil-square me-1"></i>Edit
+                                    </a>
+
+                                    @if($household->household_head_id === $resident->id)
+                                        <button type="button"
+                                                class="btn btn-sm btn-outline-danger"
+                                                disabled
+                                                title="The household head cannot be removed.">
+                                            <i class="bi bi-trash me-1"></i>Delete
+                                        </button>
+                                    @else
+                                        <form action="{{ route('households.members.destroy', $resident) }}"
+                                              method="POST"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Remove {{ $resident->full_name ?? ($resident->first_name . ' ' . $resident->last_name) }} from your household? This cannot be undone.')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove this member">
+                                                <i class="bi bi-trash me-1"></i>Delete
+                                            </button>
+                                        </form>
+                                    @endif
+                                </td>
                             </tr>
                             @empty
                             <tr>
-                                <td colspan="6" class="text-center py-4">
+                                <td colspan="7" class="text-center py-4">
                                     <p class="text-muted mb-0">No household members registered yet.</p>
                                 </td>
                             </tr>

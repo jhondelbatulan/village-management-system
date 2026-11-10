@@ -1,7 +1,7 @@
 @if($villagePhotos->isNotEmpty())
 @php $carouselId = 'villagePhotoCarousel_' . uniqid(); @endphp
 <div class="card border-0 shadow-sm mb-4 overflow-hidden">
-    <div id="{{ $carouselId }}" class="carousel slide" data-bs-ride="carousel" data-bs-interval="3000">
+    <div id="{{ $carouselId }}" class="carousel slide carousel-fade" data-bs-ride="carousel" data-bs-interval="5000">
         <div class="carousel-indicators">
             @foreach($villagePhotos as $i => $photo)
                 <button type="button" data-bs-target="#{{ $carouselId }}" data-bs-slide-to="{{ $i }}" class="{{ $i === 0 ? 'active' : '' }}" aria-label="Photo {{ $i + 1 }}"></button>

@@ -200,7 +200,7 @@ class ActivityNotificationTest extends TestCase
             'created_by' => $this->admin->id,
         ]);
 
-        $this->actingAs($this->treasurer)->post(route('payments.store'), [
+        $this->actingAs($this->treasurer)->withSession(['auth.password_confirmed_at' => time()])->post(route('payments.store'), [
             'billing_id' => $billing->id,
             'amount' => 500,
             'payment_method' => 'cash',

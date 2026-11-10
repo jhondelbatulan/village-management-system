@@ -1,0 +1,13 @@
+kind: wasmer.io/App.v0
+name: multi-village-management-system
+owner: jhondelbatulan
+package: .
+app_id: da_n73IatAUB3YL
+
+volumes:
+  - name: village-uploads
+    mount: /app/public/storage
+
+env:
+  PUBLIC_STORAGE: "/app/public/storage"
+  PUBLIC_STORAGE_PATH: "/app/public/storage"

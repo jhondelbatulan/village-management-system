@@ -6,6 +6,7 @@ use App\Http\Requests\HouseholdRequest\ApproveHouseholdRequest;
 use App\Http\Requests\HouseholdRequest\RequestMemberRequest;
 use App\Http\Requests\HouseholdRequest\StoreHouseholdRequest;
 use App\Http\Requests\HouseholdRequest\UpdateHouseholdRequest;
+use App\Http\Requests\ResidentRequest\UpdateHouseholdMemberRequest;
 use App\Models\Household;
 use App\Models\Resident;
 use App\Models\User;
@@ -14,6 +15,7 @@ use App\Services\AuditLogService;
 use App\Services\GisService;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
+use App\Services\RecordDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -168,6 +170,100 @@ class HouseholdController extends Controller
         return view('households.my-household', compact('household', 'balance', 'billings', 'payments', 'pendingMembers'));
     }
 
+    /**
+     * Edit form for a single household member — resident self-service, own
+     * household only.
+     */
+    public function editMember(Request $request, Resident $resident): View|RedirectResponse
+    {
+        $this->authorizeHouseholdMember($request, $resident);
+
+        return view('households.member-edit', compact('resident'));
+    }
+
+    /**
+     * Save changes to a single household member — resident self-service, own
+     * household only.
+     */
+    public function updateMember(UpdateHouseholdMemberRequest $request, Resident $resident): RedirectResponse
+    {
+        $this->authorizeHouseholdMember($request, $resident);
+
+        // validated() already carries the age recomputed from the birthdate
+        // during validation; household and village never change through this form.
+        $resident->update($request->validated());
+
+        AuditLogService::log(
+            'Update Household Member',
+            'Household Management',
+            "Updated household member: {$resident->full_name}"
+        );
+
+        return redirect()->route('households.my-household')->with('success', 'Household member updated successfully.');
+    }
+
+    /**
+     * Remove a single household member — resident self-service, own household
+     * only. The household head cannot be removed by a resident.
+     */
+    public function destroyMember(Request $request, Resident $resident): RedirectResponse
+    {
+        $this->authorizeHouseholdMember($request, $resident);
+
+        $household = Household::withTrashed()->find($resident->household_id);
+
+        if (($household && $household->household_head_id === $resident->id) || $resident->is_household_head) {
+            return redirect()->route('households.my-household')->with(
+                'error',
+                'The household head cannot be removed. Please coordinate with your secretary to transfer the head role first.'
+            );
+        }
+
+        $name = $resident->full_name;
+        $code = $resident->resident_code;
+        $resident->delete();
+
+        $village = Village::find($resident->village_id);
+        if ($village) {
+            $village->recalculateCounts();
+        }
+
+        AuditLogService::log('Remove Household Member', 'Household Management', "Removed household member: {$name} ({$code})");
+
+        if ($resident->household_id) {
+            app(NotificationService::class)->notifyHouseholdResidents(
+                [$resident->household_id],
+                'warning',
+                'Household Member Removed',
+                "A household member profile ({$name}) has been removed from your household.",
+                route('households.my-household')
+            );
+        }
+
+        return redirect()->route('households.my-household')->with('success', "Household member \"{$name}\" has been removed.");
+    }
+
+    /**
+     * Residents may only touch members of the household their own account is
+     * linked to; every other role is rejected outright.
+     */
+    private function authorizeHouseholdMember(Request $request, Resident $resident): void
+    {
+        $user = $request->user();
+
+        abort_unless(
+            $user?->hasRole('resident') === true,
+            403,
+            'Only resident accounts can manage household members.'
+        );
+
+        abort_unless(
+            $resident->household_id && (int) $resident->household_id === (int) $user->household_id,
+            403,
+            'This household member does not belong to your household.'
+        );
+    }
+
     public function edit(Household $household): View
     {
         $villages = Village::where('status', 'active')->orderBy('village_name')->get();
@@ -280,16 +376,7 @@ class HouseholdController extends Controller
 
         try {
             DB::transaction(function () use ($household): void {
-                $household->participations()->delete();
-
-                Resident::withTrashed()
-                    ->where('household_id', $household->id)
-                    ->each(function (Resident $resident): void {
-                        $resident->participations()->delete();
-                        $resident->forceDelete();
-                    });
-
-                $household->forceDelete();
+                app(RecordDeletionService::class)->purgeHousehold($household);
             });
         } catch (\Throwable $e) {
             report($e);

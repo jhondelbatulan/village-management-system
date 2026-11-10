@@ -60,7 +60,7 @@ class VillageDocumentController extends Controller
     public function destroy(Village $village, VillageDocument $document): RedirectResponse
     {
         $this->enforceVillageAccess(auth()->user(), $village->id);
-        $path = storage_path('app/public/' . $document->file_path);
+        $path = Storage::disk('public')->path($document->file_path);
         if (file_exists($path)) {
             unlink($path);
         }

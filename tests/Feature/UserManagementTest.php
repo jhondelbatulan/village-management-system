@@ -67,6 +67,7 @@ class UserManagementTest extends TestCase
         $target = $this->makeUser('secretary', $village->id);
 
         $response = $this->actingAs($this->superAdmin)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('users.destroy', $target));
 
         $response->assertRedirect(route('users.index'));
@@ -321,7 +322,7 @@ class UserManagementTest extends TestCase
         $target = $this->makeUser('resident', $village->id);
         $secretaryRole = Role::where('role_slug', 'secretary')->firstOrFail();
 
-        $response = $this->actingAs($this->superAdmin)->put(route('users.update', $target), [
+        $response = $this->actingAs($this->superAdmin)->withSession(['auth.password_confirmed_at' => time()])->put(route('users.update', $target), [
             'role_id' => $secretaryRole->id,
             'village_id' => $village->id,
             'username' => $target->username,
@@ -340,7 +341,7 @@ class UserManagementTest extends TestCase
         $secretary = $this->makeUser('secretary', $village->id);
         $secretaryRole = Role::where('role_slug', 'secretary')->firstOrFail();
 
-        $response = $this->actingAs($this->superAdmin)->put(route('users.update', $secretary), [
+        $response = $this->actingAs($this->superAdmin)->withSession(['auth.password_confirmed_at' => time()])->put(route('users.update', $secretary), [
             'role_id' => $secretaryRole->id,
             'village_id' => $village->id,
             'username' => $secretary->username,
@@ -360,7 +361,7 @@ class UserManagementTest extends TestCase
         $target = $this->makeUser('admin', $village->id);
         $adminRole = Role::where('role_slug', 'admin')->firstOrFail();
 
-        $response = $this->actingAs($this->superAdmin)->put(route('users.update', $target), [
+        $response = $this->actingAs($this->superAdmin)->withSession(['auth.password_confirmed_at' => time()])->put(route('users.update', $target), [
             'role_id' => $adminRole->id,
             'village_id' => $village->id,
             'username' => $target->username,

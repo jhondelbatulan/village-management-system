@@ -194,7 +194,8 @@ class LoginController extends Controller
 
     private function redirectByRole(): RedirectResponse
     {
-        $routeName = RoleRedirect::routeName(auth()->user()?->role?->role_slug);
+        $user = auth()->user();
+        $routeName = RoleRedirect::routeName($user?->role?->role_slug);
 
         if ($routeName === null) {
             Auth::logout();
@@ -204,6 +205,11 @@ class LoginController extends Controller
             return redirect()->route('login')->withErrors([
                 'username' => 'Your account is not linked to a valid role. Please contact an administrator.',
             ]);
+        }
+
+        // A brand-new account must finish its one-time setup first.
+        if ($user?->must_setup) {
+            return redirect()->route('account.setup.show');
         }
 
         return redirect()->route($routeName);

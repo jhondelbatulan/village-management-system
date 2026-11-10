@@ -13,6 +13,7 @@ use App\Services\NotificationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
@@ -219,7 +220,7 @@ class ResidentController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($resident->profile_picture) {
-                $oldPath = storage_path('app/public/'.$resident->profile_picture);
+                $oldPath = Storage::disk('public')->path($resident->profile_picture);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }

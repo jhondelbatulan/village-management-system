@@ -7,6 +7,7 @@ use App\Http\Requests\ProfileRequest\UpdateProfileRequest;
 use App\Services\AuditLogService;
 use App\Services\PasswordService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -36,7 +37,7 @@ class ProfileController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($user->profile_picture) {
-                $oldPath = storage_path('app/public/' . $user->profile_picture);
+                $oldPath = Storage::disk('public')->path($user->profile_picture);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }
@@ -100,7 +101,7 @@ class ProfileController extends Controller
 
         if ($request->hasFile('profile_picture')) {
             if ($user->profile_picture) {
-                $oldPath = storage_path('app/public/' . $user->profile_picture);
+                $oldPath = Storage::disk('public')->path($user->profile_picture);
                 if (file_exists($oldPath)) {
                     unlink($oldPath);
                 }

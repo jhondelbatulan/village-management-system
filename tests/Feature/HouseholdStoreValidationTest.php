@@ -95,7 +95,7 @@ class HouseholdStoreValidationTest extends TestCase
         $this->assertSame('12', $household->lot_number);
     }
 
-    public function test_registration_date_is_not_editable_on_create(): void
+    public function test_registration_date_is_editable_on_create(): void
     {
         $response = $this->actingAs($this->secretary)
             ->post(route('households.store'), $this->payload(['registration_date' => '2000-01-01']));
@@ -104,7 +104,19 @@ class HouseholdStoreValidationTest extends TestCase
 
         $response->assertRedirect(route('households.show', $household));
 
-        $this->assertSame(now()->toDateString(), $household->registration_date->toDateString());
+        $this->assertSame('2000-01-01', $household->registration_date->toDateString());
+    }
+
+    public function test_registration_date_defaults_to_today_when_not_provided(): void
+    {
+        $payload = $this->payload();
+        unset($payload['registration_date']);
+
+        $this->actingAs($this->secretary)
+            ->post(route('households.store'), $payload)
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(now()->toDateString(), Household::firstOrFail()->registration_date->toDateString());
     }
 
     public function test_duplicate_block_and_lot_in_same_village_is_rejected(): void
@@ -173,11 +185,11 @@ class HouseholdStoreValidationTest extends TestCase
         $response->assertOk();
         $response->assertSee('Numbers only.', false);
         $response->assertSee('Letters only. First letter of every word is capitalized automatically.', false);
-        $response->assertSee('Cannot be edited.', false);
+        $response->assertSee('Defaults to today\'s date. You can change it.', false);
         $response->assertSee("replace(/[^0-9]/g, '')", false);
         $this->assertDoesNotMatchRegularExpression('/<textarea name="address"[^>]*\brequired\b/', $response->getContent());
 
-        $this->assertMatchesRegularExpression(
+        $this->assertDoesNotMatchRegularExpression(
             '/<input type="date" name="registration_date"[^>]*readonly/',
             $response->getContent()
         );

@@ -22,8 +22,10 @@ class StoreHouseholdRequest extends FormRequest
             $merge['household_head_name'] = TextNormalizer::titleCase($headName);
         }
 
-        // The registration date is not editable: it is always the date the household is registered.
-        $merge['registration_date'] = now()->toDateString();
+        // The registration date defaults to today but stays editable on create.
+        if (! $this->filled('registration_date')) {
+            $merge['registration_date'] = now()->toDateString();
+        }
 
         foreach (['block_number', 'lot_number'] as $field) {
             $value = $this->input($field);

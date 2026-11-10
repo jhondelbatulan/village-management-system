@@ -297,10 +297,30 @@ document.addEventListener('DOMContentLoaded', function() {
         preferCanvas: true,
     }).setView([center.lat, center.lng], 15);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    // Satellite imagery (default) and the original street map, switchable
+    // live through the layer control below — no page reload, position kept.
+    //
+    // Uses Esri World Imagery Wayback (release WB_2026_R04): a fixed, dated
+    // capture that is cloud-free over Comagascas, La Union and Calibunan.
+    // Wayback serves real imagery through z18 — z19 returns 404, which is
+    // what produced the "map data not available" message when zooming in.
+    var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 18,
+    });
+
+    var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors',
         maxZoom: 19,
-    }).addTo(map);
+    });
+
+    satelliteLayer.addTo(map);
+
+    L.control.layers(
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        null,
+        { position: 'topleft', collapsed: window.innerWidth < 768 }
+    ).addTo(map);
 
     var tilesLoading = 0;
     map.on('tileload', function() {

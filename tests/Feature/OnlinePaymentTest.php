@@ -372,6 +372,7 @@ class OnlinePaymentTest extends TestCase
             ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
 
         $this->actingAs($this->treasurer)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->post(route('payments.store'), [
                 'billing_id' => $this->billing->id,
                 'amount' => 1000,
@@ -406,6 +407,7 @@ class OnlinePaymentTest extends TestCase
             ->assertForbidden();
 
         $this->actingAs($this->treasurer)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->post(route('payments.store'), [
                 'billing_id' => $this->billing->id,
                 'amount' => 1000,
@@ -471,6 +473,7 @@ class OnlinePaymentTest extends TestCase
     public function test_treasurer_can_still_record_a_manual_face_to_face_payment(): void
     {
         $this->actingAs($this->treasurer)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->post(route('payments.store'), [
                 'billing_id' => $this->billing->id,
                 'amount' => 1000,
@@ -531,6 +534,7 @@ class OnlinePaymentTest extends TestCase
             ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
 
         $this->actingAs($this->treasurer)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->from(route('payments.create', ['online_payment' => $onlinePayment->id]))
             ->post(route('payments.store'), [
                 'billing_id' => $this->billing->id,

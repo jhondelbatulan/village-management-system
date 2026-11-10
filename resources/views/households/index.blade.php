@@ -206,7 +206,7 @@
                                         @endif
                                     @endif
                                     @if(auth()->user()->role?->role_slug === 'super_admin')
-                                        <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone.')">
+                                        <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your super admin password to permanently delete this household." onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone.')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-outline-danger" title="Delete Permanently">
@@ -282,7 +282,7 @@
                                         </form>
                                     @endif
                                     @if(auth()->user()->role?->role_slug === 'super_admin')
-                                        <form action="{{ route('households.force-delete', $archived) }}" method="POST" class="d-inline" onsubmit="return confirm('Permanently delete household {{ $archived->household_number }} and all of its residents? This cannot be undone.')">
+                                        <form action="{{ route('households.force-delete', $archived) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your super admin password to permanently delete this household." onsubmit="return confirm('Permanently delete household {{ $archived->household_number }} and all of its residents? This cannot be undone.')">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete Permanently">

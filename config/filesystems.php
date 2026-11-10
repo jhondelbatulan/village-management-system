@@ -40,7 +40,12 @@ return [
 
         'public' => [
             'driver' => 'local',
-            'root' => storage_path('app/public'),
+            // The disk root lives inside the web root (public/storage): locally
+            // it is a plain directory, and on deployments (see app.yaml) the
+            // same path is a persistent volume. Both are served directly at
+            // /storage/..., so no symlink is needed — and a symlink here would
+            // make `wasmer deploy` fail validation.
+            'root' => env('PUBLIC_STORAGE_PATH', env('PUBLIC_STORAGE', public_path('storage'))),
             'url' => rtrim(env('APP_URL', 'http://localhost'), '/').'/storage',
             'visibility' => 'public',
             'throw' => false,
@@ -67,14 +72,11 @@ return [
     | Symbolic Links
     |--------------------------------------------------------------------------
     |
-    | Here you may configure the symbolic links that will be created when the
-    | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
+    | No symbolic links are registered on purpose: `public/storage` must stay
+    | a real directory (a symlink there makes `wasmer deploy` fail).
     |
     */
 
-    'links' => [
-        public_path('storage') => storage_path('app/public'),
-    ],
+    'links' => [],
 
 ];

@@ -19,7 +19,14 @@ class ReportController extends Controller
     {
         $user = auth()->user();
         $role = $user->role?->role_slug ?? 'resident';
-        $villages = Village::where('status', 'active')->orderBy('village_name')->get();
+        $scope = $this->villageScope(null);
+        $canChooseVillage = $scope['scope'] === 'all';
+
+        // Only super admins may pick any village — village staff see their own.
+        $villages = $canChooseVillage
+            ? Village::where('status', 'active')->orderBy('village_name')->get()
+            : Village::where('status', 'active')->where('id', $scope['villageId'])->get();
+
         $categories = $this->reportService->getReportsByCategory();
         $allowedTypes = $this->reportService->getAllowedReportTypes($role);
         $recentReports = GeneratedReport::where('user_id', $user->id)->latest()->limit(5)->with('village')->get();
@@ -32,7 +39,15 @@ class ReportController extends Controller
             }
         }
 
-        return view('reports.index', compact('villages', 'categories', 'filteredCategories', 'recentReports', 'allowedTypes'));
+        return view('reports.index', compact(
+            'villages',
+            'categories',
+            'filteredCategories',
+            'recentReports',
+            'allowedTypes',
+            'canChooseVillage',
+            'scope'
+        ));
     }
 
     public function generate(Request $request): \Symfony\Component\HttpFoundation\Response
@@ -45,12 +60,13 @@ class ReportController extends Controller
 
         $reportType = $request->input('report_type');
         $format = $request->input('format');
-        $villageId = $request->input('village_id');
         $role = auth()->user()->role?->role_slug ?? 'resident';
 
         if (!$this->reportService->canAccessReport($role, $reportType)) {
             abort(403, 'You do not have permission to generate this report.');
         }
+
+        $villageId = $this->villageScope($this->requestedVillageId($request))['villageId'];
 
         $filters = $request->only([
             'date_from', 'date_to', 'gender', 'civil_status', 'age_group',
@@ -79,12 +95,13 @@ class ReportController extends Controller
     public function printView(Request $request): View
     {
         $reportType = $request->input('report_type', '');
-        $villageId = $request->input('village_id');
         $role = auth()->user()->role?->role_slug ?? 'resident';
 
         if (!$this->reportService->canAccessReport($role, $reportType)) {
             abort(403);
         }
+
+        $villageId = $this->villageScope($this->requestedVillageId($request))['villageId'];
 
         $filters = $request->only([
             'date_from', 'date_to', 'gender', 'civil_status', 'age_group',
@@ -99,8 +116,13 @@ class ReportController extends Controller
     public function schedule(Request $request): View
     {
         $this->authorizeSchedule();
+        $scope = $this->villageScope(null);
+
+        $villages = $scope['scope'] === 'all'
+            ? Village::where('status', 'active')->orderBy('village_name')->get()
+            : Village::where('status', 'active')->where('id', $scope['villageId'])->get();
+
         $scheduledReports = $this->reportService->getScheduledReports();
-        $villages = Village::where('status', 'active')->orderBy('village_name')->get();
         $reportTypes = $this->reportService->getReportTypes();
         return view('reports.schedule', compact('scheduledReports', 'villages', 'reportTypes'));
     }
@@ -114,13 +136,15 @@ class ReportController extends Controller
             'frequency' => 'required|in:weekly,monthly,quarterly,annually',
         ]);
 
+        $villageId = $this->villageScope($this->requestedVillageId($request))['villageId'];
+
         $info = ReportService::REPORT_TYPES[$request->report_type] ?? ['name' => $request->report_type, 'category' => 'misc'];
         GeneratedReport::create([
             'user_id' => auth()->id(),
             'report_name' => $info['name'] . ' (Scheduled)',
             'report_type' => $request->report_type,
             'category' => $info['category'],
-            'village_id' => $request->village_id,
+            'village_id' => $villageId,
             'format' => 'pdf',
             'is_scheduled' => true,
             'schedule_frequency' => $request->frequency,
@@ -144,6 +168,41 @@ class ReportController extends Controller
         if (!in_array($role, ['super_admin', 'admin'])) {
             abort(403, 'Only Super Admin and Admin can manage report schedules.');
         }
+    }
+
+    /**
+     * The village id sent with the request, or null for "all villages".
+     */
+    protected function requestedVillageId(Request $request): ?int
+    {
+        return $request->filled('village_id') ? (int) $request->input('village_id') : null;
+    }
+
+    /**
+     * Resolve which village the current user is allowed to report on.
+     *
+     * Only the super admin may report across all villages; every other
+     * account is locked to the village it is assigned to, so requesting
+     * another village (or none at all) is ignored and replaced with their own.
+     *
+     * @return array{villageId: ?int, scope: 'all'|'own'}
+     */
+    protected function villageScope(?int $requestedVillageId): array
+    {
+        $user = auth()->user();
+        $role = $user?->role?->role_slug ?? 'resident';
+
+        if ($role === 'super_admin') {
+            return ['villageId' => $requestedVillageId, 'scope' => 'all'];
+        }
+
+        $ownVillageId = $user?->village_id ?? $user?->household?->village_id;
+
+        if ($ownVillageId === null) {
+            abort(403, 'You are not assigned to a village, so reports cannot be generated for your account.');
+        }
+
+        return ['villageId' => (int) $ownVillageId, 'scope' => 'own'];
     }
 
     protected function getNextRunDate(string $frequency): \Carbon\Carbon

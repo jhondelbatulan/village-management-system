@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\AccountSetupController;
 use App\Http\Controllers\ApprovalController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ResetPasswordController;
+use App\Http\Controllers\ConfirmPasswordController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\HouseholdController;
 use App\Http\Controllers\ProfileController;
@@ -73,9 +75,27 @@ Route::middleware('guest')->group(function (): void {
 | Authenticated Routes
 |--------------------------------------------------------------------------
 */
-Route::middleware(['auth'])->group(function (): void {
+Route::middleware(['auth', 'account.setup'])->group(function (): void {
 
     Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
+
+    /*
+    | Password Confirmation — required before sensitive actions run
+    | (deleting households, managing user accounts, downloading reports,
+    | recording payments, generating billings)
+    */
+    Route::get('/confirm-password', [ConfirmPasswordController::class, 'show'])->name('password.confirm.show');
+    Route::post('/confirm-password', [ConfirmPasswordController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('password.confirm.store');
+
+    /*
+    | One-Time Account Setup — freshly created accounts must provide their
+    | personal information, email, contact number and a new password before
+    | they are allowed to open their dashboard
+    */
+    Route::get('/setup-account', [AccountSetupController::class, 'show'])->name('account.setup.show');
+    Route::post('/setup-account', [AccountSetupController::class, 'store'])->name('account.setup.store');
 
     Route::get('/users/online-status', function () {
         $threshold = now()->subMinutes(5);
@@ -141,9 +161,13 @@ Route::middleware(['auth'])->group(function (): void {
         Route::get('/create', [UserManagementController::class, 'create'])->name('create');
         Route::post('/', [UserManagementController::class, 'store'])->name('store');
         Route::get('/{user}/edit', [UserManagementController::class, 'edit'])->name('edit');
-        Route::put('/{user}', [UserManagementController::class, 'update'])->name('update');
+        Route::put('/{user}', [UserManagementController::class, 'update'])
+            ->name('update')
+            ->middleware('confirm.password');
         Route::patch('/{user}/toggle-status', [UserManagementController::class, 'toggleStatus'])->name('toggle-status');
-        Route::delete('/{user}', [UserManagementController::class, 'destroy'])->name('destroy');
+        Route::delete('/{user}', [UserManagementController::class, 'destroy'])
+            ->name('destroy')
+            ->middleware('confirm.password');
     });
 
     /*
@@ -241,7 +265,9 @@ Route::middleware(['auth'])->group(function (): void {
         });
 
         Route::middleware('role:super_admin')->group(function (): void {
-            Route::delete('/{household}/force-delete', [HouseholdController::class, 'forceDelete'])->name('force-delete');
+            Route::delete('/{household}/force-delete', [HouseholdController::class, 'forceDelete'])
+                ->name('force-delete')
+                ->middleware('confirm.password');
         });
     });
 
@@ -305,7 +331,9 @@ Route::middleware(['auth'])->group(function (): void {
 
         Route::middleware('role:treasurer')->group(function (): void {
             Route::get('/create', [PaymentController::class, 'create'])->name('create');
-            Route::post('/', [PaymentController::class, 'store'])->name('store');
+            Route::post('/', [PaymentController::class, 'store'])
+                ->name('store')
+                ->middleware('confirm.password');
         });
 
         Route::get('/{payment}', [PaymentController::class, 'show'])->name('show');
@@ -326,7 +354,9 @@ Route::middleware(['auth'])->group(function (): void {
 
         Route::middleware('role:treasurer')->group(function (): void {
             Route::get('/generate', [BillingController::class, 'generateForm'])->name('generate');
-            Route::post('/generate', [BillingController::class, 'generate'])->name('generate.store');
+            Route::post('/generate', [BillingController::class, 'generate'])
+                ->name('generate.store')
+                ->middleware('confirm.password');
         });
 
         Route::middleware('role:resident')->group(function (): void {
@@ -371,6 +401,16 @@ Route::middleware(['auth'])->group(function (): void {
     Route::get('/my-household', [HouseholdController::class, 'myHousehold'])->name('households.my-household');
     Route::get('/my-household/request-member', [HouseholdController::class, 'requestMemberForm'])->name('households.request-member-form');
     Route::post('/my-household/request-member', [HouseholdController::class, 'requestMember'])->name('households.request-member');
+
+    /*
+    | Household Members — residents can edit or remove individual members of
+    | their OWN household (the household head cannot be removed)
+    */
+    Route::middleware('role:resident')->prefix('my-household')->name('households.members.')->group(function (): void {
+        Route::get('/members/{resident}/edit', [HouseholdController::class, 'editMember'])->name('edit');
+        Route::put('/members/{resident}', [HouseholdController::class, 'updateMember'])->name('update');
+        Route::delete('/members/{resident}', [HouseholdController::class, 'destroyMember'])->name('destroy');
+    });
 
     /*
     | Household Status Toggle — Secretary can toggle active/inactive
@@ -564,7 +604,15 @@ Route::middleware(['auth'])->group(function (): void {
 
     Route::middleware('role:super_admin,admin,secretary,treasurer')->prefix('reports')->name('reports.')->group(function () {
         Route::get('/', [\App\Http\Controllers\ReportController::class, 'index'])->name('index');
-        Route::post('/generate', [\App\Http\Controllers\ReportController::class, 'generate'])->name('generate');
+        // Downloading a report always requires a fresh password confirmation
+        // (gated for super admin and admin); GET serves the plain download
+        // links on the history/recent tables, POST the generate form.
+        Route::get('/generate', [\App\Http\Controllers\ReportController::class, 'generate'])
+            ->name('generate.get')
+            ->middleware('confirm.password:super_admin,admin');
+        Route::post('/generate', [\App\Http\Controllers\ReportController::class, 'generate'])
+            ->name('generate')
+            ->middleware('confirm.password:super_admin,admin');
         Route::get('/history', [\App\Http\Controllers\ReportController::class, 'history'])->name('history');
         Route::get('/print', [\App\Http\Controllers\ReportController::class, 'printView'])->name('print');
         Route::middleware('role:super_admin,admin')->group(function (): void {

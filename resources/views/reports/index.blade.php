@@ -62,7 +62,7 @@
         <h6 class="m-0 fw-bold text-primary"><i class="bi bi-gear me-2"></i>Quick Generate</h6>
     </div>
     <div class="card-body">
-        <form action="{{ route('reports.generate') }}" method="POST" id="reportForm">
+        <form action="{{ route('reports.generate') }}" method="POST" id="reportForm" data-password-confirm data-password-confirm-message="Enter your password to download this report.">
             @csrf
             <div class="row g-3">
                 <div class="col-md-3">
@@ -81,9 +81,11 @@
                 <div class="col-md-2">
                     <label class="form-label small fw-semibold">Village</label>
                     <select name="village_id" class="form-select" id="villageSelect">
-                        <option value="">All Villages</option>
+                        @if($canChooseVillage)
+                            <option value="">All Villages</option>
+                        @endif
                         @foreach($villages as $village)
-                            <option value="{{ $village->id }}">{{ $village->village_name }}</option>
+                            <option value="{{ $village->id }}" @if(!$canChooseVillage && $scope['villageId'] === $village->id) selected @endif>{{ $village->village_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -180,7 +182,7 @@
                     <td class="small text-muted">{{ $report->created_at->format('M d, Y h:i A') }}</td>
                     <td>
                         @if($report->file_path && file_exists($report->file_path))
-                        <a href="{{ route('reports.generate', ['report_type' => $report->report_type, 'format' => $report->format, 'village_id' => $report->village_id]) }}" class="btn btn-sm btn-outline-primary">
+                        <a href="{{ route('reports.generate', ['report_type' => $report->report_type, 'format' => $report->format, 'village_id' => $report->village_id]) }}" class="btn btn-sm btn-outline-primary" data-password-confirm data-password-confirm-message="Enter your password to download this report.">
                             <i class="bi bi-download"></i>
                         </a>
                         @endif
@@ -201,7 +203,8 @@ function generateReport(type, format) {
     const form = document.getElementById('reportForm');
     document.getElementById('reportType').value = type;
     document.querySelector('input[name="format"][value="' + format + '"]').checked = true;
-    form.submit();
+    // requestSubmit() (not submit()) so the password-confirmation handler runs.
+    form.requestSubmit();
 }
 
 function printReport(type) {

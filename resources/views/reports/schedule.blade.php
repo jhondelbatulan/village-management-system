@@ -35,9 +35,11 @@
                 <div class="col-md-3">
                     <label class="form-label small fw-semibold">Village</label>
                     <select name="village_id" class="form-select">
-                        <option value="">All Villages</option>
+                        @if(auth()->user()?->role?->role_slug === 'super_admin')
+                            <option value="">All Villages</option>
+                        @endif
                         @foreach($villages as $village)
-                            <option value="{{ $village->id }}">{{ $village->village_name }}</option>
+                            <option value="{{ $village->id }}" @if(auth()->user()?->role?->role_slug !== 'super_admin') selected @endif>{{ $village->village_name }}</option>
                         @endforeach
                     </select>
                 </div>
