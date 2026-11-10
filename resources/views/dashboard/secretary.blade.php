@@ -87,18 +87,9 @@
 </div>
 @endif
 
-@if($dashboardWidgets['recent_activities'] ?? true || $dashboardWidgets['system_notices'] ?? true)
+@if($dashboardWidgets['system_notices'] ?? true)
 <div class="row g-4 mb-4">
-    <div class="col-lg-6">
-        <x-analytics.recent-activity
-            title="My Recent Activity"
-            icon="bi-activity"
-            color="primary"
-            :activities="$recentActivity"
-            :maxItems="10"
-        />
-    </div>
-    <div class="col-lg-6">
+    <div class="col-12">
         <div class="card shadow-sm h-100">
             <div class="card-header py-3 d-flex align-items-center justify-content-between">
                 <h6 class="m-0 fw-bold text-warning">

@@ -146,6 +146,8 @@
                     @csrf
                     @php
                         $widgets = $preferences->dashboard_widgets ?? $preferences->getDefaultDashboardWidgets();
+                        // The recent-activity widget was removed from every dashboard.
+                        unset($widgets['recent_activities']);
                     @endphp
                     <div class="row g-3">
                         @foreach($widgets as $key => $enabled)

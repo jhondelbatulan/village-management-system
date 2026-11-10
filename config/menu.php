@@ -42,7 +42,6 @@ return [
                 ['label' => 'Predictive Payment', 'icon' => 'bi-graph-up-arrow', 'route' => 'analytics.predictive-payment.index'],
             ]],
             ['label' => 'Reports', 'icon' => 'bi-file-earmark-bar-graph', 'route' => 'reports.index'],
-            ['label' => 'Password Security', 'icon' => 'bi-key', 'route' => 'system-admin.password-security.index'],
             ['label' => 'Settings', 'icon' => 'bi-gear', 'route' => 'system-admin.settings.index'],
             ['label' => 'Branding', 'icon' => 'bi-palette', 'route' => 'system-admin.branding.index'],
             ['label' => 'About System', 'icon' => 'bi-info-circle', 'route' => 'about'],

@@ -154,18 +154,4 @@
         </div>
     </div>
 </div>
-
-@if($dashboardWidgets['recent_activities'] ?? true)
-<div class="row g-4 mb-4">
-    <div class="col-12">
-        <x-analytics.recent-activity
-            title="My Recent Activity"
-            icon="bi-activity"
-            color="primary"
-            :activities="$recentActivity"
-            :maxItems="10"
-        />
-    </div>
-</div>
-@endif
 @endsection

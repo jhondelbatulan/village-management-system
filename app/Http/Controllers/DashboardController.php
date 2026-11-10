@@ -67,7 +67,6 @@ class DashboardController extends Controller
         $paymentStats = $this->dashboard->getPayment()->getSystemStats();
         $participationStats = $this->dashboard->getParticipation()->getSystemStats();
         $approvalStats = $this->dashboard->getApproval()->getSystemStats();
-        $recentActivity = $this->dashboard->getActivity()->getSystemRecentActivity(15);
         $insights = $this->dashboard->getInsight()->getSystemInsights();
         $villageComparison = $this->dashboard->getPopulation()->getVillageComparison();
         $paymentComparison = $this->dashboard->getPayment()->getVillageComparison();
@@ -141,7 +140,7 @@ class DashboardController extends Controller
 
         return view('dashboard.super-admin', compact(
             'overview', 'populationStats', 'householdStats', 'paymentStats',
-            'participationStats', 'approvalStats', 'recentActivity', 'insights',
+            'participationStats', 'approvalStats', 'insights',
             'villageComparison', 'paymentComparison', 'participationComparison',
             'pendingHouseholds', 'pendingResidents',
             'recentAnnouncements', 'upcomingEvents',
@@ -195,9 +194,6 @@ class DashboardController extends Controller
         $monthlyDues = $villageId
             ? $this->paymentService->getMonthlyDuesCollections($villageId)
             : [];
-        $recentActivity = $villageId
-            ? $this->dashboard->getActivity()->getRecentActivity($villageId, 10)
-            : collect();
 
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
@@ -225,7 +221,7 @@ class DashboardController extends Controller
         return view('dashboard.admin', compact(
             'village', 'populationStats', 'householdStats', 'paymentStats',
             'participationStats', 'announcementStats', 'approvalStats',
-            'monthlyDues', 'recentActivity', 'insights', 'pendingHouseholds', 'pendingResidents',
+            'monthlyDues', 'insights', 'pendingHouseholds', 'pendingResidents',
             'recentAnnouncements', 'upcomingEvents', 'ageDistribution'
         ));
     }
@@ -240,7 +236,6 @@ class DashboardController extends Controller
         $householdStats = $this->dashboard->getHousehold()->getVillageStats($villageId);
         $approvalStats = $this->dashboard->getApproval()->getVillageStats($villageId);
         $announcementStats = $this->dashboard->getAnnouncement()->getVillageStats($villageId);
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
         $pendingHouseholds = Household::with('village', 'submittedBy')
@@ -270,7 +265,7 @@ class DashboardController extends Controller
 
         return view('dashboard.secretary', compact(
             'village', 'populationStats', 'householdStats', 'approvalStats',
-            'announcementStats', 'recentActivity', 'insights',
+            'announcementStats', 'insights',
             'pendingHouseholds', 'pendingResidents', 'recentHouseholds',
             'recentAnnouncements', 'upcomingEvents', 'genderDist'
         ));
@@ -283,7 +278,6 @@ class DashboardController extends Controller
         $village = Village::find($villageId);
 
         $paymentStats = $this->dashboard->getPayment()->getVillageStats($villageId);
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
         $insights = $this->dashboard->getInsight()->getVillageInsights($villageId);
 
         $recentPayments = HouseholdPayment::with(['household', 'paymentType'])
@@ -314,7 +308,7 @@ class DashboardController extends Controller
             ->orderBy('event_date')->take(5)->get();
 
         return view('dashboard.treasurer', compact(
-            'village', 'paymentStats', 'recentActivity', 'insights',
+            'village', 'paymentStats', 'insights',
             'recentPayments', 'collectionStats', 'monthlyStats', 'monthlyDues',
             'monthlyPaymentTrend', 'revenueByType',
             'recentAnnouncements', 'upcomingEvents'
@@ -348,11 +342,9 @@ class DashboardController extends Controller
             $insights = $this->dashboard->getInsight()->getVillageInsights($village->id);
         }
 
-        $recentActivity = $this->dashboard->getActivity()->getRecentActivityForUser($user->id, 10);
-
         return view('dashboard.resident', compact(
             'user', 'household', 'village', 'balance',
-            'recentAnnouncements', 'upcomingEvents', 'insights', 'recentActivity'
+            'recentAnnouncements', 'upcomingEvents', 'insights'
         ));
     }
 }

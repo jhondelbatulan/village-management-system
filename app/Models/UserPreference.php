@@ -69,7 +69,6 @@ class UserPreference extends Model
             'participation_summary' => true,
             'announcements' => true,
             'calendar' => true,
-            'recent_activities' => true,
             'system_notices' => true,
         ];
     }
