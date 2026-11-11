@@ -493,10 +493,15 @@ Route::middleware(['auth', 'account.setup'])->group(function (): void {
             Route::delete('/{event}', [EventController::class, 'destroy'])->name('destroy');
         });
 
-        Route::middleware('role:super_admin,admin,secretary')->group(function (): void {
+        Route::middleware('role:secretary')->group(function (): void {
             Route::post('/{event}/participations', [EventController::class, 'recordParticipation'])->name('participations.store');
+            Route::patch('/{event}/participations/{participation}', [EventController::class, 'updateParticipation'])->name('participations.update');
             Route::delete('/{event}/participations/{participation}', [EventController::class, 'removeParticipation'])->name('participations.destroy');
             Route::post('/{event}/auto-generate', [EventController::class, 'autoGenerate'])->name('auto-generate');
+        });
+
+        Route::middleware('role:super_admin,admin,secretary')->group(function (): void {
+            Route::get('/{event}/attendance-pdf', [EventController::class, 'attendancePdf'])->name('attendance-pdf');
         });
 
         Route::get('/{event}', [EventController::class, 'show'])->name('show');

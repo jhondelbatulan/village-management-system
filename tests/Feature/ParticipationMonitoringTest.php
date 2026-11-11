@@ -334,7 +334,8 @@ class ParticipationMonitoringTest extends TestCase
             ->assertSee('Barangay Assembly')
             ->assertSee('Block 4')
             ->assertSee('Lot 9')
-            ->assertDontSee('Juan Dela Cruz')
+            ->assertSee('Household Head')
+            ->assertSee('Juan Dela Cruz')
             ->assertSee('Household Participation')
             ->assertSee(route('participation.household', $this->household), false);
 

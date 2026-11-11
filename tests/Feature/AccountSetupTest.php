@@ -90,6 +90,23 @@ class AccountSetupTest extends TestCase
             ->assertSee('Set Up Your Account');
     }
 
+    public function test_setup_screen_validates_and_capitalizes_inputs_in_real_time(): void
+    {
+        $user = $this->makeUser('admin', $this->village->id, ['must_setup' => true]);
+
+        $this->actingAs($user)
+            ->get(route('account.setup.show'))
+            ->assertOk()
+            // Names auto-capitalize first letters while typing...
+            ->assertSee('autoCapitalize')
+            ->assertSee('titleCase')
+            // ...the middle name stays a single capital letter...
+            ->assertSee('Middle name must be a single capital letter')
+            // ...and every field reports errors before the page round-trip.
+            ->assertSee('is-invalid')
+            ->assertSee('Password confirmation does not match.');
+    }
+
     public function test_login_sends_a_fresh_account_to_the_setup_screen(): void
     {
         $user = $this->makeUser('admin', $this->village->id, ['must_setup' => true]);

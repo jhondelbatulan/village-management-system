@@ -9,11 +9,11 @@ class AnnouncementAnalyticsService
 {
     public function getVillageStats(int $villageId): array
     {
-        $total = Announcement::where('village_id', $villageId)->count();
-        $published = Announcement::where('village_id', $villageId)->where('status', 'published')->count();
-        $draft = Announcement::where('village_id', $villageId)->where('status', 'draft')->count();
-        $archived = Announcement::where('village_id', $villageId)->where('status', 'archived')->count();
-        $recentlyPublished = Announcement::where('village_id', $villageId)
+        $total = Announcement::forVillage($villageId)->count();
+        $published = Announcement::forVillage($villageId)->where('status', 'published')->count();
+        $draft = Announcement::forVillage($villageId)->where('status', 'draft')->count();
+        $archived = Announcement::forVillage($villageId)->where('status', 'archived')->count();
+        $recentlyPublished = Announcement::forVillage($villageId)
             ->where('status', 'published')
             ->where('created_at', '>=', now()->subWeek())
             ->count();

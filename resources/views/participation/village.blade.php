@@ -156,6 +156,7 @@
                         <thead>
                             <tr>
                                 <th>Block / Lot</th>
+                                <th>Household Head</th>
                                 <th>Members</th>
                                 <th>Events Attended</th>
                                 <th>Participation %</th>
@@ -173,6 +174,7 @@
 
                                         </a>
                                     </td>
+                                    <td>{{ $stat['household']->household_head_name ?? '—' }}</td>
                                     <td>{{ $stat['member_count'] }}</td>
                                     <td>{{ $stat['participated_count'] }} / {{ $stat['total_events'] }}</td>
                                     <td>

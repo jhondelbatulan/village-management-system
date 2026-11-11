@@ -31,7 +31,8 @@ class AnnouncementController extends Controller
             request('status'),
             request('category'),
             request('type'),
-            request('sort')
+            request('sort'),
+            request('creator')
         );
 
         $village = $user->village_id ? Village::find($user->village_id) : null;
@@ -68,6 +69,11 @@ class AnnouncementController extends Controller
 
         if ($role !== 'super_admin' && !$data['village_id']) {
             $data['village_id'] = $user->village_id;
+        }
+
+        // "all" targets every village and is stored with a null village_id.
+        if (($data['village_id'] ?? null) === 'all') {
+            $data['village_id'] = null;
         }
 
         $announcement = $this->announcementService->create($data);

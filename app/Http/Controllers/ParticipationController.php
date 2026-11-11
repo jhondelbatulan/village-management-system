@@ -32,11 +32,13 @@ class ParticipationController extends Controller
         $participationStats = $this->eventService->getParticipationStats($villageId);
         $householdStats = $this->eventService->getHouseholdParticipationStats($villageId);
 
-        $recentEvents = Event::where('village_id', $villageId)
+        $recentEvents = Event::forVillage($villageId)
             ->withCount(['participations', 'responses'])
             ->latest()
             ->take(10)
             ->get();
+
+        $this->scopeAllVillageEventCounts($recentEvents, $villageId);
 
         $activeHouseholds = collect($householdStats)->filter(fn($s) => $s['participation_pct'] >= 50);
         $inactiveHouseholds = collect($householdStats)->filter(fn($s) => $s['participation_pct'] < 50);
@@ -53,12 +55,14 @@ class ParticipationController extends Controller
         $participationStats = $this->eventService->getParticipationStats($village->id);
         $householdStats = $this->eventService->getHouseholdParticipationStats($village->id);
 
-        $events = Event::where('village_id', $village->id)
+        $events = Event::forVillage($village->id)
             ->with(['village', 'creator'])
             ->withCount(['participations', 'responses'])
             ->latest()
             ->paginate(15)
             ->withQueryString();
+
+        $this->scopeAllVillageEventCounts($events, $village->id);
 
         $activeHouseholds = collect($householdStats)->filter(fn ($s) => $s['participation_pct'] >= 50);
         $inactiveHouseholds = collect($householdStats)->filter(fn ($s) => $s['participation_pct'] < 50);
@@ -82,7 +86,7 @@ class ParticipationController extends Controller
             ->latest()
             ->paginate(20);
 
-        $totalEvents = Event::where('village_id', $household->village_id)->where('status', 'completed')->count();
+        $totalEvents = Event::forVillage($household->village_id)->where('status', 'completed')->count();
         $attendedEvents = \App\Models\Participation::where('household_id', $household->id)
             ->where('status', 'present')
             ->distinct('event_id')
@@ -105,5 +109,26 @@ class ParticipationController extends Controller
         $participations = $this->eventService->getResidentParticipationHistory($residentId);
 
         return view('participation.history', compact('resident', 'participations'));
+    }
+
+    /**
+     * "All Villages" events carry participations and responses from every
+     * village — recount them against the village being inspected only.
+     */
+    private function scopeAllVillageEventCounts($events, int $villageId): void
+    {
+        foreach ($events as $event) {
+            if ($event->village_id !== null) {
+                continue;
+            }
+
+            $event->participations_count = $event->participations()
+                ->whereHas('household', fn ($q) => $q->where('village_id', $villageId))
+                ->count();
+
+            $event->responses_count = $event->responses()
+                ->whereHas('household', fn ($q) => $q->where('village_id', $villageId))
+                ->count();
+        }
     }
 }

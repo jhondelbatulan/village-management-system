@@ -35,13 +35,16 @@
                         <label class="form-label fw-semibold">Target Village <span class="text-danger">*</span></label>
                         <select name="village_id_select" id="village_id_select" class="form-select" required>
                             <option value="">Select Village</option>
+                            <option value="all" {{ old('village_id') === 'all' ? 'selected' : '' }}>
+                                All Villages (post to every village)
+                            </option>
                             @foreach($villages as $v)
                                 <option value="{{ $v->id }}" {{ old('village_id') == $v->id ? 'selected' : '' }}>
                                     {{ $v->village_name }} ({{ $v->village_code }})
                                 </option>
                             @endforeach
                         </select>
-                        <small class="text-muted">Select the village this announcement is for.</small>
+                        <small class="text-muted">Select the village this announcement is for, or All Villages to post it everywhere.</small>
                     </div>
                 </div>
             @else

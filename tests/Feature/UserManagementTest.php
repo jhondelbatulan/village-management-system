@@ -108,6 +108,27 @@ class UserManagementTest extends TestCase
             ->assertOk();
     }
 
+    public function test_create_user_form_only_asks_for_login_details_and_village_assignment(): void
+    {
+        // Personal details, email, contact number and the profile picture are
+        // filled in by the user during account setup, so the admin form only
+        // carries the login credentials plus the role/village assignment.
+        $this->actingAs($this->superAdmin)
+            ->get(route('users.create'))
+            ->assertOk()
+            ->assertSee('name="username"', false)
+            ->assertSee('name="password"', false)
+            ->assertSee('Login Information', false)
+            ->assertDontSee('name="first_name"', false)
+            ->assertDontSee('name="middle_name"', false)
+            ->assertDontSee('name="last_name"', false)
+            ->assertDontSee('name="suffix"', false)
+            ->assertDontSee('name="email"', false)
+            ->assertDontSee('name="contact_number"', false)
+            ->assertDontSee('name="profile_picture"', false)
+            ->assertDontSee('Personal Information', false);
+    }
+
     public function test_new_accounts_are_created_active_without_asking_for_status(): void
     {
         $this->actingAs($this->superAdmin)

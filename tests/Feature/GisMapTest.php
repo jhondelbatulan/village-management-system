@@ -440,4 +440,46 @@ class GisMapTest extends TestCase
         $page->assertSee('id="latitude"', false)
             ->assertSee('id="longitude"', false);
     }
+
+    public function test_village_create_coordinate_map_defaults_to_satellite_with_layer_switcher(): void
+    {
+        // Registering a village pins its location through the same satellite
+        // picker (Esri Wayback 49059, capped at z18) used when editing one.
+        $page = $this->actingAs($this->superAdmin)->get(route('villages.create'));
+
+        $page->assertOk()
+            ->assertSee('wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', false)
+            ->assertSee("'Satellite View'", false)
+            ->assertSee("'Street Map'", false)
+            ->assertSee('L.control.layers', false)
+            ->assertSee('satelliteLayer.addTo(pickerMap)', false)
+            ->assertSee('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', false)
+            ->assertSee('Tiles &copy; Esri', false)
+            ->assertSee('id="village-map-picker"', false);
+
+        $content = $page->getContent();
+
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\.addTo\(pickerMap\);\s*L\.control\.layers/s',
+            $content
+        );
+
+        $this->assertMatchesRegularExpression(
+            '/satelliteLayer\s*=\s*L\.tileLayer\(.*?maxZoom:\s*18/s',
+            $content
+        );
+
+        // Coordinates come from the map only, so the inputs stay read-only.
+        $page->assertSee('id="latitude"', false)
+            ->assertSee('id="longitude"', false);
+
+        $this->assertMatchesRegularExpression(
+            '/id="latitude"[^>]*readonly/s',
+            $content
+        );
+        $this->assertMatchesRegularExpression(
+            '/id="longitude"[^>]*readonly/s',
+            $content
+        );
+    }
 }

@@ -21,7 +21,7 @@
     <div class="card-body">
         <form method="GET" action="{{ route('events.index') }}">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Search</label>
                     <input type="text" name="search" class="form-control" placeholder="Title, venue..." value="{{ request('search') }}">
                 </div>
@@ -53,7 +53,15 @@
                         <option value="za" {{ request('sort') == 'za' ? 'selected' : '' }}>Z – A</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Created By</label>
+                    <select name="creator" class="form-select">
+                        <option value="">Everyone</option>
+                        <option value="super_admin" {{ request('creator') == 'super_admin' ? 'selected' : '' }}>Super Admin</option>
+                        <option value="admin" {{ request('creator') == 'admin' ? 'selected' : '' }}>Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-search me-1"></i> Filter
                     </button>
@@ -98,11 +106,25 @@
                             <br><i class="bi bi-clock me-1"></i> {{ $event->start_time->format('h:i A') }}
                             @if($event->end_time) – {{ $event->end_time->format('h:i A') }} @endif
                         @endif
+                        <br><i class="bi bi-buildings me-1"></i> {{ $event->village?->village_name ?? 'All Villages' }}
                         @if($event->venue)
                             <br><i class="bi bi-geo-alt me-1"></i> {{ $event->venue }}
                         @endif
                     </p>
                     <span class="badge bg-light text-dark">{{ $event->category }}</span>
+                    <div class="small text-muted mt-2">
+                        <i class="bi bi-person me-1"></i>
+                        @if($event->creator)
+                            {{ $event->creator->full_name }}
+                            @if($event->creator->role?->role_slug === 'super_admin')
+                                <span class="badge bg-purple text-white ms-1">Super Admin</span>
+                            @elseif($event->creator->role?->role_slug === 'admin')
+                                <span class="badge bg-primary-subtle text-primary-emphasis border ms-1">Admin</span>
+                            @endif
+                        @else
+                            <span class="text-muted">—</span>
+                        @endif
+                    </div>
                 </div>
                 <div class="card-footer bg-white border-0 d-flex justify-content-between align-items-center">
                     <small class="text-muted">

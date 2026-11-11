@@ -15,19 +15,23 @@ class EventService
      */
     public const AUTO_GENERATED_REMARK = 'Auto-generated from Going response';
 
-    public function getEventsForUser($user, ?string $search = null, ?string $status = null, ?string $category = null, ?string $sort = null)
+    public function getEventsForUser($user, ?string $search = null, ?string $status = null, ?string $category = null, ?string $sort = null, ?string $creator = null)
     {
-        $query = Event::with('village', 'creator');
+        $query = Event::with(['village', 'creator.role']);
 
         $role = $user->role?->role_slug;
 
         if ($role === 'super_admin') {
             // Super Admin sees ALL events
         } elseif (in_array($role, ['admin', 'secretary', 'treasurer'])) {
-            $query->where('village_id', $user->village_id);
+            $query->forVillage($user->village_id);
         } elseif ($role === 'resident') {
-            $query->where('village_id', $user->village_id)
+            $query->forVillage($user->village_id)
                   ->whereIn('status', ['upcoming', 'ongoing']);
+        }
+
+        if ($creator === 'super_admin' || $creator === 'admin') {
+            $query->whereHas('creator.role', fn ($q) => $q->where('role_slug', $creator));
         }
 
         if ($search) {
@@ -59,8 +63,8 @@ class EventService
 
     public function getVillageEvents(int $villageId, ?string $search = null, ?string $status = null, ?string $category = null)
     {
-        $query = Event::with('village', 'creator')
-            ->where('village_id', $villageId);
+        $query = Event::with(['village', 'creator.role'])
+            ->forVillage($villageId);
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -83,7 +87,7 @@ class EventService
 
     public function getUpcomingEvents(int $villageId)
     {
-        return Event::where('village_id', $villageId)
+        return Event::forVillage($villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where('event_date', '>=', now()->toDateString())
             ->orderBy('event_date')
@@ -280,22 +284,25 @@ class EventService
 
     public function getParticipationStats(int $villageId): array
     {
-        $totalEvents = Event::where('village_id', $villageId)->count();
+        $totalEvents = Event::forVillage($villageId)->count();
         $totalResidents = \App\Models\Resident::where('village_id', $villageId)->where('status', 'active')->count();
-        $totalParticipations = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->count();
-        $presentCount = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->where('status', 'present')->count();
-        $absentCount = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->where('status', 'absent')->count();
-        $excusedCount = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->where('status', 'excused')->count();
-        $lateCount = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->where('status', 'late')->count();
+
+        $scoped = fn ($query) => $this->scopeParticipationsForVillage($query, $villageId);
+
+        $totalParticipations = $scoped(Participation::query())->count();
+        $presentCount = $scoped(Participation::query())->where('status', 'present')->count();
+        $absentCount = $scoped(Participation::query())->where('status', 'absent')->count();
+        $excusedCount = $scoped(Participation::query())->where('status', 'excused')->count();
+        $lateCount = $scoped(Participation::query())->where('status', 'late')->count();
 
         $attendanceRate = $totalParticipations > 0 ? round(($presentCount / $totalParticipations) * 100, 1) : 0;
 
-        $upcomingEvents = Event::where('village_id', $villageId)
+        $upcomingEvents = Event::forVillage($villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where('event_date', '>=', now()->toDateString())
             ->count();
 
-        $completedEvents = Event::where('village_id', $villageId)
+        $completedEvents = Event::forVillage($villageId)
             ->where('status', 'completed')
             ->count();
 
@@ -319,7 +326,7 @@ class EventService
             ->with('residents')
             ->get();
 
-        $totalEvents = Event::where('village_id', $villageId)->where('status', 'completed')->count();
+        $totalEvents = Event::forVillage($villageId)->where('status', 'completed')->count();
 
         $stats = [];
         foreach ($households as $household) {
@@ -383,5 +390,22 @@ class EventService
         }
 
         return collect($stats)->sortByDesc('attendance_rate')->values()->all();
+    }
+
+    /**
+     * A participation belongs to a village when its event targets that village
+     * OR when the event is an "All Villages" event and the participating
+     * household lives in that village. Used so per-village dashboards split
+     * all-village events correctly.
+     */
+    private function scopeParticipationsForVillage($query, int $villageId)
+    {
+        return $query->where(function ($q) use ($villageId) {
+            $q->whereHas('event', fn ($e) => $e->where('village_id', $villageId))
+              ->orWhere(function ($all) use ($villageId) {
+                  $all->whereHas('event', fn ($e) => $e->whereNull('village_id'))
+                      ->whereHas('household', fn ($h) => $h->where('village_id', $villageId));
+              });
+        });
     }
 }

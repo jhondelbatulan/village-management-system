@@ -181,10 +181,21 @@ class GisDashboardService
 
     public function getParticipationStats(int $villageId): array
     {
-        $totalEvents = \App\Models\Event::where('village_id', $villageId)->count();
-        $completedEvents = \App\Models\Event::where('village_id', $villageId)->where('status', 'completed')->count();
-        $totalParticipations = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->count();
-        $presentCount = Participation::whereHas('event', fn($q) => $q->where('village_id', $villageId))->where('status', 'present')->count();
+        $totalEvents = \App\Models\Event::forVillage($villageId)->count();
+        $completedEvents = \App\Models\Event::forVillage($villageId)->where('status', 'completed')->count();
+
+        // Village events count fully; "All Villages" events only count the
+        // households that live in this village.
+        $scoped = fn ($query) => $query->where(function ($q) use ($villageId) {
+            $q->whereHas('event', fn ($e) => $e->where('village_id', $villageId))
+              ->orWhere(function ($all) use ($villageId) {
+                  $all->whereHas('event', fn ($e) => $e->whereNull('village_id'))
+                      ->whereHas('household', fn ($h) => $h->where('village_id', $villageId));
+              });
+        });
+
+        $totalParticipations = $scoped(Participation::query())->count();
+        $presentCount = $scoped(Participation::query())->where('status', 'present')->count();
         $attendanceRate = $totalParticipations > 0 ? round(($presentCount / $totalParticipations) * 100, 1) : 0;
 
         $totalResidents = Resident::where('village_id', $villageId)->where('status', 'active')->count();

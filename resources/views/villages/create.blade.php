@@ -80,16 +80,24 @@
                            id="address" name="address" value="{{ old('address') }}">
                     @error('address') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
+                <div class="col-12">
+                    <label class="form-label fw-semibold">Pin Village Location <small class="text-muted">(click map to place marker, drag to adjust)</small></label>
+                    <div id="village-map-picker" style="height:350px;width:100%;border:2px solid #dee2e6;border-radius:8px;position:relative;">
+                        <div id="map-hint" style="position:absolute;bottom:10px;left:50%;transform:translateX(-50%);z-index:1000;background:rgba(26,75,140,.9);color:#fff;padding:4px 14px;border-radius:20px;font-size:0.8rem;pointer-events:none;">
+                            Click to place village marker
+                        </div>
+                    </div>
+                </div>
                 <div class="col-md-4">
                     <label for="latitude" class="form-label fw-semibold">Latitude</label>
                     <input type="number" step="any" class="form-control @error('latitude') is-invalid @enderror"
-                           id="latitude" name="latitude" value="{{ old('latitude') }}">
+                           id="latitude" name="latitude" value="{{ old('latitude') }}" readonly>
                     @error('latitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-4">
                     <label for="longitude" class="form-label fw-semibold">Longitude</label>
                     <input type="number" step="any" class="form-control @error('longitude') is-invalid @enderror"
-                           id="longitude" name="longitude" value="{{ old('longitude') }}">
+                           id="longitude" name="longitude" value="{{ old('longitude') }}" readonly>
                     @error('longitude') <div class="invalid-feedback">{{ $message }}</div> @enderror
                 </div>
                 <div class="col-md-4">
@@ -154,4 +162,73 @@
         </button>
     </div>
 </form>
+
+@push('styles')
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+@endpush
+
+@push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    var latVal = {{ is_numeric(old('latitude')) ? old('latitude') : '9.2372' }};
+    var lngVal = {{ is_numeric(old('longitude')) ? old('longitude') : '125.5415' }};
+    var zoom = {{ is_numeric(old('latitude')) && is_numeric(old('longitude')) ? 15 : 12 }};
+
+    var pickerMap = L.map('village-map-picker').setView([latVal, lngVal], zoom);
+
+    // Satellite imagery (default) and the street map, switchable live through
+    // the layer control — no page reload, position and pins are kept.
+    // Esri World Imagery Wayback (release WB_2026_R04) is cloud-free over the
+    // three villages and serves real imagery through z18 only.
+    var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+        maxZoom: 18,
+    });
+
+    var streetLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 19,
+    });
+
+    satelliteLayer.addTo(pickerMap);
+
+    L.control.layers(
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        null,
+        { position: 'topleft', collapsed: window.innerWidth < 768 }
+    ).addTo(pickerMap);
+
+    var pickerMarker = null;
+    var latIn = document.getElementById('latitude');
+    var lngIn = document.getElementById('longitude');
+    var hint = document.getElementById('map-hint');
+
+    if (latIn.value && lngIn.value) {
+        pickerMarker = L.marker([parseFloat(latIn.value), parseFloat(lngIn.value)], { draggable: true }).addTo(pickerMap);
+        if (hint) hint.style.display = 'none';
+
+        pickerMarker.on('dragend', function(e) {
+            var pos = e.target.getLatLng();
+            latIn.value = pos.lat.toFixed(7);
+            lngIn.value = pos.lng.toFixed(7);
+        });
+    }
+
+    pickerMap.on('click', function(e) {
+        latIn.value = e.latlng.lat.toFixed(7);
+        lngIn.value = e.latlng.lng.toFixed(7);
+        if (pickerMarker) pickerMap.removeLayer(pickerMarker);
+        pickerMarker = L.marker([e.latlng.lat, e.latlng.lng], { draggable: true }).addTo(pickerMap);
+        if (hint) hint.style.display = 'none';
+
+        pickerMarker.on('dragend', function(ev) {
+            var pos = ev.target.getLatLng();
+            latIn.value = pos.lat.toFixed(7);
+            lngIn.value = pos.lng.toFixed(7);
+        });
+    });
+});
+</script>
+@endpush
 @endsection

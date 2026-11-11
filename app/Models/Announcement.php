@@ -57,6 +57,18 @@ class Announcement extends Model
     }
 
     /**
+     * Announcements targeted at this village plus "All Villages"
+     * announcements (village_id === null).
+     */
+    public function scopeForVillage($query, ?int $villageId)
+    {
+        return $query->where(function ($q) use ($villageId) {
+            $q->where('village_id', $villageId)
+              ->orWhereNull('village_id');
+        });
+    }
+
+    /**
      * Only the creator can edit/manage/delete this announcement. Legacy rows
      * without a creator stay manageable by super admins.
      */

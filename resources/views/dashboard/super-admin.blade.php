@@ -80,7 +80,7 @@
             icon="bi-megaphone"
             color="primary"
             valueLabel="Date"
-            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title . ($a->village ? ' — ' . $a->village->village_name : ''), 'value' => $a->created_at->format('M d')])->toArray()"
+            :items="$recentAnnouncements->map(fn($a) => ['name' => $a->title . ($a->village ? ' — ' . $a->village->village_name : ' — All Villages'), 'value' => $a->created_at->format('M d')])->toArray()"
             :maxItems="5"
         />
     </div>
@@ -92,7 +92,7 @@
             icon="bi-calendar-event"
             color="success"
             valueLabel="Date"
-            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title . ($e->village ? ' — ' . $e->village->village_name : ''), 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
+            :items="$upcomingEvents->map(fn($e) => ['name' => $e->title . ($e->village ? ' — ' . $e->village->village_name : ' — All Villages'), 'value' => \Carbon\Carbon::parse($e->event_date)->format('M d')])->toArray()"
             :maxItems="5"
         />
     </div>

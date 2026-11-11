@@ -35,7 +35,9 @@ class StoreParticipationRequest extends FormRequest
 
             $household = Household::find($householdId);
 
-            if ($household && (int) $household->village_id !== (int) $event->village_id) {
+            // All-village events (village_id === null) accept every village's
+            // households; village-specific events stay restricted to their own.
+            if ($household && $event->village_id !== null && (int) $household->village_id !== (int) $event->village_id) {
                 $validator->errors()->add('household_id', 'The selected household does not belong to this event\'s village.');
 
                 return;

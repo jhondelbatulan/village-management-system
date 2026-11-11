@@ -49,6 +49,18 @@ class Event extends Model
     }
 
     /**
+     * Events targeted at this village plus "All Villages" events
+     * (village_id === null).
+     */
+    public function scopeForVillage($query, ?int $villageId)
+    {
+        return $query->where(function ($q) use ($villageId) {
+            $q->where('village_id', $villageId)
+              ->orWhereNull('village_id');
+        });
+    }
+
+    /**
      * Only the creator can edit/manage/delete this event. Legacy rows
      * without a creator stay manageable by super admins.
      */

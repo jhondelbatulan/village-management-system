@@ -7,7 +7,7 @@
     <div>
         <h1 class="page-title mb-1">{{ $announcement->title }}</h1>
         <p class="page-subtitle text-muted">
-            {{ $announcement->village?->village_name ?? '' }} &middot;
+            {{ $announcement->village?->village_name ?? 'All Villages' }} &middot;
             Created {{ $announcement->created_at->format('M d, Y') }}
         </p>
     </div>
@@ -72,7 +72,7 @@
             <div class="card-body">
                 <dl class="row mb-0">
                     <dt class="col-sm-5 text-muted">Village</dt>
-                    <dd class="col-sm-7 fw-semibold">{{ $announcement->village?->village_name ?? '—' }}</dd>
+                    <dd class="col-sm-7 fw-semibold">{{ $announcement->village?->village_name ?? 'All Villages' }}</dd>
                     <dt class="col-sm-5 text-muted">Category</dt>
                     <dd class="col-sm-7 fw-semibold">{{ $announcement->category }}</dd>
                     <dt class="col-sm-5 text-muted">Status</dt>

@@ -11,8 +11,10 @@ use App\Models\Village;
 use App\Services\EventService;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class EventController extends Controller
@@ -31,7 +33,8 @@ class EventController extends Controller
             request('search'),
             request('status'),
             request('category'),
-            request('sort')
+            request('sort'),
+            request('creator')
         );
 
         $village = $user->village_id ? Village::find($user->village_id) : null;
@@ -73,6 +76,11 @@ class EventController extends Controller
             $data['village_id'] = $user->village_id;
         }
 
+        // "all" targets every village and is stored with a null village_id.
+        if (($data['village_id'] ?? null) === 'all') {
+            $data['village_id'] = null;
+        }
+
         $event = $this->eventService->create($data);
 
         if (in_array($event->status, ['upcoming', 'ongoing'])) {
@@ -101,18 +109,58 @@ class EventController extends Controller
 
     public function show(Event $event): View
     {
-        $event->load('village', 'creator', 'responses.household', 'participations.household', 'participations.recorder');
+        $event->load('village', 'creator', 'responses.household', 'participations.household.village', 'participations.recorder');
 
-        $role = auth()->user()->role?->role_slug;
+        $user = auth()->user();
+        $role = $user->role?->role_slug;
 
         $categories = [
             'Barangay Assembly', 'Community Service', 'Health Program', 'Sports',
             'Cultural', 'Youth', 'Senior Citizens', 'Women', 'Environment', 'Emergency Drill', 'Other',
         ];
 
-        $participationStats = $this->eventService->getParticipationStats($event->village_id);
+        $villages = Village::where('status', 'active')->orderBy('village_name')->get();
+        $participationVillageId = $event->village_id;
+        $participationVillage = null;
+        $totalParticipations = $event->participations->count();
 
-        return view('events.show', compact('event', 'categories', 'role', 'participationStats'));
+        // "All Villages" events split participations per village: village
+        // staff only ever see their own village, the super admin can switch
+        // between villages (or leave it unfiltered).
+        if ($event->village_id === null) {
+            if (in_array($role, ['admin', 'secretary'])) {
+                $participationVillageId = $user->village_id;
+            } else {
+                $requested = (int) request('village');
+                $participationVillageId = $requested > 0 && $villages->contains('id', $requested)
+                    ? $requested
+                    : null;
+            }
+
+            $participationVillage = $participationVillageId
+                ? $villages->firstWhere('id', $participationVillageId)
+                : null;
+
+            $event->setRelation('participations', $event->participations
+                ->filter(fn ($p) => $participationVillageId === null
+                    || (int) ($p->household->village_id ?? 0) === $participationVillageId)
+                ->values());
+        }
+
+        $participationStats = $event->village_id !== null
+            ? $this->eventService->getParticipationStats($event->village_id)
+            : null;
+
+        return view('events.show', compact(
+            'event',
+            'categories',
+            'role',
+            'participationStats',
+            'villages',
+            'participationVillageId',
+            'participationVillage',
+            'totalParticipations'
+        ));
     }
 
     public function edit(Event $event): View
@@ -297,5 +345,69 @@ class EventController extends Controller
         AuditLogService::log('Auto Generate Participations', 'Events', "Auto-generated participations from Going responses for event: {$event->title}");
 
         return redirect()->route('events.show', $event)->with('success', 'Participations auto-generated from Going responses.');
+    }
+
+    /**
+     * Secretaries edit participation rows (status/remarks); super admins and
+     * village admins only view them.
+     */
+    public function updateParticipation(Request $request, Event $event, int $participationId): RedirectResponse
+    {
+        $participation = $event->participations()->findOrFail($participationId);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:present,absent,excused'],
+            'remarks' => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $participation->update($validated + ['recorded_by' => auth()->id()]);
+
+        AuditLogService::log('Update Participation', 'Events', "Updated participation record for event: {$event->title}");
+
+        return redirect()->route('events.show', $event)->with('success', 'Participation record updated.');
+    }
+
+    /**
+     * Downloadable attendance report (block/lot + household head of every
+     * attendee). Village staff get their own village out of all-village
+     * events; the super admin gets everyone.
+     */
+    public function attendancePdf(Event $event)
+    {
+        $user = auth()->user();
+        $role = $user->role?->role_slug;
+
+        $event->load([
+            'village',
+            'creator',
+            'participations.household',
+            'participations.recorder',
+            'participations.household.village',
+        ]);
+
+        $participations = $event->participations;
+        $scopeVillage = $event->village?->village_name;
+
+        if ($event->village_id === null) {
+            if ($role !== 'super_admin') {
+                $participations = $participations
+                    ->filter(fn ($p) => (int) ($p->household->village_id ?? 0) === (int) $user->village_id)
+                    ->values();
+                $scopeVillage = Village::find($user->village_id)?->village_name;
+            } else {
+                $scopeVillage = 'All Villages';
+            }
+        }
+
+        $pdf = Pdf::loadView('events.attendance-pdf', [
+            'event' => $event,
+            'participations' => $participations,
+            'scopeVillage' => $scopeVillage,
+            'generatedAt' => now(),
+        ]);
+
+        $filename = 'attendance_' . Str::slug($event->title, '_') . '_' . $event->event_date->format('Y-m-d') . '.pdf';
+
+        return $pdf->download($filename);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests\AnnouncementRequest;
 
+use App\Models\Village;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreAnnouncementRequest extends FormRequest
@@ -34,7 +35,20 @@ class StoreAnnouncementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'village_id' => ['required', 'exists:villages,id'],
+            'village_id' => ['required', function ($attribute, $value, $fail) {
+                // "all" = All Villages, reserved for super admins; stored as null.
+                if ($value === 'all') {
+                    if (($this->user()?->role?->role_slug) !== 'super_admin') {
+                        $fail('Only super admins can target all villages.');
+                    }
+
+                    return;
+                }
+
+                if (! is_numeric($value) || ! Village::whereKey($value)->exists()) {
+                    $fail('The selected village is invalid.');
+                }
+            }],
             'title' => ['required', 'string', 'max:255'],
             'category' => ['required', 'string', 'max:100'],
             'description' => ['nullable', 'string'],

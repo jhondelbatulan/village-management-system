@@ -207,11 +207,11 @@ class DashboardController extends Controller
             ->where('approval_status', 'pending')
             ->latest()->take(5)->get();
 
-        $recentAnnouncements = Announcement::where('village_id', $villageId)
+        $recentAnnouncements = Announcement::forVillage($villageId)
             ->visibleToRole($user->role?->role_slug, $user->id)
             ->active()->latest()->take(5)->get();
 
-        $upcomingEvents = Event::where('village_id', $villageId)
+        $upcomingEvents = Event::forVillage($villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where('event_date', '>=', now()->toDateString())
             ->orderBy('event_date')->take(5)->get();
@@ -252,11 +252,11 @@ class DashboardController extends Controller
             ->where('village_id', $villageId)
             ->latest()->take(5)->get();
 
-        $recentAnnouncements = Announcement::where('village_id', $villageId)
+        $recentAnnouncements = Announcement::forVillage($villageId)
             ->visibleToRole($user->role?->role_slug, $user->id)
             ->active()->latest()->take(5)->get();
 
-        $upcomingEvents = Event::where('village_id', $villageId)
+        $upcomingEvents = Event::forVillage($villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where('event_date', '>=', now()->toDateString())
             ->orderBy('event_date')->take(5)->get();
@@ -298,11 +298,11 @@ class DashboardController extends Controller
             ->pluck('total', 'payment_name')
             ->toArray();
 
-        $recentAnnouncements = Announcement::where('village_id', $villageId)
+        $recentAnnouncements = Announcement::forVillage($villageId)
             ->visibleToRole($user->role?->role_slug, $user->id)
             ->active()->latest()->take(5)->get();
 
-        $upcomingEvents = Event::where('village_id', $villageId)
+        $upcomingEvents = Event::forVillage($villageId)
             ->whereIn('status', ['upcoming', 'ongoing'])
             ->where('event_date', '>=', now()->toDateString())
             ->orderBy('event_date')->take(5)->get();
@@ -330,11 +330,11 @@ class DashboardController extends Controller
         $insights = [];
 
         if ($village) {
-            $recentAnnouncements = Announcement::where('village_id', $village->id)
+            $recentAnnouncements = Announcement::forVillage($village->id)
                 ->visibleToRole('resident', $user->id)
                 ->active()->orderByDesc('is_pinned')->latest()->take(5)->get();
 
-            $upcomingEvents = Event::where('village_id', $village->id)
+            $upcomingEvents = Event::forVillage($village->id)
                 ->whereIn('status', ['upcoming', 'ongoing'])
                 ->where('event_date', '>=', now()->toDateString())
                 ->orderBy('event_date')->take(5)->get();

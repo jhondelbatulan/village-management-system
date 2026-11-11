@@ -768,15 +768,15 @@ class ReportService
 
     protected function attendanceReport(?int $villageId, array $filters): array
     {
-        $query = Event::with('village', 'participations')->orderByDesc('event_date');
-        if ($villageId) $query->where('village_id', $villageId);
+        $query = Event::with(['village', 'participations.household'])->orderByDesc('event_date');
+        if ($villageId) $query->forVillage($villageId);
         $events = $query->get();
         $rows = [];
         foreach ($events as $e) {
             $rows[] = [
                 'Event' => $e->title, 'Date' => $e->event_date?->format('M d, Y') ?? '',
-                'Village' => $e->village?->village_name ?? '', 'Type' => $e->event_type ?? '',
-                'Attendees' => $e->participations->count(),
+                'Village' => $e->village?->village_name ?? 'All Villages', 'Type' => $e->event_type ?? '',
+                'Attendees' => $this->countAttendees($e, $villageId),
             ];
         }
         return ['rows' => $rows, 'summary' => $villageId ? $this->participationAnalytics->getVillageStats($villageId) : $this->participationAnalytics->getSystemStats()];
@@ -796,14 +796,14 @@ class ReportService
 
     protected function eventParticipationReport(?int $villageId): array
     {
-        $query = Event::with('village', 'participations.resident')->orderByDesc('event_date');
-        if ($villageId) $query->where('village_id', $villageId);
+        $query = Event::with(['village', 'participations.resident', 'participations.household'])->orderByDesc('event_date');
+        if ($villageId) $query->forVillage($villageId);
         $events = $query->get();
         $rows = [];
         foreach ($events as $e) {
             $rows[] = [
                 'Event' => $e->title, 'Date' => $e->event_date?->format('M d, Y') ?? '',
-                'Village' => $e->village?->village_name ?? '', 'Attendees' => $e->participations->count(),
+                'Village' => $e->village?->village_name ?? 'All Villages', 'Attendees' => $this->countAttendees($e, $villageId),
             ];
         }
         return ['rows' => $rows, 'total' => $events->count()];
@@ -827,7 +827,7 @@ class ReportService
     protected function communityEngagementReport(?int $villageId): array
     {
         $partStats = $villageId ? $this->participationAnalytics->getVillageStats($villageId) : $this->participationAnalytics->getSystemStats();
-        $eventCount = Event::when($villageId, fn($q) => $q->where('village_id', $villageId))->count();
+        $eventCount = Event::when($villageId, fn($q) => $q->forVillage($villageId))->count();
         return ['summary' => $partStats, 'eventCount' => $eventCount, 'rows' => []];
     }
 
@@ -836,11 +836,11 @@ class ReportService
     protected function announcementHistoryReport(?int $villageId): array
     {
         $query = Announcement::with('village', 'creator')->orderByDesc('created_at');
-        if ($villageId) $query->where('village_id', $villageId);
+        if ($villageId) $query->forVillage($villageId);
         $announcements = $query->get();
         $rows = $announcements->map(fn($a) => [
             'Title' => $a->title, 'Type' => $a->announcement_type ?? '',
-            'Village' => $a->village?->village_name ?? '', 'Status' => $a->status ?? '',
+            'Village' => $a->village?->village_name ?? 'All Villages', 'Status' => $a->status ?? '',
             'Created' => $a->created_at?->format('M d, Y') ?? '', 'Responses' => $a->responses_count ?? 0,
         ])->toArray();
         return ['rows' => $rows, 'total' => $announcements->count()];
@@ -861,14 +861,29 @@ class ReportService
     protected function announcementArchiveReport(?int $villageId): array
     {
         $query = Announcement::where('status', 'archived')->with('village', 'creator')->orderByDesc('updated_at');
-        if ($villageId) $query->where('village_id', $villageId);
+        if ($villageId) $query->forVillage($villageId);
         $announcements = $query->get();
         $rows = $announcements->map(fn($a) => [
             'Title' => $a->title, 'Type' => $a->announcement_type ?? '',
-            'Village' => $a->village?->village_name ?? '',
+            'Village' => $a->village?->village_name ?? 'All Villages',
             'Archived' => $a->updated_at?->format('M d, Y') ?? '',
         ])->toArray();
         return ['rows' => $rows, 'total' => $announcements->count()];
+    }
+
+    /**
+     * Attendees of an all-village event only count against the village the
+     * report is scoped to; village-specific events count everyone.
+     */
+    protected function countAttendees(Event $event, ?int $villageId): int
+    {
+        if ($event->village_id === null && $villageId !== null) {
+            return $event->participations
+                ->filter(fn ($p) => (int) ($p->household->village_id ?? 0) === $villageId)
+                ->count();
+        }
+
+        return $event->participations->count();
     }
 
     // ====== GIS REPORTS ======

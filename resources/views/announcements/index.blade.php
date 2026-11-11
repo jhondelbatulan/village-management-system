@@ -21,7 +21,7 @@
     <div class="card-body">
         <form method="GET" action="{{ route('announcements.index') }}">
             <div class="row g-3">
-                <div class="col-md-3">
+                <div class="col-md-2">
                     <label class="form-label fw-semibold">Search</label>
                     <input type="text" name="search" class="form-control" placeholder="Title, description..." value="{{ request('search') }}">
                 </div>
@@ -51,7 +51,15 @@
                         <option value="za" {{ request('sort') == 'za' ? 'selected' : '' }}>Z – A</option>
                     </select>
                 </div>
-                <div class="col-md-3 d-flex align-items-end gap-2">
+                <div class="col-md-2">
+                    <label class="form-label fw-semibold">Created By</label>
+                    <select name="creator" class="form-select">
+                        <option value="">Everyone</option>
+                        <option value="super_admin" {{ request('creator') == 'super_admin' ? 'selected' : '' }}>Super Admin</option>
+                        <option value="admin" {{ request('creator') == 'admin' ? 'selected' : '' }}>Admin</option>
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
                     <button type="submit" class="btn btn-primary">
                         <i class="bi bi-search me-1"></i> Filter
                     </button>
@@ -74,6 +82,7 @@
                         <th>Title</th>
                         <th>Category</th>
                         <th>Village</th>
+                        <th>Created By</th>
                         <th>Visible To</th>
                         <th>Dates</th>
                         <th>Status</th>
@@ -94,7 +103,19 @@
                                 </a>
                             </td>
                             <td><span class="badge bg-light text-dark">{{ $announcement->category }}</span></td>
-                            <td>{{ $announcement->village->village_name ?? '—' }}</td>
+                            <td>{{ $announcement->village->village_name ?? 'All Villages' }}</td>
+                            <td class="small">
+                                @if($announcement->creator)
+                                    {{ $announcement->creator->full_name }}
+                                    @if($announcement->creator->role?->role_slug === 'super_admin')
+                                        <span class="badge bg-purple text-white ms-1">Super Admin</span>
+                                    @elseif($announcement->creator->role?->role_slug === 'admin')
+                                        <span class="badge bg-primary-subtle text-primary-emphasis border ms-1">Admin</span>
+                                    @endif
+                                @else
+                                    <span class="text-muted">—</span>
+                                @endif
+                            </td>
                             <td>
                                 @if(empty($announcement->visible_roles))
                                     <span class="badge bg-info-subtle text-info-emphasis border"><i class="bi bi-globe2 me-1"></i>Public</span>
@@ -162,7 +183,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center py-5">
+                            <td colspan="9" class="text-center py-5">
                                 <i class="bi bi-megaphone fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">No announcements found.</p>
                                 @if(in_array(auth()->user()->role?->role_slug, ['super_admin', 'admin']))

@@ -9,21 +9,25 @@ use Illuminate\Support\Facades\Storage;
 
 class AnnouncementService
 {
-    public function getAnnouncementsForUser($user, ?string $search = null, ?string $status = null, ?string $category = null, ?string $type = null, ?string $sort = null)
+    public function getAnnouncementsForUser($user, ?string $search = null, ?string $status = null, ?string $category = null, ?string $type = null, ?string $sort = null, ?string $creator = null)
     {
-        $query = Announcement::with('village', 'creator');
+        $query = Announcement::with(['village', 'creator.role']);
 
         $role = $user->role?->role_slug;
 
         if ($role === 'super_admin') {
             // Super Admin sees ALL announcements across all villages
         } elseif (in_array($role, ['admin', 'secretary', 'treasurer'])) {
-            $query->where('village_id', $user->village_id);
+            $query->forVillage($user->village_id);
         } elseif ($role === 'resident') {
-            $query->where('village_id', $user->village_id)->active();
+            $query->forVillage($user->village_id)->active();
         }
 
         $query->visibleToRole($role, $user->id);
+
+        if ($creator === 'super_admin' || $creator === 'admin') {
+            $query->whereHas('creator.role', fn ($q) => $q->where('role_slug', $creator));
+        }
 
         if ($search) {
             $query->where(function ($q) use ($search) {
@@ -67,6 +71,7 @@ class AnnouncementService
         if ($villageId) {
             $query->where(function ($q) use ($villageId, $householdId) {
                 $q->where('village_id', $villageId)
+                  ->orWhereNull('village_id')
                   ->orWhereRaw("JSON_CONTAINS(target_villages, ?)", [json_encode($villageId)]);
             });
         }
@@ -80,7 +85,7 @@ class AnnouncementService
 
     public function getActiveAnnouncements(int $villageId)
     {
-        return Announcement::where('village_id', $villageId)
+        return Announcement::forVillage($villageId)
             ->active()
             ->orderBy('is_pinned', 'desc')
             ->latest()
@@ -89,9 +94,11 @@ class AnnouncementService
 
     public function getPinnedAnnouncement(int $villageId): ?Announcement
     {
-        return Announcement::where('village_id', $villageId)
+        return Announcement::forVillage($villageId)
             ->active()
             ->pinned()
+            // A village-specific pin wins over an "All Villages" pin.
+            ->orderByRaw('village_id IS NULL')
             ->first();
     }
 
@@ -169,9 +176,18 @@ class AnnouncementService
         $announcement->update(['status' => 'archived']);
     }
 
-    private function clearPinned(int $villageId, ?int $exceptId = null): void
+    private function clearPinned(?int $villageId, ?int $exceptId = null): void
     {
-        $query = Announcement::where('village_id', $villageId)->where('is_pinned', true);
+        // One pinned announcement per scope: village pins and the "All
+        // Villages" pin are cleared separately so pinning one village's
+        // announcement never silently unpins another village's.
+        $query = Announcement::where('is_pinned', true);
+
+        if ($villageId === null) {
+            $query->whereNull('village_id');
+        } else {
+            $query->where('village_id', $villageId);
+        }
 
         if ($exceptId) {
             $query->where('id', '!=', $exceptId);
