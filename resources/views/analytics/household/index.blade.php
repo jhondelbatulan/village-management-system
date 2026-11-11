@@ -421,7 +421,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'bar',
             data: {
                 labels: {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['village']->village_name ?? '')->toArray()) !!},
-                datasets: [{ label: 'Avg Size', data: {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['average_size'])->toArray()) !!}, backgroundColor: palette.slice(0, count({!! json_encode(collect($villageComparison ?? [])->toArray()) !!})), borderRadius: 6 }]
+                datasets: [{ label: 'Avg Size', data: {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['average_size'])->toArray()) !!}, backgroundColor: palette.slice(0, {!! count($villageComparison ?? []) !!}), borderRadius: 6 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });

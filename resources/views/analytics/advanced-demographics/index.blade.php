@@ -319,7 +319,7 @@ document.addEventListener('DOMContentLoaded', function() {
             type: 'bar',
             data: {
                 labels: {!! json_encode(array_keys($ageDistribution)) !!},
-                datasets: [{ label: 'Residents', data: {!! json_encode(array_column($ageDistribution, 'count')) !!}, backgroundColor: palette.slice(0, count({!! json_encode(array_keys($ageDistribution)) !!})), borderRadius: 6 }]
+                datasets: [{ label: 'Residents', data: {!! json_encode(array_column($ageDistribution, 'count')) !!}, backgroundColor: palette.slice(0, {!! count($ageDistribution) !!}), borderRadius: 6 }]
             },
             options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } }
         });

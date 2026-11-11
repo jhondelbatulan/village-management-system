@@ -176,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const depData = {!! json_encode(collect($comparison)->pluck('dependency_ratio')->toArray()) !!};
 
     const depCtx = document.getElementById('depCompChart');
-    if (depCtx) new Chart(depCtx, { type: 'bar', data: { labels: depLabels, datasets: [{ label: 'Dependency Ratio %', data: depData, backgroundColor: palette.slice(0, count(depLabels)), borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
+    if (depCtx) new Chart(depCtx, { type: 'bar', data: { labels: depLabels, datasets: [{ label: 'Dependency Ratio %', data: depData, backgroundColor: palette.slice(0, depLabels.length), borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });
 
     const denCtx = document.getElementById('denCompChart');
     if (denCtx) new Chart(denCtx, { type: 'bar', data: { labels: depLabels, datasets: [{ label: 'Pop. Density', data: {!! json_encode(collect($comparison)->pluck('population_density')->toArray()) !!}, backgroundColor: colors.info, borderRadius: 6 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } } });

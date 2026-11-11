@@ -510,7 +510,7 @@ new Chart(document.getElementById('occupationChart'), {
         datasets: [{
             label: 'Count',
             data: {!! json_encode(array_values($topOccupations)) !!},
-            backgroundColor: colors.slice(0, count({!! json_encode(array_keys($topOccupations)) !!}))
+            backgroundColor: colors.slice(0, {!! count($topOccupations) !!})
         }]
     },
     options: {
@@ -549,7 +549,7 @@ new Chart(document.getElementById('incomeRangeChart'), {
         datasets: [{
             label: 'Count',
             data: {!! json_encode(array_map(fn($v) => $v['count'], $incomeRange)) !!},
-            backgroundColor: colors.slice(0, count({!! json_encode(array_keys($incomeRange)) !!}))
+            backgroundColor: colors.slice(0, {!! count($incomeRange) !!})
         }]
     },
     options: {
@@ -587,7 +587,7 @@ new Chart(document.getElementById('skillChart'), {
         datasets: [{
             label: 'Count',
             data: {!! json_encode(array_map(fn($v) => $v['count'], $skillDist)) !!},
-            backgroundColor: colors.slice(0, count({!! json_encode(array_keys($skillDist)) !!}))
+            backgroundColor: colors.slice(0, {!! count($skillDist) !!})
         }]
     },
     options: {
@@ -606,7 +606,7 @@ new Chart(document.getElementById('livelihoodChart'), {
         labels: {!! json_encode(array_keys($livelihoodDist)) !!},
         datasets: [{
             data: {!! json_encode(array_map(fn($v) => $v['count'], $livelihoodDist)) !!},
-            backgroundColor: colors.slice(0, count({!! json_encode(array_keys($livelihoodDist)) !!}))
+            backgroundColor: colors.slice(0, {!! count($livelihoodDist) !!})
         }]
     },
     options: {
