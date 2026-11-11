@@ -32,6 +32,13 @@ class SystemSettingService
 
     public static function initDefaults(): void
     {
+        $databasePath = config('database.connections.sqlite.database');
+        if (config('database.default') === 'sqlite'
+            && $databasePath !== ':memory:'
+            && !is_file($databasePath)) {
+            return;
+        }
+
         if (!\Illuminate\Support\Facades\Schema::hasTable('system_settings')) {
             return;
         }
