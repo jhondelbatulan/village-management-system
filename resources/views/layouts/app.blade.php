@@ -172,7 +172,7 @@
                 list.querySelectorAll('a[data-id]').forEach(function(el) {
                     el.addEventListener('click', function() {
                         var id = this.getAttribute('data-id');
-                        fetch('/notifications/' + id + '/read', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content') } });
+                        fetch('/notifications/' + id + '/read', { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content') } });
                     });
                 });
             } else {
@@ -184,7 +184,7 @@
     function esc(str) { var d = document.createElement('div'); d.textContent = str; return d.innerHTML; }
     if (markAllBtn) {
         markAllBtn.addEventListener('click', function() {
-            fetch('/notifications/mark-all-read', { method: 'POST', headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content') } }).then(function() { fetchNotifications(); });
+            fetch('/notifications/mark-all-read', { method: 'POST', headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=\'csrf-token\']').getAttribute('content') } }).then(function() { fetchNotifications(); });
         });
     }
     fetchNotifications();

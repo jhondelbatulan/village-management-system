@@ -121,6 +121,7 @@ class ResidentController extends Controller
         }
 
         $householdsQuery = Household::query()
+            ->where('approval_status', 'approved')
             ->orderBy('block_number')
             ->orderBy('lot_number');
 

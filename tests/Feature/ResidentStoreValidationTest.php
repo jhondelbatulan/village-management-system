@@ -133,4 +133,22 @@ class ResidentStoreValidationTest extends TestCase
             ->assertSee('id="age"', false)
             ->assertSee('value="VIII"', false);
     }
+
+    public function test_resident_cannot_be_added_to_household_before_final_approval(): void
+    {
+        $unapprovedHousehold = Household::create([
+            'village_id' => $this->village->id,
+            'household_number' => 'HH-' . Str::upper(Str::random(6)),
+            'block_number' => '2',
+            'lot_number' => '8',
+            'household_head_name' => 'Awaiting Approval Person',
+            'status' => 'active',
+            'approval_status' => 'admin_approved',
+        ]);
+
+        $this->postResident(['household_id' => $unapprovedHousehold->id])
+            ->assertSessionHasErrors('household_id');
+
+        $this->assertSame(0, Resident::count());
+    }
 }

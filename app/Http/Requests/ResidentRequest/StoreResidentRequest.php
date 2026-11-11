@@ -66,7 +66,10 @@ class StoreResidentRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'household_id' => ['required', 'exists:households,id'],
+            'household_id' => [
+                'required',
+                Rule::exists('households', 'id')->where('approval_status', 'approved'),
+            ],
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}]+(?: [\p{L}]+)*$/u'],
             'middle_name' => ['nullable', 'string', 'max:255', 'regex:/^\p{Lu}$/u'],
             'last_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}]+(?: [\p{L}]+)*$/u'],
@@ -156,6 +159,7 @@ class StoreResidentRequest extends FormRequest
     {
         return [
             'household_id.required' => 'Please select a household. Every resident must belong to a household.',
+            'household_id.exists' => 'Residents can only be added to households approved by the Super Admin.',
             'first_name.required' => 'First name is required.',
             'last_name.required' => 'Last name is required.',
             'gender.required' => 'Gender is required.',

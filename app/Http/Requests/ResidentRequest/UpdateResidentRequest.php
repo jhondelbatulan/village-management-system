@@ -5,6 +5,7 @@ namespace App\Http\Requests\ResidentRequest;
 use App\Rules\ProperName;
 use App\Rules\SafeText;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateResidentRequest extends FormRequest
 {
@@ -15,8 +16,16 @@ class UpdateResidentRequest extends FormRequest
 
     public function rules(): array
     {
+        $resident = $this->route('resident');
+        $currentHouseholdId = $resident instanceof \App\Models\Resident ? $resident->household_id : null;
+
         return [
-            'household_id' => ['required', 'exists:households,id'],
+            'household_id' => [
+                'required',
+                Rule::exists('households', 'id')->where(fn ($query) => $query
+                    ->where('approval_status', 'approved')
+                    ->orWhere('id', $currentHouseholdId ?? 0)),
+            ],
             'first_name' => ['required', 'string', 'max:255', new ProperName],
             'middle_name' => ['nullable', 'string', 'max:255', new ProperName],
             'last_name' => ['required', 'string', 'max:255', new ProperName],

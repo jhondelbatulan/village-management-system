@@ -73,6 +73,11 @@ class Household extends Model
         return $this->hasMany(Resident::class)->where('approval_status', 'approved');
     }
 
+    public function users(): HasMany
+    {
+        return $this->hasMany(User::class);
+    }
+
     public function submittedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'submitted_by');

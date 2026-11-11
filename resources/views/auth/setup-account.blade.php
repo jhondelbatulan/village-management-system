@@ -129,12 +129,15 @@
                                 <label for="contact_number" class="form-label fw-semibold">
                                     <i class="bi bi-telephone me-1"></i>Contact Number <span class="text-danger">*</span>
                                 </label>
-                                <input type="text"
+                                <input type="tel"
                                        class="form-control @error('contact_number') is-invalid @enderror"
                                        id="contact_number"
                                        name="contact_number"
                                        value="{{ old('contact_number', $user->contact_number) }}"
-                                       placeholder="e.g., 0917 123 4567"
+                                       inputmode="numeric"
+                                       pattern="[0-9]{7,20}"
+                                       maxlength="20"
+                                       placeholder="e.g., 09171234567"
                                        required>
                                 @error('contact_number')
                                     <div class="invalid-feedback">{{ $message }}</div>
@@ -241,7 +244,7 @@
 
         const NAME_PATTERN = /^[\p{L}]+(?: [\p{L}]+)*$/u;
         const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
-        const CONTACT_PATTERN = /^[0-9+\-\s()]{7,20}$/;
+        const CONTACT_PATTERN = /^[0-9]{7,20}$/;
 
         function getFeedback(el) {
             let node = el.nextElementSibling;
@@ -315,7 +318,7 @@
         function checkContact(el) {
             const value = el.value.trim();
             if (!value) return 'Contact number is required.';
-            if (!CONTACT_PATTERN.test(value)) return 'Contact number must be a valid phone number (7–20 digits, may include +, -, spaces or parentheses).';
+            if (!CONTACT_PATTERN.test(value)) return 'Contact number must contain digits only (7–20 digits).';
             return null;
         }
 
@@ -376,7 +379,15 @@
         }
 
         if (contactNumber) {
-            contactNumber.addEventListener('input', function () { clearFieldError(contactNumber); });
+            contactNumber.addEventListener('input', function () {
+                const caret = contactNumber.selectionStart;
+                const cleaned = contactNumber.value.replace(/\D/g, '').slice(0, 20);
+                if (cleaned !== contactNumber.value) {
+                    contactNumber.value = cleaned;
+                    contactNumber.setSelectionRange(Math.min(caret, cleaned.length), Math.min(caret, cleaned.length));
+                }
+                clearFieldError(contactNumber);
+            });
             contactNumber.addEventListener('blur', function () { validateField(contactNumber, checkContact); });
         }
 

@@ -73,15 +73,4 @@
     </div>
 </div>
 
-@push('scripts')
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('.notification-item form').forEach(function(form) {
-        form.addEventListener('submit', function() {
-            setTimeout(function() { location.reload(); }, 300);
-        });
-    });
-});
-</script>
-@endpush
 @endsection

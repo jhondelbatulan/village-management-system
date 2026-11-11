@@ -73,6 +73,8 @@ class UserManagementController extends Controller
         }
 
         $householdsQuery = Household::query()
+            ->where('approval_status', 'approved')
+            ->whereDoesntHave('users', fn ($query) => $query->whereHas('role', fn ($role) => $role->where('role_slug', 'resident')))
             ->orderBy('block_number')
             ->orderBy('lot_number');
 
@@ -152,6 +154,9 @@ class UserManagementController extends Controller
         }
 
         $householdsQuery = Household::query()
+            ->where(fn ($query) => $query
+                ->where('approval_status', 'approved')
+                ->orWhere('id', $user->household_id ?? 0))
             ->orderBy('block_number')
             ->orderBy('lot_number');
 

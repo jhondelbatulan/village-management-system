@@ -76,7 +76,7 @@ class AccountSetupRequest extends FormRequest
                 'max:255',
                 Rule::unique('users', 'email')->ignore($user?->id),
             ],
-            'contact_number' => ['required', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'contact_number' => ['required', 'string', 'max:20', 'regex:/^[0-9]{7,20}$/'],
             'password' => ['required', 'string', 'min:8', 'confirmed'],
         ];
     }
@@ -94,7 +94,7 @@ class AccountSetupRequest extends FormRequest
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email address is already registered.',
             'contact_number.required' => 'Contact number is required.',
-            'contact_number.regex' => 'Contact number must be a valid phone number (7–20 digits, may include +, -, spaces or parentheses).',
+            'contact_number.regex' => 'Contact number must contain digits only (7–20 digits).',
             'password.required' => 'Please set your new password.',
             'password.min' => 'Password must be at least 8 characters.',
             'password.confirmed' => 'Password confirmation does not match.',

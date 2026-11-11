@@ -440,6 +440,13 @@ class HouseholdController extends Controller
             return redirect()->route('households.my-household')->with('error', 'You are not assigned to any household.');
         }
 
+        $household = Household::find($user->household_id);
+
+        if (! $household || $household->approval_status !== 'approved') {
+            return redirect()->route('households.my-household')
+                ->with('error', 'You can request to add household members after the Super Admin approves your household.');
+        }
+
         return view('households.request-member');
     }
 
@@ -454,6 +461,11 @@ class HouseholdController extends Controller
         $validated = $request->validated();
 
         $household = Household::findOrFail($user->household_id);
+
+        if ($household->approval_status !== 'approved') {
+            return redirect()->route('households.my-household')
+                ->with('error', 'You can request to add household members after the Super Admin approves your household.');
+        }
 
         $data = array_merge($validated, [
             'resident_code' => Resident::generateResidentCode(),

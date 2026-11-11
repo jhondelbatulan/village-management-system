@@ -44,16 +44,26 @@ class NotificationController extends Controller
         ]);
     }
 
-    public function markAsRead(int $id): JsonResponse
+    public function markAsRead(Request $request, int $id): JsonResponse|RedirectResponse
     {
         $this->notificationService->markAsRead($id, auth()->id());
-        return response()->json(['success' => true]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true]);
+        }
+
+        return redirect()->route('notifications.index')->with('success', 'Notification marked as read.');
     }
 
-    public function markAllAsRead(): JsonResponse
+    public function markAllAsRead(Request $request): JsonResponse|RedirectResponse
     {
         $count = $this->notificationService->markAllAsRead(auth()->id());
-        return response()->json(['success' => true, 'count' => $count]);
+
+        if ($request->expectsJson()) {
+            return response()->json(['success' => true, 'count' => $count]);
+        }
+
+        return redirect()->route('notifications.index')->with('success', 'All notifications marked as read.');
     }
 
     public function destroy(int $id): RedirectResponse

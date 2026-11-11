@@ -77,7 +77,7 @@ class StoreUserRequest extends FormRequest
             'household_id' => [
                 'required_if:role_id,5',
                 'nullable',
-                'exists:households,id',
+                Rule::exists('households', 'id')->where('approval_status', 'approved'),
             ],
             'username' => ['required', 'string', 'max:255', 'unique:users,username'],
             'email' => ['nullable', 'email:rfc', 'max:255', 'unique:users,email'],
@@ -96,7 +96,22 @@ class StoreUserRequest extends FormRequest
         $validator->after(function ($validator): void {
             $role = Role::find($this->input('role_id'));
 
-            if (! $role || ! in_array($role->role_slug, ['admin', 'secretary', 'treasurer'], true)) {
+            if (! $role) {
+                return;
+            }
+
+            if ($role->role_slug === 'resident' && $this->filled('household_id')) {
+                $alreadyHasResidentAccount = User::query()
+                    ->where('household_id', $this->input('household_id'))
+                    ->whereHas('role', fn ($query) => $query->where('role_slug', 'resident'))
+                    ->exists();
+
+                if ($alreadyHasResidentAccount) {
+                    $validator->errors()->add('household_id', 'This household already has a resident account.');
+                }
+            }
+
+            if (! in_array($role->role_slug, ['admin', 'secretary', 'treasurer'], true)) {
                 return;
             }
 
@@ -130,7 +145,7 @@ class StoreUserRequest extends FormRequest
             'village_id.required_if' => 'A village must be assigned for this role.',
             'village_id.exists' => 'The selected village is invalid.',
             'household_id.required_if' => 'A household must be assigned for resident users.',
-            'household_id.exists' => 'The selected household is invalid.',
+            'household_id.exists' => 'A resident account can only be created for a household approved by the Super Admin.',
             'username.unique' => 'This username is already taken.',
             'email.email' => 'Please enter a valid email address.',
             'email.unique' => 'This email address is already registered.',

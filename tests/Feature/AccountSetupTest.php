@@ -102,6 +102,8 @@ class AccountSetupTest extends TestCase
             ->assertSee('titleCase')
             // ...the middle name stays a single capital letter...
             ->assertSee('Middle name must be a single capital letter')
+            ->assertSee('inputmode="numeric"', false)
+            ->assertSee('digits only', false)
             // ...and every field reports errors before the page round-trip.
             ->assertSee('is-invalid')
             ->assertSee('Password confirmation does not match.');
@@ -126,7 +128,7 @@ class AccountSetupTest extends TestCase
             'middle_name' => 'M',
             'last_name' => 'Dela Cruz',
             'email' => 'juan.setup@example.com',
-            'contact_number' => '0917 123 4567',
+            'contact_number' => '09171234567',
             'password' => 'BrandNewPass1',
             'password_confirmation' => 'BrandNewPass1',
         ]);
@@ -140,7 +142,7 @@ class AccountSetupTest extends TestCase
         $this->assertSame('M', $user->middle_name);
         $this->assertSame('Dela Cruz', $user->last_name);
         $this->assertSame('juan.setup@example.com', $user->email);
-        $this->assertSame('0917 123 4567', $user->contact_number);
+        $this->assertSame('09171234567', $user->contact_number);
         $this->assertTrue(Hash::check('BrandNewPass1', $user->password));
         $this->assertFalse(Hash::check('secret-password', $user->password));
 
@@ -173,6 +175,15 @@ class AccountSetupTest extends TestCase
         $fresh = $user->fresh();
         $this->assertTrue($fresh->must_setup);
         $this->assertTrue(Hash::check('secret-password', $fresh->password));
+
+        $this->actingAs($fresh)->post(route('account.setup.store'), [
+            'first_name' => 'Fresh',
+            'last_name' => 'Account',
+            'email' => $fresh->email,
+            'contact_number' => '0917 111 2222',
+            'password' => 'BrandNewPass1',
+            'password_confirmation' => 'BrandNewPass1',
+        ])->assertSessionHasErrors('contact_number');
     }
 
     public function test_existing_accounts_are_never_forced_into_setup(): void

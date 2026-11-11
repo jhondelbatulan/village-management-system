@@ -5,6 +5,7 @@ namespace App\Http\Requests\UserRequest;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -34,7 +35,8 @@ class UpdateUserRequest extends FormRequest
 
     public function rules(): array
     {
-        $userId = $this->route('user')?->id ?? $this->user()?->id;
+        $targetUser = $this->route('user');
+        $userId = $targetUser?->id ?? $this->user()?->id;
 
         return [
             'role_id' => ['required', 'exists:roles,id'],
@@ -46,7 +48,9 @@ class UpdateUserRequest extends FormRequest
             'household_id' => [
                 'required_if:role_id,5',
                 'nullable',
-                'exists:households,id',
+                Rule::exists('households', 'id')->where(fn ($query) => $query
+                    ->where('approval_status', 'approved')
+                    ->orWhere('id', $targetUser?->household_id ?? 0)),
             ],
             'username' => ['required', 'string', 'max:255', 'unique:users,username,' . $userId],
             'email' => ['nullable', 'email:rfc', 'max:255', 'unique:users,email,' . $userId],

@@ -64,41 +64,39 @@ class HouseholdAssignmentOptionsTest extends TestCase
         ], $overrides));
     }
 
-    public function test_admin_sees_existing_household_when_creating_a_resident_account(): void
+    public function test_admin_cannot_select_unapproved_household_when_creating_a_resident_account(): void
     {
         $household = $this->makeHousehold();
 
         $response = $this->actingAs($this->admin)->get(route('users.create'));
 
         $response->assertOk();
-        $response->assertSee($household->household_number);
-        $response->assertSee('Blk 1, Lot 2', false);
+        $response->assertDontSee($household->household_number);
     }
 
-    public function test_secretary_sees_existing_household_when_registering_a_resident(): void
+    public function test_secretary_cannot_select_unapproved_household_when_registering_a_resident(): void
     {
         $household = $this->makeHousehold();
 
         $response = $this->actingAs($this->secretary)->get(route('residents.create'));
 
         $response->assertOk();
-        $response->assertSee($household->household_number);
-        $response->assertSee('Blk 1, Lot 2', false);
+        $response->assertDontSee($household->household_number);
     }
 
-    public function test_admin_sees_household_that_is_not_yet_approved(): void
+    public function test_admin_cannot_select_household_that_is_not_yet_approved_for_an_account(): void
     {
         $household = $this->makeHousehold(['approval_status' => 'pending']);
 
         $response = $this->actingAs($this->admin)->get(route('users.create'));
 
         $response->assertOk();
-        $response->assertSee($household->household_number);
+        $response->assertDontSee($household->household_number);
     }
 
     public function test_admin_sees_inactive_household_when_creating_a_resident_account(): void
     {
-        $household = $this->makeHousehold(['status' => 'inactive']);
+        $household = $this->makeHousehold(['approval_status' => 'approved', 'status' => 'inactive']);
 
         $response = $this->actingAs($this->admin)->get(route('users.create'));
 
@@ -106,15 +104,15 @@ class HouseholdAssignmentOptionsTest extends TestCase
         $response->assertSee($household->household_number);
     }
 
-    public function test_resident_form_shows_households_that_are_still_being_approved(): void
+    public function test_resident_form_hides_households_that_are_still_being_approved(): void
     {
         $household = $this->makeHousehold(['approval_status' => 'pending']);
 
         $response = $this->actingAs($this->secretary)->get(route('residents.create'));
 
         $response->assertOk();
-        $response->assertSee($household->household_number);
-        $response->assertSee('Pending Approval', false);
+        $response->assertDontSee($household->household_number);
+        $response->assertDontSee('Pending Approval', false);
     }
 
     public function test_secretary_sees_current_household_when_editing_a_resident(): void

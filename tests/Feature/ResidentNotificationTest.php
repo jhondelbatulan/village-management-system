@@ -274,5 +274,22 @@ class ResidentNotificationTest extends TestCase
             ->assertOk()
             ->assertSee('playNotificationSound', false);
     }
+
+    public function test_mark_as_read_form_redirects_to_notifications_instead_of_showing_json(): void
+    {
+        $notification = Notification::create([
+            'user_id' => $this->residentA->id,
+            'type' => 'announcement',
+            'title' => 'A new announcement',
+            'message' => 'Please read the announcement.',
+        ]);
+
+        $this->actingAs($this->residentA)
+            ->post(route('notifications.read', $notification->id))
+            ->assertRedirect(route('notifications.index'))
+            ->assertSessionHas('success', 'Notification marked as read.');
+
+        $this->assertNotNull($notification->fresh()->read_at);
+    }
 }
 

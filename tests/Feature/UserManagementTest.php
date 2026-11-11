@@ -335,6 +335,72 @@ class UserManagementTest extends TestCase
         }
     }
 
+    public function test_resident_account_cannot_be_created_for_a_household_awaiting_super_admin_approval(): void
+    {
+        $village = Village::forceCreate(['village_name' => 'Unapproved Account Village', 'village_code' => 'UAV']);
+        $household = Household::create([
+            'village_id' => $village->id,
+            'household_number' => 'HH-' . Str::upper(Str::random(6)),
+            'block_number' => '1',
+            'lot_number' => '1',
+            'household_head_name' => 'Awaiting Approval',
+            'status' => 'active',
+            'approval_status' => 'admin_approved',
+        ]);
+        $payload = $this->createUserPayload([
+            'role_id' => Role::where('role_slug', 'resident')->firstOrFail()->id,
+            'village_id' => $village->id,
+            'household_id' => $household->id,
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), $payload)
+            ->assertSessionHasErrors('household_id');
+
+        $this->assertDatabaseMissing('users', ['username' => $payload['username']]);
+    }
+
+    public function test_household_with_resident_account_is_hidden_and_rejected_for_another_account(): void
+    {
+        $village = Village::forceCreate(['village_name' => 'Assigned Account Village', 'village_code' => 'AAV']);
+        $household = Household::create([
+            'village_id' => $village->id,
+            'household_number' => 'HH-' . Str::upper(Str::random(6)),
+            'block_number' => '1',
+            'lot_number' => '1',
+            'household_head_name' => 'Resident Account Holder',
+            'status' => 'active',
+            'approval_status' => 'approved',
+        ]);
+        $residentRoleId = Role::where('role_slug', 'resident')->firstOrFail()->id;
+        $firstPayload = $this->createUserPayload([
+            'role_id' => $residentRoleId,
+            'village_id' => $village->id,
+            'household_id' => $household->id,
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), $firstPayload)
+            ->assertSessionHasNoErrors();
+
+        $this->actingAs($this->superAdmin)
+            ->get(route('users.create'))
+            ->assertOk()
+            ->assertDontSee($household->household_number);
+
+        $secondPayload = $this->createUserPayload([
+            'role_id' => $residentRoleId,
+            'village_id' => $village->id,
+            'household_id' => $household->id,
+        ]);
+
+        $this->actingAs($this->superAdmin)
+            ->post(route('users.store'), $secondPayload)
+            ->assertSessionHasErrors('household_id');
+
+        $this->assertDatabaseMissing('users', ['username' => $secondPayload['username']]);
+    }
+
     public function test_update_user_role_to_existing_secretary_in_same_village_is_rejected(): void
     {
         $village = Village::forceCreate(['village_name' => 'Role Limit Village', 'village_code' => 'RML']);

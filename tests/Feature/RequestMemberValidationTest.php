@@ -174,4 +174,16 @@ class RequestMemberValidationTest extends TestCase
 
         $this->assertSame(0, Resident::count());
     }
+
+    public function test_household_members_cannot_be_requested_before_final_approval(): void
+    {
+        $this->household->update(['approval_status' => 'admin_approved']);
+
+        $this->actingAs($this->resident)
+            ->post(route('households.request-member'), $this->payload())
+            ->assertRedirect(route('households.my-household'))
+            ->assertSessionHas('error');
+
+        $this->assertSame(0, Resident::count());
+    }
 }
