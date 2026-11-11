@@ -47,6 +47,16 @@
     </div>
     <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
+            title="Monthly House Rental Collected"
+            :value="'₱'.number_format($monthlyHouseRentalCollected ?? 0, 2)"
+            icon="bi-house-check"
+            color="success"
+            subtitle="Rental payments collected this month"
+            :large="true"
+        />
+    </div>
+    <div class="col-12 col-md-6 col-xl">
+        <x-analytics.summary-card
             title="Outstanding Balance"
             :value="'₱'.number_format($paymentStats['outstanding'] ?? 0, 2)"
             icon="bi-exclamation-triangle"

@@ -51,10 +51,6 @@
                         </p>
                     </div>
                     <div class="col-md-6">
-                        <label class="form-label text-muted small">Payment Manager</label>
-                        <p class="fw-semibold mb-0">{{ ucfirst($setting->payment_manager_role ?? 'None') }}</p>
-                    </div>
-                    <div class="col-md-6">
                         <label class="form-label text-muted small">Grace Period</label>
                         <p class="fw-semibold mb-0">{{ $setting->grace_period_days }} days</p>
                     </div>

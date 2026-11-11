@@ -40,8 +40,8 @@
         <div class="receipt-header">
             <h1>OFFICIAL RECEIPT</h1>
             <p>Multi-Village Management System</p>
-            <p>City Planning and Development Office</p>
-            <p>Cabadbaran City, Agusan del Norte</p>
+            <p>{{ $payment->village?->village_name ?? 'Village Administration' }}</p>
+            @if($payment->village?->address)<p>{{ $payment->village->address }}</p>@endif
         </div>
 
         <div class="receipt-body">
@@ -55,7 +55,7 @@
             </div>
             <div class="receipt-row">
                 <span class="label">Billing No:</span>
-                <span class="value">{{ $payment->billing?->billing_number ?? '—' }}</span>
+                <span class="value">{{ $payment->billing_number_snapshot ?: ($payment->billing?->billing_number ?? '—') }}</span>
             </div>
             <div class="receipt-row">
                 <span class="label">Date Paid:</span>
@@ -72,6 +72,12 @@
                 <span class="label">Head:</span>
                 <span class="value">{{ $payment->household?->household_head_name ?? '—' }}</span>
             </div>
+            @if($payment->household?->address)
+            <div class="receipt-row">
+                <span class="label">Address:</span>
+                <span class="value">{{ $payment->household->address }}</span>
+            </div>
+            @endif
             <div class="receipt-row">
                 <span class="label">Village:</span>
                 <span class="value">{{ $payment->village?->village_name ?? '—' }}</span>
@@ -85,7 +91,7 @@
             </div>
             <div class="receipt-row">
                 <span class="label">Period:</span>
-                <span class="value">{{ $payment->billing?->billing_period ?? '—' }}</span>
+                <span class="value">{{ $payment->billing_period_snapshot ?: ($payment->billing?->billing_period ?? '—') }}</span>
             </div>
 
             <div class="receipt-divider"></div>
@@ -94,13 +100,6 @@
                 <span class="label">Amount:</span>
                 <span class="value">₱{{ number_format($payment->amount, 2) }}</span>
             </div>
-            @if($payment->discount > 0)
-            <div class="receipt-row">
-                <span class="label">Discount:</span>
-                <span class="value">-₱{{ number_format($payment->discount, 2) }}</span>
-            </div>
-            @endif
-
             <div class="receipt-total">
                 TOTAL PAID: ₱{{ number_format($payment->total_paid, 2) }}
             </div>
@@ -109,12 +108,12 @@
 
             <div class="receipt-row">
                 <span class="label">Billing Total:</span>
-                <span class="value">₱{{ number_format($payment->billing?->total_amount ?? 0, 2) }}</span>
+                <span class="value">₱{{ number_format($payment->billing_amount_snapshot ?? $payment->billing?->total_amount ?? 0, 2) }}</span>
             </div>
             <div class="receipt-row">
                 <span class="label">Remaining Balance:</span>
-                <span class="value" style="{{ ($remainingBalance ?? 0) <= 0 ? 'color: green;' : 'color: red;' }}">
-                    ₱{{ number_format($remainingBalance ?? 0, 2) }}
+                <span class="value" style="{{ ($payment->billing_balance_snapshot ?? $remainingBalance ?? 0) <= 0 ? 'color: green;' : 'color: red;' }}">
+                    ₱{{ number_format($payment->billing_balance_snapshot ?? $remainingBalance ?? 0, 2) }}
                 </span>
             </div>
 

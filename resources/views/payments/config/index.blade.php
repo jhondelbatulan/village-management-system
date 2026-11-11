@@ -27,7 +27,6 @@
                     <tr>
                         <th>Village</th>
                         <th class="text-center">Payment Module</th>
-                        <th>Manager</th>
                         <th class="text-center">Grace Period</th>
                         <th>Billing Prefix</th>
                         <th class="text-end">Actions</th>
@@ -50,7 +49,6 @@
                                     <span class="badge bg-secondary">Disabled</span>
                                 @endif
                             </td>
-                            <td>{{ ucfirst($setting->payment_manager_role ?? '—') }}</td>
                             <td class="text-center">{{ $setting->grace_period_days ?? 0 }} days</td>
                             <td>{{ $setting->billing_prefix ?? 'BILL' }}</td>
                             <td class="text-end">

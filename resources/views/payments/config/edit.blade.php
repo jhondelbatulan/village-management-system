@@ -48,14 +48,6 @@
                                 <label class="form-check-label fw-semibold" for="payment_enabled">Enable Payment Module</label>
                             </div>
                         </div>
-                        <div class="col-md-6">
-                            <label for="payment_manager_role" class="form-label fw-semibold">Payment Manager</label>
-                            <select class="form-select" id="payment_manager_role" name="payment_manager_role">
-                                <option value="">None</option>
-                                <option value="treasurer" {{ ($setting->payment_manager_role ?? '') === 'treasurer' ? 'selected' : '' }}>Treasurer</option>
-                                <option value="super_admin" {{ ($setting->payment_manager_role ?? '') === 'super_admin' ? 'selected' : '' }}>Super Admin (CPDO)</option>
-                            </select>
-                        </div>
                     </div>
                 </div>
             </div>

@@ -72,7 +72,7 @@ class PaymentPermissionService
                 return false;
             }
             $config = PaymentConfiguration::where('village_id', $villageId)->first();
-            return $config && $config->payment_manager_role === 'treasurer';
+            return (bool) ($config?->payment_enabled);
         }
 
         return false;
@@ -200,7 +200,7 @@ class PaymentPermissionService
                 return [];
             }
             $config = PaymentConfiguration::where('village_id', $user->village_id)
-                ->where('payment_manager_role', 'treasurer')
+                ->where('payment_enabled', true)
                 ->first();
             return $config ? [$user->village_id] : [];
         }

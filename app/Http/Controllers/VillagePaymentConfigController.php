@@ -72,7 +72,6 @@ class VillagePaymentConfigController extends Controller
         $data = [
             'village_id' => $village->id,
             'payment_enabled' => $request->input('payment_enabled') ? true : false,
-            'payment_manager_role' => $validated['payment_manager_role'] ?? null,
             'grace_period_days' => $validated['grace_period_days'] ?? 0,
             'billing_prefix' => $validated['billing_prefix'] ?? 'BILL',
             'receipt_prefix' => $validated['receipt_prefix'] ?? 'RCPT',

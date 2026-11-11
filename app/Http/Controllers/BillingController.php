@@ -52,7 +52,21 @@ class BillingController extends Controller
         }
 
         if ($request->status) {
-            $query->where('status', $request->status);
+            if ($request->status === 'unpaid') {
+                $query->whereIn('status', ['pending', 'partially_paid'])->where('due_date', '>=', now()->toDateString());
+            } elseif ($request->status === 'fully_paid') {
+                $query->where('status', 'paid');
+            } elseif ($request->status === 'overdue') {
+                $query->where(function ($q): void {
+                    $q->where('status', 'overdue')
+                        ->orWhere(function ($pending): void {
+                            $pending->whereIn('status', ['pending', 'partially_paid'])
+                                ->where('due_date', '<', now()->toDateString());
+                        });
+                });
+            } else {
+                $query->where('status', $request->status);
+            }
         }
 
         if ($request->billing_period) {

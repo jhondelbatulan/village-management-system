@@ -132,7 +132,6 @@ class PaymentController extends Controller
         $request->validate([
             'billing_id' => 'required|exists:household_billings,id',
             'amount' => 'required|numeric|min:0.01',
-            'discount' => 'nullable|numeric|min:0',
             'payment_method' => 'required|in:cash,gcash,maya,bank_transfer',
             'reference_number' => 'nullable|string|max:100',
             'remarks' => 'nullable|string|max:500',
@@ -185,7 +184,6 @@ class PaymentController extends Controller
             $payment = $this->paymentService->recordPayment($request->only([
                 'billing_id',
                 'amount',
-                'discount',
                 'payment_method',
                 'reference_number',
                 'remarks',

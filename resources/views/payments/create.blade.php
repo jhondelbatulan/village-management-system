@@ -61,22 +61,13 @@
                     @endif
                     <div class="mb-3">
                         <label for="billing_id" class="form-label fw-semibold">Select Billing <span class="text-danger">*</span></label>
-                        <div class="d-flex gap-2 mb-2">
-                            <select class="form-select form-select-sm" id="sortSelect" style="max-width: 220px;">
-                                <option value="default">Default Order</option>
-                                <option value="name-asc">Household Name (A-Z)</option>
-                                <option value="name-desc">Household Name (Z-A)</option>
-                                <option value="block-asc">Block Number (Low-High)</option>
-                                <option value="block-desc">Block Number (High-Low)</option>
-                                <option value="due-asc">Due Date (Earliest)</option>
-                                <option value="due-desc">Due Date (Latest)</option>
-                                <option value="amount-desc">Balance (Highest)</option>
-                            </select>
+                        <div class="mb-2">
                             <input type="text" class="form-control form-control-sm" id="billingSearch"
-                                   placeholder="Search by name, block, billing #..." style="max-width: 300px;">
+                                   placeholder="Search by household head, billing no., or payment type...">
+                            <small class="text-muted">Search first to enable the billing list.</small>
                         </div>
-                        <select class="form-select" id="billing_id" name="billing_id" required>
-                            <option value="">-- Select an unpaid/partially paid billing --</option>
+                        <select class="form-select" id="billing_id" name="billing_id" required disabled>
+                            <option value="">-- Search to select an unpaid billing --</option>
                             @foreach($billings as $billing)
                                 @php
                                     $totalPaid = (float) $billing->payments->sum('total_paid');
@@ -93,12 +84,11 @@
                                     data-village="{{ $billing->village?->village_name ?? '' }}"
                                     data-balance="{{ number_format($balance, 2, '.', '') }}"
                                     data-balance-sort="{{ $balance }}"
-                                    data-block="{{ $billing->household?->block_number ?? 999 }}"
                                     data-head-sort="{{ strtolower($billing->household?->household_head_name ?? 'zzz') }}"
                                     data-billing-id="{{ $billing->id }}"
-                                    data-search="{{ strtolower(($billing->household?->household_head_name ?? '') . ' ' . ($billing->household?->household_number ?? '') . ' ' . $billing->billing_number . ' Block ' . ($billing->household?->block_number ?? '')) }}"
+                                    data-search="{{ strtolower(($billing->household?->household_head_name ?? '') . ' ' . $billing->billing_number . ' ' . ($billing->paymentType?->payment_name ?? '')) }}"
                                     {{ request('billing_id') == $billing->id || (!empty($onlinePayment) && $onlinePayment->billing_id == $billing->id) ? 'selected' : '' }}>
-                                    {{ $billing->household?->household_head_name ?? 'Unknown' }} — {{ $billing->billing_number }} | {{ $billing->paymentType?->payment_name ?? '' }} | ₱{{ number_format($balance, 2) }} remaining | Due: {{ $billing->due_date->format('M d, Y') }}
+                                    {{ $billing->household?->household_head_name ?? 'Unknown' }} — {{ $billing->billing_number }} — {{ $billing->paymentType?->payment_name ?? '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -151,15 +141,6 @@
                                        placeholder="Enter payment amount">
                             </div>
                             <div id="amountError" class="text-danger small mt-1" style="display:none;"></div>
-                        </div>
-                        <div class="col-md-6">
-                            <label for="discount" class="form-label fw-semibold">Discount</label>
-                            <div class="input-group">
-                                <span class="input-group-text">₱</span>
-                                <input type="number" step="0.01" class="form-control" id="discount"
-                                       name="discount" value="{{ old('discount', '0.00') }}" min="0"
-                                       {{ !empty($onlinePayment) ? 'readonly' : '' }}>
-                            </div>
                         </div>
                         <div class="col-md-6">
                             <label for="payment_method" class="form-label fw-semibold">Payment Method <span class="text-danger">*</span></label>
@@ -216,12 +197,10 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const billingSelect = document.getElementById('billing_id');
-    const sortSelect = document.getElementById('sortSelect');
     const billingSearch = document.getElementById('billingSearch');
     const billingCount = document.getElementById('billingCount');
     const billingInfo = document.getElementById('billingInfo');
     const amountInput = document.getElementById('amount');
-    const discountInput = document.getElementById('discount');
     const totalDisplay = document.getElementById('totalDisplay');
     const remainingDisplay = document.getElementById('remainingDisplay');
     const amountError = document.getElementById('amountError');
@@ -258,8 +237,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function updateTotal() {
         const amount = parseFloat(amountInput.value) || 0;
-        const discount = parseFloat(discountInput.value) || 0;
-        const net = Math.max(0, amount - discount);
+        const net = amount;
         const remaining = Math.max(0, currentBalance - net);
 
         totalDisplay.textContent = '₱' + net.toFixed(2);
@@ -288,16 +266,14 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     amountInput.addEventListener('input', updateTotal);
-    discountInput.addEventListener('input', updateTotal);
 
     document.getElementById('paymentForm').addEventListener('submit', function(e) {
         const amount = parseFloat(amountInput.value) || 0;
-        const discount = parseFloat(discountInput.value) || 0;
-        const net = amount - discount;
+        const net = amount;
 
         if (net <= 0) {
             e.preventDefault();
-            alert('Net payment amount must be greater than zero.');
+            alert('Payment amount must be greater than zero.');
             return;
         }
 
@@ -322,35 +298,15 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
     amountInput.value = '{{ number_format($onlinePayment->amount, 2, '.', '') }}';
+    const onlineBillingOption = Array.from(billingSelect.options).find(o => o.value === '{{ $onlinePayment->billing_id }}');
+    billingSearch.value = onlineBillingOption ? onlineBillingOption.dataset.search : '';
+    filterBillings();
     updateTotal();
     @endif
 
-    function sortBillings() {
-        const selectedValue = billingSelect.value;
-        const options = Array.from(billingSelect.options).filter(o => o.value !== '');
-        const placeholder = billingSelect.options[0];
-
-        options.sort((a, b) => {
-            switch (sortSelect.value) {
-                case 'name-asc': return a.dataset.headSort.localeCompare(b.dataset.headSort);
-                case 'name-desc': return b.dataset.headSort.localeCompare(a.dataset.headSort);
-                case 'block-asc': return parseInt(a.dataset.block) - parseInt(b.dataset.block);
-                case 'block-desc': return parseInt(b.dataset.block) - parseInt(a.dataset.block);
-                case 'due-asc': return a.dataset.dueSort.localeCompare(b.dataset.dueSort);
-                case 'due-desc': return b.dataset.dueSort.localeCompare(a.dataset.dueSort);
-                case 'amount-desc': return parseFloat(b.dataset.balanceSort) - parseFloat(a.dataset.balanceSort);
-                default: return 0;
-            }
-        });
-
-        billingSelect.innerHTML = '';
-        billingSelect.appendChild(placeholder);
-        options.forEach(o => billingSelect.appendChild(o));
-        billingSelect.value = selectedValue;
-    }
-
     function filterBillings() {
         const query = billingSearch.value.toLowerCase().trim();
+        billingSelect.disabled = query.length === 0;
         const options = Array.from(billingSelect.options).filter(o => o.value !== '');
         let visible = 0;
 
@@ -360,11 +316,11 @@ document.addEventListener('DOMContentLoaded', function() {
             if (match) visible++;
         });
 
-        billingCount.textContent = query ? visible + ' billing(s) found' : '';
+        billingCount.textContent = query ? visible + ' billing(s) found' : 'Enter a search term to choose a billing.';
     }
 
-    sortSelect.addEventListener('change', sortBillings);
     billingSearch.addEventListener('input', filterBillings);
+    filterBillings();
 });
 </script>
 @endpush

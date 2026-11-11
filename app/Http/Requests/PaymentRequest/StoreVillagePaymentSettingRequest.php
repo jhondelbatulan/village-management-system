@@ -35,7 +35,6 @@ class StoreVillagePaymentSettingRequest extends FormRequest
     {
         return [
             'payment_enabled' => ['nullable'],
-            'payment_manager_role' => ['nullable', 'in:treasurer,super_admin'],
             'grace_period_days' => ['required', 'integer', 'min:0'],
             'billing_prefix' => ['required', 'string', 'max:10'],
             'receipt_prefix' => ['required', 'string', 'max:10'],

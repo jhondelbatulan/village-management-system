@@ -16,6 +16,10 @@ class HouseholdPayment extends Model
     protected $fillable = [
         'receipt_number',
         'billing_id',
+        'billing_number_snapshot',
+        'billing_amount_snapshot',
+        'billing_period_snapshot',
+        'billing_balance_snapshot',
         'household_id',
         'village_id',
         'payment_type_id',
@@ -37,6 +41,8 @@ class HouseholdPayment extends Model
         'penalty' => 'decimal:2',
         'discount' => 'decimal:2',
         'total_paid' => 'decimal:2',
+        'billing_amount_snapshot' => 'decimal:2',
+        'billing_balance_snapshot' => 'decimal:2',
         'payment_date' => 'date',
         'due_date' => 'date',
     ];

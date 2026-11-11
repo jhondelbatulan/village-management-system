@@ -65,12 +65,9 @@
                 <div class="col-md-2">
                     <select class="form-select form-select-sm" name="status">
                         <option value="">All Status</option>
-                        <option value="draft" {{ request('status') === 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('status') === 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="paid" {{ request('status') === 'paid' ? 'selected' : '' }}>Paid</option>
-                        <option value="partially_paid" {{ request('status') === 'partially_paid' ? 'selected' : '' }}>Partially Paid</option>
+                        <option value="unpaid" {{ request('status') === 'unpaid' ? 'selected' : '' }}>Unpaid</option>
+                        <option value="fully_paid" {{ request('status') === 'fully_paid' ? 'selected' : '' }}>Fully Paid</option>
                         <option value="overdue" {{ request('status') === 'overdue' ? 'selected' : '' }}>Overdue</option>
-                        <option value="cancelled" {{ request('status') === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
                     </select>
                 </div>
                 <div class="col-md-2">

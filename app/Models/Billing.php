@@ -76,11 +76,14 @@ class Billing extends Model
     {
         $date = now();
         $month = $date->format('Ym');
-        $sequence = static::whereYear('created_at', $date->year)
-            ->whereMonth('created_at', $date->month)
-            ->count() + 1;
+        $sequence = 1;
 
-        return sprintf('%s-%s-%04d', $prefix, $month, $sequence);
+        do {
+            $number = sprintf('%s-%s-%04d', $prefix, $month, $sequence);
+            $sequence++;
+        } while (static::withTrashed()->where('billing_number', $number)->exists());
+
+        return $number;
     }
 
     public function getTotalPaidAttribute(): float
@@ -96,12 +99,14 @@ class Billing extends Model
 
     public function getStatusBadgeAttribute(): string
     {
-        return match ($this->status) {
+        $status = $this->status === 'pending' && $this->due_date?->lt(now()->startOfDay()) ? 'overdue' : $this->status;
+
+        return match ($status) {
             'draft' => 'bg-secondary',
-            'pending' => 'bg-warning text-dark',
+            'pending' => 'bg-danger',
             'paid' => 'bg-success',
-            'partially_paid' => 'bg-info',
-            'overdue' => 'bg-danger',
+            'partially_paid' => 'bg-danger',
+            'overdue' => 'bg-warning text-dark',
             'cancelled' => 'bg-dark',
             default => 'bg-secondary',
         };
@@ -109,11 +114,13 @@ class Billing extends Model
 
     public function getStatusLabelAttribute(): string
     {
-        return match ($this->status) {
+        $status = $this->status === 'pending' && $this->due_date?->lt(now()->startOfDay()) ? 'overdue' : $this->status;
+
+        return match ($status) {
             'draft' => 'Draft',
-            'pending' => 'Pending',
-            'paid' => 'Paid',
-            'partially_paid' => 'Partially Paid',
+            'pending' => 'Unpaid',
+            'paid' => 'Fully Paid',
+            'partially_paid' => 'Unpaid',
             'overdue' => 'Overdue',
             'cancelled' => 'Cancelled',
             default => ucfirst($this->status),

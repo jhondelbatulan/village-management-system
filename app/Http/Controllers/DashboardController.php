@@ -287,6 +287,19 @@ class DashboardController extends Controller
         $collectionStats = $this->paymentService->getVillageCollections($villageId);
         $monthlyStats = $this->paymentService->getMonthlyCollections($villageId);
         $monthlyDues = $this->paymentService->getMonthlyDuesCollections($villageId);
+        $monthlyRentalTypeIds = PaymentType::where('village_id', $villageId)
+            ->where('frequency', 'monthly')
+            ->where(function ($query): void {
+                $query->where('payment_name', 'like', '%rental%')
+                    ->orWhere('payment_name', 'like', '%rent%');
+            })
+            ->pluck('id');
+        $monthlyHouseRentalCollected = (float) HouseholdPayment::where('village_id', $villageId)
+            ->whereIn('payment_type_id', $monthlyRentalTypeIds)
+            ->where('payment_status', '!=', 'cancelled')
+            ->whereMonth('payment_date', now()->month)
+            ->whereYear('payment_date', now()->year)
+            ->sum('total_paid');
 
         $monthlyPaymentTrend = $this->paymentAnalytics->getMonthlyTrend($villageId, 12);
 
@@ -310,7 +323,7 @@ class DashboardController extends Controller
         return view('dashboard.treasurer', compact(
             'village', 'paymentStats', 'insights',
             'recentPayments', 'collectionStats', 'monthlyStats', 'monthlyDues',
-            'monthlyPaymentTrend', 'revenueByType',
+            'monthlyPaymentTrend', 'revenueByType', 'monthlyHouseRentalCollected',
             'recentAnnouncements', 'upcomingEvents'
         ));
     }

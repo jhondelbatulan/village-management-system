@@ -64,13 +64,14 @@ class PaymentService
 
         foreach ($households as $household) {
             foreach ($types as $type) {
-                $exists = Billing::where('household_id', $household->id)
+                $outstandingBilling = Billing::where('household_id', $household->id)
                     ->where('payment_type_id', $type->id)
-                    ->where('billing_period', $billingPeriod)
+                    ->whereIn('status', ['pending', 'overdue', 'partially_paid'])
                     ->whereNull('deleted_at')
-                    ->exists();
+                    ->latest('id')
+                    ->first();
 
-                if ($exists) {
+                if ($outstandingBilling && $outstandingBilling->billing_period === $billingPeriod) {
                     $skipped++;
 
                     continue;
@@ -84,22 +85,33 @@ class PaymentService
                 $amount = $customAmount !== null ? (float) $customAmount : (float) $type->default_amount;
                 $dueDate = $this->calculateDueDate($billingPeriod, $config, $type->frequency);
 
-                Billing::create([
-                    'billing_number' => Billing::generateBillingNumber($config->billing_prefix),
-                    'household_id' => $household->id,
-                    'village_id' => $villageId,
-                    'payment_type_id' => $type->id,
-                    'billing_period' => $billingPeriod,
-                    'due_date' => $dueDate,
-                    'amount' => $amount,
-                    'penalty' => 0,
-                    'discount' => 0,
-                    'total_amount' => $amount,
-                    'status' => 'pending',
-                    'created_by' => auth()->id(),
-                ]);
-
-                $created++;
+                if ($outstandingBilling) {
+                    $outstandingBilling->update([
+                        'billing_number' => Billing::generateBillingNumber($config->billing_prefix),
+                        'billing_period' => $billingPeriod,
+                        'due_date' => $dueDate,
+                        'amount' => (float) $outstandingBilling->amount + $amount,
+                        'total_amount' => (float) $outstandingBilling->total_amount + $amount,
+                        'status' => \Illuminate\Support\Carbon::parse($dueDate)->lt(now()->startOfDay()) ? 'overdue' : 'pending',
+                    ]);
+                    $created++;
+                } else {
+                    Billing::create([
+                        'billing_number' => Billing::generateBillingNumber($config->billing_prefix),
+                        'household_id' => $household->id,
+                        'village_id' => $villageId,
+                        'payment_type_id' => $type->id,
+                        'billing_period' => $billingPeriod,
+                        'due_date' => $dueDate,
+                        'amount' => $amount,
+                        'penalty' => 0,
+                        'discount' => 0,
+                        'total_amount' => $amount,
+                        'status' => 'pending',
+                        'created_by' => auth()->id(),
+                    ]);
+                    $created++;
+                }
 
                 $billedTotals[$household->id] = ($billedTotals[$household->id] ?? 0) + $amount;
                 $billedDueDates[$household->id] = isset($billedDueDates[$household->id])
@@ -155,14 +167,10 @@ class PaymentService
             $receiptPrefix = $config?->receipt_prefix ?? 'RCPT';
 
             $paymentAmount = (float) ($data['amount'] ?? 0);
-            $discount = (float) ($data['discount'] ?? 0);
+            $discount = 0.0;
 
             if ($paymentAmount <= 0) {
                 throw new \Exception('Payment amount must be greater than zero.');
-            }
-
-            if ($discount < 0) {
-                throw new \Exception('Discount cannot be negative.');
             }
 
             $existingTotalPaid = (float) $billing->payments()->sum('total_paid');
@@ -172,9 +180,9 @@ class PaymentService
                 throw new \Exception('This billing is already fully paid. No further payments can be recorded.');
             }
 
-            $netAmount = $paymentAmount - $discount;
+            $netAmount = $paymentAmount;
             if ($netAmount <= 0) {
-                throw new \Exception('Net payment amount (payment minus discount) must be greater than zero.');
+                throw new \Exception('Payment amount must be greater than zero.');
             }
 
             if ($netAmount > $remainingBalance + 0.01) {
@@ -196,6 +204,10 @@ class PaymentService
                 'penalty' => 0,
                 'discount' => $discount,
                 'total_paid' => $totalPaid,
+                'billing_number_snapshot' => $billing->billing_number,
+                'billing_amount_snapshot' => $billing->total_amount,
+                'billing_period_snapshot' => $billing->billing_period,
+                'billing_balance_snapshot' => max(0, (float) $billing->total_amount - $existingTotalPaid - $totalPaid),
                 'payment_date' => $data['payment_date'] ?? now()->toDateString(),
                 'due_date' => $billing->due_date,
                 'payment_method' => $data['payment_method'] ?? 'cash',
@@ -276,8 +288,8 @@ class PaymentService
             $cutoffDate = now()->subDays($gracePeriod)->toDateString();
 
             $overdueBillings = Billing::where('village_id', $config->village_id)
-                ->where('status', 'pending')
-                ->where('due_date', '<', $cutoffDate)
+                ->whereIn('status', ['pending', 'partially_paid'])
+                ->where('due_date', '<', now()->toDateString())
                 ->get();
 
             foreach ($overdueBillings as $billing) {
@@ -454,12 +466,8 @@ class PaymentService
 
         if ($totalPaid >= $totalDue - 0.01) {
             $billing->status = 'paid';
-        } elseif ($totalPaid > 0) {
-            $billing->status = 'partially_paid';
         } else {
-            if ($billing->status !== 'overdue') {
-                $billing->status = 'pending';
-            }
+            $billing->status = $billing->due_date->lt(now()->startOfDay()) ? 'overdue' : 'pending';
         }
 
         $billing->save();
