@@ -107,6 +107,8 @@
             title="Population by Village"
             icon="bi-bar-chart"
             color="primary"
+            canvasId="dashPopulationOverviewChart"
+            height="280px"
         >
         </x-analytics.chart-card>
     </div>
@@ -127,7 +129,7 @@
             icon="bi-trophy"
             color="warning"
             valueLabel="Residents"
-            :items="$villageComparison ?? []"
+            :items="collect($villageComparison ?? [])->map(fn($v) => ['name' => $v['village']?->village_name ?? '', 'value' => number_format($v['total'] ?? 0)])->toArray()"
             :maxItems="5"
         />
     </div>
@@ -137,7 +139,7 @@
             icon="bi-cash-coin"
             color="success"
             valueLabel="Amount"
-            :items="$paymentComparison ?? []"
+            :items="collect($paymentComparison ?? [])->map(fn($v) => ['name' => $v['village']?->village_name ?? '', 'value' => '₱' . number_format($v['collected'] ?? 0, 2)])->toArray()"
             :maxItems="5"
         />
     </div>
@@ -646,13 +648,26 @@
             </div>
             <div class="card-body">
                 @forelse($execInsights ?? [] as $insight)
+                    @php
+                        $insightPriority = $insight['priority'] ?? 'low';
+                        $insightColor = match ($insightPriority) {
+                            'high' => 'danger',
+                            'medium' => 'warning',
+                            default => 'info',
+                        };
+                        $insightTitle = $insight['title'] ?? \Illuminate\Support\Str::headline($insight['category'] ?? $insight['type'] ?? 'Insight');
+                        $insightMessage = $insight['description'] ?? $insight['message'] ?? '';
+                    @endphp
                     <div class="d-flex align-items-start mb-3">
-                        <div class="badge bg-{{ $insight['priority'] ?? 'secondary' }} me-2 mt-1">
+                        <div class="badge bg-{{ $insightColor }} me-2 mt-1">
                             <i class="bi bi-{{ $insight['icon'] ?? 'info-circle' }}"></i>
                         </div>
                         <div>
-                            <div class="fw-semibold small">{{ $insight['title'] ?? '' }}</div>
-                            <div class="text-muted small">{{ $insight['description'] ?? '' }}</div>
+                            <div class="fw-semibold small">{{ $insightTitle }}</div>
+                            <div class="text-muted small">{{ $insightMessage }}</div>
+                            @if(!empty($insight['recommendation']))
+                                <div class="small text-primary mt-1">{{ $insight['recommendation'] }}</div>
+                            @endif
                         </div>
                     </div>
                 @empty
@@ -738,16 +753,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const colors = { primary: '#0d6efd', success: '#198754', danger: '#dc3545', warning: '#ffc107', info: '#0dcaf0', secondary: '#6c757d' };
     const palette = [colors.primary, colors.success, colors.danger, colors.warning, colors.info, colors.secondary, '#6f42c1', '#d63384', '#20c997', '#fd7e14'];
 
-    const villageCtx = document.getElementById('dashVillageChart');
-    if (villageCtx) {
-        new Chart(villageCtx, {
+    const villageLabels = {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['village']?->village_name ?? '')->toArray()) !!};
+    const villagePopulation = {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['total'])->toArray()) !!};
+    ['dashPopulationOverviewChart', 'dashVillageChart'].forEach(function (canvasId) {
+        const villageCtx = document.getElementById(canvasId);
+        if (villageCtx) new Chart(villageCtx, {
             type: 'bar',
             data: {
-                labels: {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['village']?->village_name ?? '')->toArray()) !!},
+                labels: villageLabels,
                 datasets: [{
                     label: 'Population',
-                    data: {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['total'])->toArray()) !!},
-                    backgroundColor: palette.slice(0, count({!! json_encode(collect($villageComparison ?? [])->toArray()) !!})),
+                    data: villagePopulation,
+                    backgroundColor: palette.slice(0, villageLabels.length),
                     borderRadius: 6,
                     borderSkipped: false
                 }]
@@ -759,7 +776,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
             }
         });
-    }
+    });
 
     const genderCtx = document.getElementById('dashGenderChart');
     if (genderCtx) {
@@ -849,7 +866,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 labels: {!! json_encode(array_keys($skillTop ?? [])) !!},
                 datasets: [{
                     label: 'Residents',
-                    data: {!! json_encode(array_values($skillTop ?? [])) !!},
+                    data: {!! json_encode(array_column($skillTop ?? [], 'count')) !!},
                     backgroundColor: '#ffc107',
                     borderRadius: 6
                 }]
