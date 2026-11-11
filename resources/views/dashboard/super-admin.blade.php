@@ -752,12 +752,46 @@
 document.addEventListener('DOMContentLoaded', function() {
     const colors = { primary: '#0d6efd', success: '#198754', danger: '#dc3545', warning: '#ffc107', info: '#0dcaf0', secondary: '#6c757d' };
     const palette = [colors.primary, colors.success, colors.danger, colors.warning, colors.info, colors.secondary, '#6f42c1', '#d63384', '#20c997', '#fd7e14'];
+    const renderAnalyticsChart = function (canvas, config) {
+        if (!canvas) return null;
+
+        const datasets = config?.data?.datasets ?? [];
+        const hasValues = datasets.some(dataset => Array.isArray(dataset.data)
+            && dataset.data.some(value => {
+                const numericValue = typeof value === 'object' && value !== null
+                    ? Number(value.y ?? value.count ?? 0)
+                    : Number(value);
+                return Number.isFinite(numericValue) && numericValue !== 0;
+            }));
+
+        if (!hasValues) {
+            canvas.hidden = true;
+            const emptyState = document.createElement('div');
+            emptyState.className = 'text-muted text-center d-flex align-items-center justify-content-center h-100';
+            emptyState.textContent = 'No recorded data for this chart yet.';
+            canvas.parentElement?.appendChild(emptyState);
+            return null;
+        }
+
+        try {
+            if (typeof Chart !== 'function') throw new Error('Chart.js did not load.');
+            return new Chart(canvas, config);
+        } catch (error) {
+            console.error(`Analytics chart ${canvas.id || '(unnamed)'} failed to render:`, error);
+            canvas.hidden = true;
+            const errorState = document.createElement('div');
+            errorState.className = 'text-danger text-center d-flex align-items-center justify-content-center h-100';
+            errorState.textContent = 'This chart could not be rendered. Check the browser console for details.';
+            canvas.parentElement?.appendChild(errorState);
+            return null;
+        }
+    };
 
     const villageLabels = {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['village']?->village_name ?? '')->toArray()) !!};
     const villagePopulation = {!! json_encode(collect($villageComparison ?? [])->map(fn($v) => $v['total'])->toArray()) !!};
     ['dashPopulationOverviewChart', 'dashVillageChart'].forEach(function (canvasId) {
         const villageCtx = document.getElementById(canvasId);
-        if (villageCtx) new Chart(villageCtx, {
+        if (villageCtx) renderAnalyticsChart(villageCtx, {
             type: 'bar',
             data: {
                 labels: villageLabels,
@@ -780,7 +814,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const genderCtx = document.getElementById('dashGenderChart');
     if (genderCtx) {
-        new Chart(genderCtx, {
+        renderAnalyticsChart(genderCtx, {
             type: 'pie',
             data: {
                 labels: {!! json_encode($genderDist['labels'] ?? []) !!},
@@ -801,7 +835,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const compCtx = document.getElementById('dashCompositionChart');
     if (compCtx) {
-        new Chart(compCtx, {
+        renderAnalyticsChart(compCtx, {
             type: 'pie',
             data: {
                 labels: {!! json_encode($householdComposition['labels'] ?? []) !!},
@@ -822,7 +856,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const hhSizeCtx = document.getElementById('dashHHSizeChart');
     if (hhSizeCtx) {
-        new Chart(hhSizeCtx, {
+        renderAnalyticsChart(hhSizeCtx, {
             type: 'doughnut',
             data: {
                 labels: {!! json_encode($householdSizeDist['labels'] ?? []) !!},
@@ -843,7 +877,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const occCtx = document.getElementById('dashOccChart');
     if (occCtx) {
-        new Chart(occCtx, {
+        renderAnalyticsChart(occCtx, {
             type: 'bar',
             data: {
                 labels: {!! json_encode(array_keys($occupationTop ?? [])) !!},
@@ -860,7 +894,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const skillCtx = document.getElementById('dashSkillChart');
     if (skillCtx) {
-        new Chart(skillCtx, {
+        renderAnalyticsChart(skillCtx, {
             type: 'bar',
             data: {
                 labels: {!! json_encode(array_keys($skillTop ?? [])) !!},
@@ -877,7 +911,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const liveCtx = document.getElementById('dashLivelihoodChart');
     if (liveCtx) {
-        new Chart(liveCtx, {
+        renderAnalyticsChart(liveCtx, {
             type: 'doughnut',
             data: {
                 labels: {!! json_encode(array_keys($livelihoodDist ?? [])) !!},
@@ -894,7 +928,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     const pyramidCtx = document.getElementById('dashPyramidChart');
     if (pyramidCtx) {
-        new Chart(pyramidCtx, {
+        renderAnalyticsChart(pyramidCtx, {
             type: 'bar',
             data: {
                 labels: {!! json_encode($pyramidData['labels'] ?? []) !!},
@@ -916,7 +950,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentTrendCtx = document.getElementById('dashPaymentTrendChart');
     if (paymentTrendCtx) {
         const paymentTrendData = {!! json_encode($monthlyPaymentTrend ?? []) !!};
-        new Chart(paymentTrendCtx, {
+        renderAnalyticsChart(paymentTrendCtx, {
             type: 'line',
             data: {
                 labels: Object.keys(paymentTrendData),
@@ -942,7 +976,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const participationCtx = document.getElementById('dashParticipationChart');
     if (participationCtx) {
         const participationData = {!! json_encode(collect($participationComparison ?? [])->map(fn($p) => ['name' => $p['village']?->village_name ?? '', 'events' => $p['total_events'] ?? 0, 'participants' => $p['total_participants'] ?? 0])->toArray()) !!};
-        new Chart(participationCtx, {
+        renderAnalyticsChart(participationCtx, {
             type: 'bar',
             data: {
                 labels: participationData.map(p => p.name),
