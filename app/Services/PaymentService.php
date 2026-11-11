@@ -287,8 +287,11 @@ class PaymentService
             $gracePeriod = $config->grace_period_days;
             $cutoffDate = now()->subDays($gracePeriod)->toDateString();
 
+            // Only fully unpaid bills are swept to overdue. Partially paid
+            // bills keep their status until the next billing release rolls
+            // their remaining balance forward.
             $overdueBillings = Billing::where('village_id', $config->village_id)
-                ->whereIn('status', ['pending', 'partially_paid'])
+                ->where('status', 'pending')
                 ->where('due_date', '<', now()->toDateString())
                 ->get();
 
@@ -466,6 +469,11 @@ class PaymentService
 
         if ($totalPaid >= $totalDue - 0.01) {
             $billing->status = 'paid';
+        } elseif ($totalPaid > 0) {
+            // A partially settled bill stays "partially_paid" — even past its
+            // due date — until it is fully paid or carried forward into the
+            // next billing period as "unpaid".
+            $billing->status = 'partially_paid';
         } else {
             $billing->status = $billing->due_date->lt(now()->startOfDay()) ? 'overdue' : 'pending';
         }

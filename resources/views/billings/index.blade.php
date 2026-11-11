@@ -97,6 +97,7 @@
                         <th>Period</th>
                         <th>Due Date</th>
                         <th class="text-end">Amount</th>
+                        <th class="text-end">Remaining Balance</th>
                         <th class="text-center">Status</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -116,6 +117,9 @@
                             <td>{{ $billing->billing_period }}</td>
                             <td>{{ $billing->due_date->format('M d, Y') }}</td>
                             <td class="text-end">₱{{ number_format($billing->total_amount, 2) }}</td>
+                            <td class="text-end fw-semibold">
+                                ₱{{ number_format((float) $billing->total_amount - (float) $billing->payments->sum('total_paid'), 2) }}
+                            </td>
                             <td class="text-center">
                                 <span class="badge {{ $billing->status_badge }}">{{ $billing->status_label }}</span>
                             </td>
@@ -127,7 +131,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center py-4">
+                            <td colspan="10" class="text-center py-4">
                                 <i class="bi bi-receipt fs-1 text-muted d-block mb-2"></i>
                                 <p class="text-muted mb-0">No billing records found.</p>
                             </td>

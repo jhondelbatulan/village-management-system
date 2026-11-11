@@ -22,7 +22,7 @@ class BillingController extends Controller
     public function index(Request $request): View
     {
         $user = auth()->user();
-        $query = Billing::with(['household', 'village', 'paymentType', 'creator']);
+        $query = Billing::with(['household', 'village', 'paymentType', 'creator', 'payments']);
 
         if ($user->role?->role_slug === 'treasurer') {
             $query->where('village_id', $user->village_id);

@@ -71,7 +71,7 @@
                         <th>Period</th>
                         <th>Due Date</th>
                         <th class="text-end">Amount</th>
-                        <th class="text-end">Total</th>
+                        <th class="text-end">Remaining Balance</th>
                         <th class="text-center">Status</th>
                         <th class="text-end">Action</th>
                     </tr>
@@ -93,7 +93,7 @@
                         <td>{{ $billing->billing_period }}</td>
                         <td>{{ $billing->due_date->format('M d, Y') }}</td>
                         <td class="text-end">₱{{ number_format($billing->amount, 2) }}</td>
-                        <td class="text-end fw-semibold">₱{{ number_format($billing->total_amount, 2) }}</td>
+                        <td class="text-end fw-semibold">₱{{ number_format($rowBalance, 2) }}</td>
                         <td class="text-center">
                             <span class="badge {{ $billing->status_badge }}">{{ $billing->status_label }}</span>
                         </td>
