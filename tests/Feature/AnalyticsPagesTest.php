@@ -87,7 +87,15 @@ class AnalyticsPagesTest extends TestCase
         foreach ($routes as $name) {
             $response = $this->actingAs($this->superAdmin)->get(route($name));
             $response->assertStatus(200, "Route [$name] failed with status {$response->getStatusCode()}.");
+            $response->assertSee('/assets/js/chart.umd.js');
+            $response->assertDontSee('cdn.jsdelivr.net/npm/chart.js');
         }
+    }
+
+    public function test_local_chartjs_asset_is_available_for_analytics_pages(): void
+    {
+        $this->assertFileExists(public_path('assets/js/chart.umd.js'));
+        $this->assertStringContainsString('Chart.js v4.4.0', file_get_contents(public_path('assets/js/chart.umd.js')));
     }
 
     public function test_executive_intelligence_csv_export_runs(): void

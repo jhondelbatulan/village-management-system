@@ -134,7 +134,7 @@
 @endsection
 
 @push('scripts')
-<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script src="{{ asset('assets/js/chart.umd.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     const colors = { primary: '#0d6efd', success: '#198754', danger: '#dc3545', warning: '#ffc107', info: '#0dcaf0', secondary: '#6c757d', purple: '#6f42c1', pink: '#d63384', teal: '#20c997', orange: '#fd7e14' };
