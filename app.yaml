@@ -4,6 +4,10 @@ owner: jhondelbatulan
 package: .
 app_id: da_n73IatAUB3YL
 
+# Return detailed error information from the edge gateway while
+# diagnosing workload failures.
+debug: true
+
 volumes:
   - name: village-uploads
     mount: /app/public/storage

@@ -1,3 +1,9 @@
+[package]
+# Default command the Wasmer Edge web gateway runs for HTTP traffic.
+# Without this the edge cannot determine the entrypoint and every
+# request fails with x-edge-request-outcome=workload_failure.
+entrypoint = "run"
+
 [dependencies]
 "php/php" = "=8.3.400"
 
