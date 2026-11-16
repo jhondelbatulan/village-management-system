@@ -185,6 +185,35 @@ class OnlinePaymentTest extends TestCase
             ->get(route('billings.pay-online', $this->billing))
             ->assertRedirect(route('billings.show', $this->billing))
             ->assertSessionHas('error');
+
+        $this->actingAs($this->resident)
+            ->get(route('billings.show', $this->billing))
+            ->assertOk()
+            ->assertDontSee('Pay Online (GCash)')
+            ->assertDontSee('Submit a New GCash Request');
+
+        $this->actingAs($this->resident)
+            ->get(route('household-payments.show', $this->household))
+            ->assertOk()
+            ->assertDontSee('Pay Online')
+            ->assertDontSee('GCash Payment Guide');
+    }
+
+    public function test_pay_online_buttons_are_hidden_when_saved_gcash_credentials_are_blank(): void
+    {
+        GcashConfig::where('village_id', $this->village->id)
+            ->update(['gcash_number' => ' ', 'gcash_name' => '']);
+
+        $this->actingAs($this->resident)
+            ->get(route('billings.show', $this->billing))
+            ->assertOk()
+            ->assertDontSee('Pay Online (GCash)');
+
+        $this->actingAs($this->resident)
+            ->get(route('household-payments.show', $this->household))
+            ->assertOk()
+            ->assertDontSee('Pay Online')
+            ->assertDontSee('GCash Payment Guide');
     }
 
     /*
@@ -206,11 +235,50 @@ class OnlinePaymentTest extends TestCase
         $this->assertSame($this->resident->id, $onlinePayment->resident_id);
         $this->assertSame('GCASH123456789', $onlinePayment->transaction_number);
         $this->assertStringStartsWith('payment_proofs/', $onlinePayment->proof_path);
+        $this->assertSame(0, HouseholdPayment::where('billing_id', $this->billing->id)->count());
+        $this->assertSame(1000.0, (float) $this->billing->fresh()->balance);
+        $this->assertSame('pending', $this->billing->fresh()->status);
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->treasurer->id,
             'type' => 'payment',
             'title' => 'Online Payment Request',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->resident->id,
+            'type' => 'payment',
+            'title' => 'GCash Request Submitted',
+        ]);
+    }
+
+    public function test_gcash_notifications_only_go_to_treasurers_and_the_requesting_resident(): void
+    {
+        $admin = $this->makeUser('admin', $this->village->id);
+        $secretary = $this->makeUser('secretary', $this->village->id);
+        $otherHouseholdResident = $this->makeUser('resident', $this->village->id, $this->household->id);
+
+        $this->submitOnlinePayment();
+        $onlinePayment = OnlinePayment::firstOrFail();
+
+        $this->actingAs($this->treasurer)
+            ->post(route('online-payments.approve', $onlinePayment));
+
+        foreach ([$admin, $secretary, $otherHouseholdResident] as $excludedUser) {
+            $this->assertDatabaseMissing('notifications', [
+                'user_id' => $excludedUser->id,
+                'type' => 'payment',
+            ]);
+        }
+
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->treasurer->id,
+            'type' => 'payment',
+            'title' => 'Online Payment Request',
+        ]);
+        $this->assertDatabaseHas('notifications', [
+            'user_id' => $this->resident->id,
+            'type' => 'payment',
+            'title' => 'Online Payment Approved',
         ]);
     }
 
@@ -299,7 +367,14 @@ class OnlinePaymentTest extends TestCase
             ->assertOk()
             ->assertSee('GCASH123456789')
             ->assertSee('₱1,000.00')
+            ->assertSee('Current Balance')
             ->assertSee('awaiting your review');
+
+        $this->actingAs($this->resident)
+            ->get(route('billings.show', $this->billing))
+            ->assertOk()
+            ->assertSee('Balance')
+            ->assertSee('₱1,000.00');
     }
 
     public function test_treasurer_of_another_village_cannot_review_online_payments(): void
@@ -327,60 +402,64 @@ class OnlinePaymentTest extends TestCase
 
     /*
     |--------------------------------------------------------------------------
-    | Approve → record payment (automated details)
+    | Approval records GCash payment
     |--------------------------------------------------------------------------
     */
 
-    public function test_approving_redirects_to_record_payment_and_notifies_the_resident(): void
+    public function test_approving_records_payment_and_notifies_the_resident(): void
     {
         $this->submitOnlinePayment();
         $onlinePayment = OnlinePayment::firstOrFail();
 
         $this->actingAs($this->treasurer)
             ->post(route('online-payments.approve', $onlinePayment))
-            ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
+            ->assertRedirect(route('online-payments.show', $onlinePayment));
 
         $onlinePayment->refresh();
         $this->assertSame('approved', $onlinePayment->status);
         $this->assertSame($this->treasurer->id, $onlinePayment->reviewed_by);
         $this->assertNotNull($onlinePayment->reviewed_at);
+        $this->assertNotNull($onlinePayment->payment_id);
+        $this->assertSame('paid', $this->billing->fresh()->status);
+        $this->assertSame(0.0, (float) $this->billing->fresh()->balance);
+        $this->assertSame(1, HouseholdPayment::where('billing_id', $this->billing->id)->count());
+        $this->assertSame('GCASH123456789', $onlinePayment->payment?->reference_number);
+
+        $this->actingAs($this->treasurer)
+            ->post(route('online-payments.approve', $onlinePayment))
+            ->assertSessionHas('error');
+        $this->assertSame(1, HouseholdPayment::where('billing_id', $this->billing->id)->count());
 
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->resident->id,
             'type' => 'payment',
             'title' => 'Online Payment Approved',
         ]);
+        $this->assertDatabaseMissing('notifications', [
+            'user_id' => $this->resident->id,
+            'type' => 'payment',
+            'title' => 'Payment Recorded',
+        ]);
 
-        // Record-payment form is prefilled from the online payment details.
         $this->actingAs($this->treasurer)
-            ->get(route('payments.create', ['online_payment' => $onlinePayment->id]))
+            ->get(route('online-payments.show', $onlinePayment))
             ->assertOk()
-            ->assertSee('Recording approved online payment', false)
-            ->assertSee('name="online_payment_id" value="' . $onlinePayment->id . '"', false)
-            ->assertSee('value="GCASH123456789"', false)
-            ->assertSee('value="1000.00"', false)
-            ->assertSee('selected', false);
+            ->assertSee('Approved and recorded as payment', false)
+            ->assertSee('Current Balance')
+            ->assertSee('₱0.00');
     }
 
-    public function test_recording_an_approved_online_payment_creates_the_payment_and_links_it(): void
+    public function test_submitting_gcash_request_does_not_change_bill_balance_until_treasurer_approval(): void
     {
         $this->submitOnlinePayment();
         $onlinePayment = OnlinePayment::firstOrFail();
 
-        $this->actingAs($this->treasurer)
-            ->post(route('online-payments.approve', $onlinePayment))
-            ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
+        $this->assertSame(1000.0, (float) $this->billing->fresh()->balance);
+        $this->assertSame(0, HouseholdPayment::count());
 
         $this->actingAs($this->treasurer)
-            ->withSession(['auth.password_confirmed_at' => time()])
-            ->post(route('payments.store'), [
-                'billing_id' => $this->billing->id,
-                'amount' => 1000,
-                'payment_method' => 'gcash',
-                'reference_number' => 'GCASH123456789',
-                'online_payment_id' => $onlinePayment->id,
-            ])
-            ->assertRedirect(route('billings.show', $this->billing));
+            ->post(route('online-payments.approve', $onlinePayment))
+            ->assertRedirect(route('online-payments.show', $onlinePayment));
 
         $payment = HouseholdPayment::where('billing_id', $this->billing->id)->firstOrFail();
         $this->assertSame('gcash', $payment->payment_method);
@@ -393,7 +472,7 @@ class OnlinePaymentTest extends TestCase
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->resident->id,
             'type' => 'payment',
-            'title' => 'Payment Recorded',
+            'title' => 'Online Payment Approved',
         ]);
     }
 
@@ -425,6 +504,19 @@ class OnlinePaymentTest extends TestCase
     |--------------------------------------------------------------------------
     */
 
+    public function test_treasurer_must_provide_a_reason_to_decline_a_gcash_request(): void
+    {
+        $this->submitOnlinePayment();
+        $onlinePayment = OnlinePayment::firstOrFail();
+
+        $this->actingAs($this->treasurer)
+            ->from(route('online-payments.show', $onlinePayment))
+            ->post(route('online-payments.decline', $onlinePayment), ['declined_reason' => ''])
+            ->assertSessionHasErrors(['declined_reason']);
+
+        $this->assertSame('pending', $onlinePayment->fresh()->status);
+    }
+
     public function test_declining_notifies_the_resident_with_the_reason(): void
     {
         $this->submitOnlinePayment();
@@ -455,6 +547,13 @@ class OnlinePaymentTest extends TestCase
 
         $this->actingAs($this->treasurer)
             ->post(route('online-payments.decline', $onlinePayment), ['declined_reason' => 'Wrong amount.']);
+
+        $this->actingAs($this->resident)
+            ->get(route('billings.show', $this->billing))
+            ->assertOk()
+            ->assertSee('GCash Payment Requests')
+            ->assertSee('payment_proofs/', false)
+            ->assertSee('Submit a New GCash Request');
 
         $this->submitOnlinePayment(['transaction_number' => 'GCASH987654321'])
             ->assertRedirect(route('billings.show', $this->billing))
@@ -524,29 +623,19 @@ class OnlinePaymentTest extends TestCase
             ->assertSee('GCash Payment Guide');
     }
 
-    public function test_recording_amount_must_match_the_approved_online_payment_amount(): void
+    public function test_partial_gcash_payment_reduces_balance_only_after_approval(): void
     {
-        $this->submitOnlinePayment();
+        $this->submitOnlinePayment(['amount' => 400]);
         $onlinePayment = OnlinePayment::firstOrFail();
+
+        $this->assertSame(1000.0, (float) $this->billing->fresh()->balance);
 
         $this->actingAs($this->treasurer)
             ->post(route('online-payments.approve', $onlinePayment))
-            ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
+            ->assertRedirect(route('online-payments.show', $onlinePayment));
 
-        $this->actingAs($this->treasurer)
-            ->withSession(['auth.password_confirmed_at' => time()])
-            ->from(route('payments.create', ['online_payment' => $onlinePayment->id]))
-            ->post(route('payments.store'), [
-                'billing_id' => $this->billing->id,
-                'amount' => 500,
-                'payment_method' => 'gcash',
-                'reference_number' => 'GCASH123456789',
-                'online_payment_id' => $onlinePayment->id,
-            ])
-            ->assertSessionHas('error');
-
-        $this->assertSame(0, HouseholdPayment::count());
-        $this->assertNull($onlinePayment->fresh()->payment_id);
+        $this->assertSame(600.0, (float) $this->billing->fresh()->balance);
+        $this->assertSame(400.0, (float) HouseholdPayment::where('billing_id', $this->billing->id)->sum('total_paid'));
     }
 
     public function test_billings_show_record_payment_link_includes_the_approved_online_payment(): void
@@ -556,12 +645,12 @@ class OnlinePaymentTest extends TestCase
 
         $this->actingAs($this->treasurer)
             ->post(route('online-payments.approve', $onlinePayment))
-            ->assertRedirect(route('payments.create', ['online_payment' => $onlinePayment->id]));
+            ->assertRedirect(route('online-payments.show', $onlinePayment));
 
         $this->actingAs($this->treasurer)
             ->get(route('billings.show', $this->billing))
             ->assertOk()
-            ->assertSee('online_payment=' . $onlinePayment->id, false)
-            ->assertSee('awaiting recording', false);
+            ->assertSee('Fully Paid', false)
+            ->assertSee('₱1,000.00', false);
     }
 }

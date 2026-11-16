@@ -158,9 +158,9 @@ class PaymentService
         }
     }
 
-    public function recordPayment(array $data): HouseholdPayment
+    public function recordPayment(array $data, bool $notifyHousehold = true): HouseholdPayment
     {
-        return DB::transaction(function () use ($data) {
+        return DB::transaction(function () use ($data, $notifyHousehold) {
             $billing = Billing::findOrFail($data['billing_id']);
 
             $config = $this->getVillageSetting($billing->village_id);
@@ -240,13 +240,15 @@ class PaymentService
                 "Recorded payment {$payment->receipt_number} (₱".number_format($totalPaid, 2).") for billing {$billing->billing_number}"
             );
 
-            app(NotificationService::class)->notifyHouseholdResidents(
-                [$billing->household_id],
-                'payment',
-                'Payment Recorded',
-                "A payment of ₱".number_format($totalPaid, 2)." ({$payment->receipt_number}) was recorded for {$billing->billing_number}.",
-                route('household-payments.show', $billing->household_id)
-            );
+            if ($notifyHousehold) {
+                app(NotificationService::class)->notifyHouseholdResidents(
+                    [$billing->household_id],
+                    'payment',
+                    'Payment Recorded',
+                    "A payment of ₱".number_format($totalPaid, 2)." ({$payment->receipt_number}) was recorded for {$billing->billing_number}.",
+                    route('household-payments.show', $billing->household_id)
+                );
+            }
 
             return $payment;
         });

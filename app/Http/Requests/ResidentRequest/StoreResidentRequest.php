@@ -68,7 +68,12 @@ class StoreResidentRequest extends FormRequest
         return [
             'household_id' => [
                 'required',
-                Rule::exists('households', 'id')->where('approval_status', 'approved'),
+                Rule::exists('households', 'id')->where(function ($query): void {
+                    $query->where('approval_status', 'approved');
+                    if ($this->user()?->hasRole('secretary')) {
+                        $query->where('village_id', $this->user()->village_id);
+                    }
+                }),
             ],
             'first_name' => ['required', 'string', 'max:255', 'regex:/^[\p{L}]+(?: [\p{L}]+)*$/u'],
             'middle_name' => ['nullable', 'string', 'max:255', 'regex:/^\p{Lu}$/u'],
@@ -80,9 +85,9 @@ class StoreResidentRequest extends FormRequest
             'civil_status' => ['required', 'in:Single,Married,Widowed,Separated,Divorced'],
             'nationality' => ['nullable', 'string', 'max:100', new SafeText],
             'occupation' => ['nullable', 'string', 'max:255', new SafeText],
-            'educational_attainment' => ['nullable', 'string', 'max:255'],
+            'educational_attainment' => ['nullable', 'string', 'max:255', Rule::in(['No Formal Education','Preschool','Elementary Level','Elementary Graduate','High School Level','High School Graduate','Vocational/Technical','Senior High Graduate','College Level','College Graduate','Post Graduate'])],
             'religion' => ['nullable', 'string', 'max:100', new SafeText],
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]{7,20}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'relationship_to_head' => ['nullable', 'string', 'max:100', new SafeText],
@@ -90,20 +95,20 @@ class StoreResidentRequest extends FormRequest
             'is_household_head' => ['nullable', 'boolean'],
             'status' => ['required', 'in:active,inactive,deceased,transferred'],
             // Education
-            'education_level' => ['nullable', 'string', 'max:100'],
+            'education_level' => ['nullable', 'string', 'max:100', Rule::in(['Not Enrolled','Elementary','Junior High School','Senior High School','Vocational/Technical','College/University','Post Graduate'])],
             'school_name' => ['nullable', 'string', 'max:255', new SafeText],
             'grade_level' => ['nullable', 'string', 'max:100', new SafeText],
             'is_scholarship' => ['nullable', 'boolean'],
             'scholarship_type' => ['nullable', 'string', 'max:255', new SafeText],
             // Employment
-            'employment_status' => ['nullable', 'string', 'max:50'],
+            'employment_status' => ['nullable', 'string', 'max:50', Rule::in(['Employed','Self-Employed','Unemployed','Retired','Student','Homemaker','Disabled'])],
             'employer_name' => ['nullable', 'string', 'max:255', new SafeText],
             'job_title' => ['nullable', 'string', 'max:255', new SafeText],
             'years_of_experience' => ['nullable', 'integer', 'min:0', 'max:60'],
             // Income
-            'income_source' => ['nullable', 'string', 'max:100'],
+            'income_source' => ['nullable', 'string', 'max:100', Rule::in(['Salary','Business','Farming/Agriculture','Fishing','Remittance','Pension','Freelance','Government Aid','Other'])],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
-            'monthly_income_range' => ['nullable', 'string', 'max:100'],
+            'monthly_income_range' => ['nullable', 'string', 'max:100', Rule::in(['Below ₱5,000','₱5,000 - ₱10,000','₱10,001 - ₱20,000','₱20,001 - ₱40,000','₱40,001 - ₱60,000','₱60,001 - ₱100,000','Above ₱100,000'])],
             // Special Population
             'is_pwd' => ['nullable', 'boolean'],
             'pwd_type' => ['nullable', 'string', 'max:255', new SafeText],

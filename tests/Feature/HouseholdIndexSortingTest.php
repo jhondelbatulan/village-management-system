@@ -83,6 +83,16 @@ class HouseholdIndexSortingTest extends TestCase
         $this->assertSame('HH-10', $order[0]);
     }
 
+    public function test_secretary_sees_edit_action_for_approved_households(): void
+    {
+        $household = Household::where('household_number', 'HH-10')->firstOrFail();
+
+        $this->actingAs($this->secretary)
+            ->get(route('households.index'))
+            ->assertOk()
+            ->assertSee('href="' . route('households.edit', $household) . '"', false);
+    }
+
     public function test_block_and_lot_filter_lists_are_naturally_sorted(): void
     {
         $response = $this->actingAs($this->secretary)->get(route('households.index'));

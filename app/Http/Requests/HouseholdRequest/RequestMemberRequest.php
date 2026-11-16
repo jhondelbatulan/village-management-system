@@ -73,14 +73,14 @@ class RequestMemberRequest extends FormRequest
             'civil_status' => 'required|in:Single,Married,Widowed,Separated,Divorced',
             'nationality' => ['nullable', 'string', 'max:100', new SafeText],
             'religion' => ['nullable', 'string', 'max:100', new SafeText],
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]{7,20}$/'],
             'email' => 'nullable|email|max:255',
             'relationship_to_head' => ['nullable', 'string', 'max:100', new SafeText],
             'voter_status' => 'nullable|boolean',
             'is_household_head' => 'nullable|boolean',
 
             // Education
-            'educational_attainment' => 'nullable|string|max:100',
+            'educational_attainment' => ['nullable', 'string', 'max:255', Rule::in(['No Formal Education','Preschool','Elementary Level','Elementary Graduate','High School Level','High School Graduate','Vocational/Technical','Senior High Graduate','College Level','College Graduate','Post Graduate'])],
             'education_level' => 'nullable|string|max:100',
             'school_name' => ['nullable', 'string', 'max:255', new SafeText],
             'grade_level' => ['nullable', 'string', 'max:100', new SafeText],
@@ -88,7 +88,7 @@ class RequestMemberRequest extends FormRequest
             'scholarship_type' => ['nullable', 'string', 'max:255', new SafeText],
 
             // Employment
-            'employment_status' => 'nullable|string|max:50',
+            'employment_status' => ['nullable', 'string', 'max:50', Rule::in(['Employed','Self-Employed','Unemployed','Retired','Student','Homemaker','Disabled'])],
             'occupation' => ['nullable', 'string', 'max:255', new SafeText],
             'employer_name' => ['nullable', 'string', 'max:255', new SafeText],
             'job_title' => ['nullable', 'string', 'max:255', new SafeText],
@@ -97,7 +97,7 @@ class RequestMemberRequest extends FormRequest
             // Income
             'income_source' => ['nullable', 'string', 'max:100'],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
-            'monthly_income_range' => ['nullable', 'string', 'max:100'],
+            'monthly_income_range' => ['nullable', 'string', 'max:100', Rule::in(['Below ₱5,000','₱5,000 - ₱10,000','₱10,001 - ₱20,000','₱20,001 - ₱40,000','₱40,001 - ₱60,000','₱60,001 - ₱100,000','Above ₱100,000'])],
 
             // Special Population
             'is_pwd' => 'nullable|boolean',
@@ -153,7 +153,7 @@ class RequestMemberRequest extends FormRequest
             'emergency_contact_relationship' => ['nullable', 'string', 'max:100', new SafeText],
 
             // Additional
-            'blood_type' => 'nullable|string|max:10',
+            'blood_type' => ['nullable', 'string', 'max:10', 'regex:/^(A|B|AB|O)[+-]$|^Unknown$/i'],
             'years_of_residency' => ['nullable', 'integer', 'min:0', 'max:120'],
         ];
     }

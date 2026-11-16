@@ -7,8 +7,10 @@ use App\Models\GcashConfig;
 use App\Models\OnlinePayment;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
+use App\Services\PaymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class OnlinePaymentController extends Controller
@@ -32,7 +34,7 @@ class OnlinePaymentController extends Controller
 
         $gcashConfig = GcashConfig::where('village_id', $billing->village_id)->first();
 
-        if (! $gcashConfig) {
+        if (! $gcashConfig?->hasCredentials()) {
             return redirect()->route('billings.show', $billing)
                 ->with('error', 'GCash payment is not yet configured for this village. Please contact your treasurer.');
         }
@@ -55,7 +57,7 @@ class OnlinePaymentController extends Controller
 
         $gcashConfig = GcashConfig::where('village_id', $billing->village_id)->first();
 
-        if (! $gcashConfig) {
+        if (! $gcashConfig?->hasCredentials()) {
             return redirect()->route('billings.show', $billing)
                 ->with('error', 'GCash payment is not yet configured for this village. Please contact your treasurer.');
         }
@@ -101,14 +103,23 @@ class OnlinePaymentController extends Controller
                 . ' (txn ' . $onlinePayment->transaction_number . ') for billing ' . $billing->billing_number
         );
 
-        app(NotificationService::class)->notifyVillageStaff(
+        $notifications = app(NotificationService::class);
+        $requestMessage = 'A GCash payment of ₱' . number_format($onlinePayment->amount, 2)
+            . ' was submitted for ' . $billing->billing_number
+            . ' (txn ' . $onlinePayment->transaction_number . '). Awaiting your approval.';
+        $notifications->notifyTreasurers(
             $billing->village_id,
             'payment',
             'Online Payment Request',
-            'A GCash payment of ₱' . number_format($onlinePayment->amount, 2)
-                . ' was submitted for ' . $billing->billing_number
-                . ' (txn ' . $onlinePayment->transaction_number . '). Awaiting your approval.',
+            $requestMessage,
             route('online-payments.show', $onlinePayment)
+        );
+        $notifications->notifyUser(
+            $onlinePayment->resident_id,
+            'payment',
+            'GCash Request Submitted',
+            'Your GCash payment request for ' . $billing->billing_number . ' was submitted and is awaiting treasurer approval.',
+            route('billings.show', $billing)
         );
 
         return redirect()->route('billings.show', $billing)
@@ -156,44 +167,85 @@ class OnlinePaymentController extends Controller
         $this->authorizeTreasurerOfVillage(auth()->user(), $onlinePayment);
 
         $onlinePayment->load(['billing.paymentType', 'household', 'resident', 'reviewer', 'payment']);
+        $currentBalance = max(
+            0,
+            (float) ($onlinePayment->billing?->total_amount ?? 0)
+                - (float) ($onlinePayment->billing?->payments()->sum('total_paid') ?? 0)
+        );
 
-        return view('online-payments.show', compact('onlinePayment'));
+        return view('online-payments.show', compact('onlinePayment', 'currentBalance'));
     }
 
     public function approve(OnlinePayment $onlinePayment): RedirectResponse
     {
         $this->authorizeTreasurerOfVillage(auth()->user(), $onlinePayment);
 
-        if ($onlinePayment->status !== 'pending') {
+        if ($onlinePayment->status !== 'pending' || $onlinePayment->payment_id !== null) {
             return redirect()->route('online-payments.show', $onlinePayment)
                 ->with('error', 'This online payment request has already been reviewed.');
         }
 
-        $onlinePayment->update([
-            'status' => 'approved',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-        ]);
+        try {
+            $payment = DB::transaction(function () use ($onlinePayment): \App\Models\HouseholdPayment {
+                $request = OnlinePayment::query()->lockForUpdate()->findOrFail($onlinePayment->id);
+
+                if ($request->status !== 'pending' || $request->payment_id !== null) {
+                    throw new \RuntimeException('This online payment request has already been reviewed.');
+                }
+
+                $billing = Billing::query()->lockForUpdate()->findOrFail($request->billing_id);
+                abort_unless(
+                    (int) $billing->household_id === (int) $request->household_id
+                        && (int) $billing->village_id === (int) $request->village_id,
+                    422,
+                    'This payment request no longer matches its billing.'
+                );
+
+                $payment = app(PaymentService::class)->recordPayment([
+                    'billing_id' => $billing->id,
+                    'amount' => (float) $request->amount,
+                    'payment_method' => 'gcash',
+                    'reference_number' => $request->transaction_number,
+                    'remarks' => 'Approved GCash request #' . $request->id,
+                ], false);
+
+                $request->update([
+                    'status' => 'approved',
+                    'reviewed_by' => auth()->id(),
+                    'reviewed_at' => now(),
+                    'payment_id' => $payment->id,
+                ]);
+
+                return $payment;
+            });
+        } catch (\RuntimeException $exception) {
+            return redirect()->route('online-payments.show', $onlinePayment)
+                ->with('error', $exception->getMessage());
+        } catch (\Exception $exception) {
+            return redirect()->route('online-payments.show', $onlinePayment)
+                ->with('error', $exception->getMessage());
+        }
 
         AuditLogService::log(
             'Approve Online Payment',
             'Payment Management',
             'Approved GCash payment ' . $onlinePayment->transaction_number
+                . ' and recorded receipt ' . $payment->receipt_number
                 . ' for billing ' . $onlinePayment->billing?->billing_number
         );
 
-        app(NotificationService::class)->notifyHouseholdResidents(
-            [$onlinePayment->household_id],
+        app(NotificationService::class)->notifyUser(
+            $onlinePayment->resident_id,
             'payment',
             'Online Payment Approved',
             'Your GCash payment of ₱' . number_format($onlinePayment->amount, 2)
                 . ' for ' . $onlinePayment->billing?->billing_number
-                . ' has been approved and is now being recorded.',
-            route('billings.show', $onlinePayment->billing_id)
+                . ' has been approved and recorded.',
+            route('payments.show', $payment)
         );
 
-        return redirect()->route('payments.create', ['online_payment' => $onlinePayment->id])
-            ->with('success', 'Online payment approved. Record the payment to complete the transaction.');
+        return redirect()->route('online-payments.show', $onlinePayment)
+            ->with('success', 'Online payment approved and recorded.');
     }
 
     public function decline(Request $request, OnlinePayment $onlinePayment): RedirectResponse
@@ -206,8 +258,9 @@ class OnlinePaymentController extends Controller
         }
 
         $data = $request->validate([
-            'declined_reason' => ['nullable', 'string', 'max:500'],
+            'declined_reason' => ['required', 'string', 'max:500'],
         ], [
+            'declined_reason.required' => 'A reason is required to decline this payment request.',
             'declined_reason.max' => 'Reason must not exceed 500 characters.',
         ]);
 
@@ -232,8 +285,8 @@ class OnlinePaymentController extends Controller
             $message .= ' Reason: ' . $onlinePayment->declined_reason;
         }
 
-        app(NotificationService::class)->notifyHouseholdResidents(
-            [$onlinePayment->household_id],
+        app(NotificationService::class)->notifyUser(
+            $onlinePayment->resident_id,
             'payment',
             'Online Payment Declined',
             $message,

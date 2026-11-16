@@ -15,6 +15,7 @@ use App\Services\AuditLogService;
 use App\Services\GisService;
 use App\Services\NotificationService;
 use App\Services\PaymentService;
+use App\Services\PendingChangeService;
 use App\Services\RecordDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -191,15 +192,22 @@ class HouseholdController extends Controller
 
         // validated() already carries the age recomputed from the birthdate
         // during validation; household and village never change through this form.
-        $resident->update($request->validated());
+        //
+        // Resident edits are staged: nothing is saved until the Admin and
+        // then the Super Admin approve the change. A rejected request is
+        // never applied.
+        app(PendingChangeService::class)->submitUpdate($resident, 'resident', $request->validated());
 
         AuditLogService::log(
-            'Update Household Member',
+            'Submit Household Member Update',
             'Household Management',
-            "Updated household member: {$resident->full_name}"
+            "Submitted update request for household member: {$resident->full_name}"
         );
 
-        return redirect()->route('households.my-household')->with('success', 'Household member updated successfully.');
+        return redirect()->route('households.my-household')->with(
+            'success',
+            'Your changes have been submitted for approval. They will be saved once the Admin and Super Admin approve them.'
+        );
     }
 
     /**
@@ -221,26 +229,22 @@ class HouseholdController extends Controller
 
         $name = $resident->full_name;
         $code = $resident->resident_code;
-        $resident->delete();
 
-        $village = Village::find($resident->village_id);
-        if ($village) {
-            $village->recalculateCounts();
-        }
+        // Resident delete requests are staged: the member is only archived
+        // after Admin and Super Admin approval. If rejected, the delete is
+        // canceled and the member stays untouched.
+        app(PendingChangeService::class)->submitDelete($resident, 'resident');
 
-        AuditLogService::log('Remove Household Member', 'Household Management', "Removed household member: {$name} ({$code})");
+        AuditLogService::log(
+            'Submit Household Member Delete Request',
+            'Household Management',
+            "Submitted delete request for household member: {$name} ({$code})"
+        );
 
-        if ($resident->household_id) {
-            app(NotificationService::class)->notifyHouseholdResidents(
-                [$resident->household_id],
-                'warning',
-                'Household Member Removed',
-                "A household member profile ({$name}) has been removed from your household.",
-                route('households.my-household')
-            );
-        }
-
-        return redirect()->route('households.my-household')->with('success', "Household member \"{$name}\" has been removed.");
+        return redirect()->route('households.my-household')->with(
+            'success',
+            'Your delete request has been submitted for approval. The member will only be removed after the Admin and Super Admin approve it.'
+        );
     }
 
     /**
@@ -277,6 +281,20 @@ class HouseholdController extends Controller
     {
         $data = $request->validated();
 
+        // Secretary edits are staged: the household is only updated after
+        // Admin approval (Stage 1) and Super Admin final approval (Stage 2).
+        // If rejected, nothing is saved.
+        if (auth()->user()?->hasRole('secretary')) {
+            app(PendingChangeService::class)->submitUpdate($household, 'household', $data);
+
+            AuditLogService::log('Submit Household Update', 'Household Management', "Submitted update request for household: {$household->household_number}");
+
+            return redirect()->route('households.show', $household)->with(
+                'success',
+                'Your changes have been submitted for approval. They will be saved once the Admin and Super Admin approve them.'
+            );
+        }
+
         if ($household->approval_status === 'rejected') {
             $data['approval_status'] = 'draft';
             $data['submitted_by'] = null;
@@ -302,6 +320,20 @@ class HouseholdController extends Controller
     public function destroy(Household $household): RedirectResponse
     {
         $number = $household->household_number;
+
+        // Secretary delete requests are staged: the household (and its
+        // residents) is only archived after Admin and Super Admin approval.
+        // If rejected, the delete is canceled and nothing is touched.
+        if (auth()->user()?->hasRole('secretary')) {
+            app(PendingChangeService::class)->submitDelete($household, 'household');
+
+            AuditLogService::log('Submit Household Delete Request', 'Household Management', "Submitted delete request for household: {$number}");
+
+            return redirect()->route('households.index')->with(
+                'success',
+                "Delete request for \"{$number}\" submitted. The household will be archived after Admin and Super Admin approval."
+            );
+        }
 
         DB::transaction(function () use ($household): void {
             $household->delete();

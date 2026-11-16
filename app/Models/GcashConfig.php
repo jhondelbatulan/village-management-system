@@ -19,4 +19,9 @@ class GcashConfig extends Model
     {
         return $this->belongsTo(Village::class);
     }
+
+    public function hasCredentials(): bool
+    {
+        return filled($this->gcash_number) && filled($this->gcash_name);
+    }
 }

@@ -16,7 +16,7 @@
             <a href="{{ route('billings.index') }}" class="btn btn-outline-secondary btn-sm">
                 <i class="bi bi-arrow-left me-1"></i>Back
             </a>
-            @if($canPayOnline)
+            @if($canPayOnline && $latestOnlinePayment?->status !== 'declined')
             <a href="{{ route('billings.pay-online', $billing) }}" class="btn btn-success btn-sm">
                 <i class="bi bi-phone me-1"></i>Pay Online (GCash)
             </a>
@@ -57,6 +57,47 @@
             An approved online GCash payment of <strong>₱{{ number_format($activeOnlinePayment->amount, 2) }}</strong>
             is <strong>awaiting recording</strong> by the treasurer.
         @endif
+    </div>
+@endif
+
+@if($onlinePayments->isNotEmpty())
+    <div class="card border-0 shadow-sm mb-4">
+        <div class="card-header bg-white border-0 pt-4 px-4">
+            <h6 class="mb-0 fw-semibold"><i class="bi bi-phone me-2 text-primary"></i>GCash Payment Requests</h6>
+        </div>
+        <div class="card-body px-4 pb-4">
+            @foreach($onlinePayments as $onlinePayment)
+                <div class="border rounded p-3 mb-3">
+                    <div class="d-flex flex-column flex-md-row justify-content-between gap-2 mb-3">
+                        <div>
+                            <span class="fw-semibold">₱{{ number_format($onlinePayment->amount, 2) }}</span>
+                            <span class="badge {{ $onlinePayment->status_badge }} ms-2">{{ $onlinePayment->status_label }}</span>
+                            <div class="small text-muted">Transaction {{ $onlinePayment->transaction_number }} · Submitted {{ $onlinePayment->created_at->format('M d, Y h:i A') }}</div>
+                            @if(auth()->user()->role?->role_slug !== 'resident')
+                                <div class="small text-muted">Submitted by {{ $onlinePayment->resident?->full_name ?? 'Resident' }}</div>
+                            @endif
+                        </div>
+                        @if($onlinePayment->proof_path)
+                            <a href="{{ asset('storage/' . $onlinePayment->proof_path) }}" target="_blank" rel="noopener" class="text-decoration-none">
+                                <img src="{{ asset('storage/' . $onlinePayment->proof_path) }}" alt="GCash payment proof" class="img-thumbnail" style="max-height: 120px; max-width: 180px;">
+                                <span class="small d-block text-center">View payment proof</span>
+                            </a>
+                        @endif
+                    </div>
+                    @if($onlinePayment->status === 'declined' && $onlinePayment->declined_reason)
+                        <div class="alert alert-danger py-2 mb-0"><strong>Decline reason:</strong> {{ $onlinePayment->declined_reason }}</div>
+                    @elseif($onlinePayment->status === 'approved' && $onlinePayment->payment_id)
+                        <a href="{{ route('payments.show', $onlinePayment->payment_id) }}" class="small">View payment receipt</a>
+                    @endif
+                </div>
+            @endforeach
+
+            @if($canPayOnline && $latestOnlinePayment?->status === 'declined')
+                <a href="{{ route('billings.pay-online', $billing) }}" class="btn btn-success">
+                    <i class="bi bi-arrow-repeat me-1"></i>Submit a New GCash Request
+                </a>
+            @endif
+        </div>
     </div>
 @endif
 

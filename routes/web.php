@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AccountSetupController;
 use App\Http\Controllers\ApprovalController;
+use App\Http\Controllers\PendingChangeController;
 use App\Http\Controllers\Auth\ForgotPasswordController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\ResetPasswordController;
@@ -186,6 +187,21 @@ Route::middleware(['auth', 'account.setup'])->group(function (): void {
     });
 
     /*
+    | Update & Delete Request Approvals — staged household/resident changes
+    | Resident/secretary edits and deletes are queued, never saved directly.
+    | Admin: stage 1 review of requests from their village
+    | Super Admin: final approval — the only step that saves/deletes
+    */
+    Route::middleware('role:super_admin,admin')->prefix('approvals')->name('approvals.')->group(function (): void {
+        Route::get('/updates', [PendingChangeController::class, 'updates'])->name('updates');
+        Route::post('/updates/{change}/approve', [PendingChangeController::class, 'approve'])->name('approve-update');
+        Route::post('/updates/{change}/reject', [PendingChangeController::class, 'reject'])->name('reject-update');
+        Route::get('/deletes', [PendingChangeController::class, 'deletes'])->name('deletes');
+        Route::post('/deletes/{change}/approve', [PendingChangeController::class, 'approve'])->name('approve-delete');
+        Route::post('/deletes/{change}/reject', [PendingChangeController::class, 'reject'])->name('reject-delete');
+    });
+
+    /*
     | Village Management
     | Super Admin: full CRUD
     | Secretary: view + edit their village
@@ -259,7 +275,9 @@ Route::middleware(['auth', 'account.setup'])->group(function (): void {
         Route::middleware('role:secretary')->group(function (): void {
             Route::get('/{household}/edit', [HouseholdController::class, 'edit'])->name('edit');
             Route::put('/{household}', [HouseholdController::class, 'update'])->name('update');
-            Route::delete('/{household}', [HouseholdController::class, 'destroy'])->name('destroy');
+            Route::delete('/{household}', [HouseholdController::class, 'destroy'])
+                ->name('destroy')
+                ->middleware('confirm.password');
             Route::post('/{id}/restore', [HouseholdController::class, 'restore'])->name('restore');
             Route::post('/{household}/submit', [HouseholdController::class, 'submit'])->name('submit');
         });
@@ -293,7 +311,9 @@ Route::middleware(['auth', 'account.setup'])->group(function (): void {
         Route::middleware('role:secretary')->group(function (): void {
             Route::get('/{resident}/edit', [ResidentController::class, 'edit'])->name('edit');
             Route::put('/{resident}', [ResidentController::class, 'update'])->name('update');
-            Route::delete('/{resident}', [ResidentController::class, 'destroy'])->name('destroy');
+            Route::delete('/{resident}', [ResidentController::class, 'destroy'])
+                ->name('destroy')
+                ->middleware('confirm.password');
             Route::post('/{id}/restore', [ResidentController::class, 'restore'])->name('restore');
             Route::post('/{resident}/submit', [ResidentController::class, 'submit'])->name('submit');
         });
@@ -370,7 +390,7 @@ Route::middleware(['auth', 'account.setup'])->group(function (): void {
     /*
     | Online Payments (GCash)
     | Resident: submit a GCash payment request with proof for own bill
-    | Treasurer: review, approve (redirects to record payment) or decline
+    | Treasurer: review, approve and record payment, or decline
     */
     Route::middleware('role:treasurer')->prefix('online-payments')->name('online-payments.')->group(function (): void {
         Route::get('/', [OnlinePaymentController::class, 'index'])->name('index');

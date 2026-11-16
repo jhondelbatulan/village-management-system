@@ -87,7 +87,15 @@ class RequestMemberValidationTest extends TestCase
             ->assertSee('Auto-calculated from birthdate.', false)
             ->assertSee('Single capital letter only.', false)
             ->assertSee('member-suffix-options', false)
-            ->assertSee('maxlength="1"', false);
+            ->assertSee('maxlength="1"', false)
+            ->assertSee('name="monthly_income_range"', false)
+            ->assertSee('name="educational_attainment"', false)
+            ->assertSee('name="employment_status"', false)
+            ->assertSee('name="is_pwd"', false)
+            ->assertSee('name="is_pagibig_member"', false)
+            ->assertSee('name="is_4ps_member"', false)
+            ->assertSee('name="skills"', false)
+            ->assertSee('name="blood_type"', false);
     }
 
     public function test_names_must_only_contain_letters_and_the_suffix_must_be_a_valid_suffix(): void
@@ -121,6 +129,16 @@ class RequestMemberValidationTest extends TestCase
         $this->assertSame(0, Resident::count());
     }
 
+    public function test_contact_number_must_contain_digits_only(): void
+    {
+        $this->actingAs($this->resident)
+            ->post(route('households.request-member'), $this->payload(['contact_number' => '+63 917-123-4567']))
+            ->assertRedirect()
+            ->assertSessionHasErrors('contact_number');
+
+        $this->assertSame(0, Resident::count());
+    }
+
     public function test_valid_submission_normalizes_the_name_and_computes_the_age(): void
     {
         $birthDate = now()->subYears(31)->toDateString();
@@ -132,6 +150,14 @@ class RequestMemberValidationTest extends TestCase
                 'last_name' => 'DELA CRUZ',
                 'suffix' => 'jr',
                 'birthdate' => $birthDate,
+                'educational_attainment' => 'College Graduate',
+                'monthly_income_range' => '₱10,001 - ₱20,000',
+                'employment_status' => 'Employed',
+                'is_pwd' => '1',
+                'is_philhealth_member' => '1',
+                'is_senior_pensioner' => '1',
+                'skills' => 'Carpentry',
+                'blood_type' => 'O+',
             ]))
             ->assertRedirect(route('households.my-household'));
 
@@ -145,6 +171,14 @@ class RequestMemberValidationTest extends TestCase
         $this->assertSame('pending', $member->approval_status);
         $this->assertSame($this->household->id, $member->household_id);
         $this->assertSame($this->resident->id, $member->submitted_by);
+        $this->assertSame('College Graduate', $member->educational_attainment);
+        $this->assertSame('₱10,001 - ₱20,000', $member->monthly_income_range);
+        $this->assertSame('Employed', $member->employment_status);
+        $this->assertTrue($member->is_pwd);
+        $this->assertTrue($member->is_philhealth_member);
+        $this->assertTrue($member->is_senior_pensioner);
+        $this->assertSame('Carpentry', $member->skills);
+        $this->assertSame('O+', $member->blood_type);
     }
 
     public function test_valid_submission_shows_success_flash_and_lists_pending_request_on_my_household(): void

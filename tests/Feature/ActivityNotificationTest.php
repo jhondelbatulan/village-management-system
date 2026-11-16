@@ -9,6 +9,7 @@ use App\Models\Household;
 use App\Models\Notification;
 use App\Models\PaymentConfiguration;
 use App\Models\PaymentType;
+use App\Models\PendingChange;
 use App\Models\Resident;
 use App\Models\Role;
 use App\Models\User;
@@ -27,6 +28,8 @@ class ActivityNotificationTest extends TestCase
     private Village $otherVillage;
 
     private User $admin;
+
+    private User $superAdmin;
 
     private User $secretary;
 
@@ -50,6 +53,7 @@ class ActivityNotificationTest extends TestCase
         $this->otherVillage = Village::forceCreate(['village_name' => 'Other Village', 'village_code' => 'OTH']);
 
         $this->admin = $this->makeUser('admin', $this->village->id);
+        $this->superAdmin = $this->makeUser('super_admin');
         $this->secretary = $this->makeUser('secretary', $this->village->id);
         $this->treasurer = $this->makeUser('treasurer', $this->village->id);
 
@@ -222,9 +226,21 @@ class ActivityNotificationTest extends TestCase
 
     public function test_archiving_a_household_notifies_its_users_and_village_admins(): void
     {
+        // Stage 0: the secretary's delete only creates an approval request —
+        // nothing is archived before Admin + Super Admin approve it.
         $this->actingAs($this->secretary)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('households.destroy', $this->householdA))
             ->assertRedirect(route('households.index'));
+
+        $this->assertFalse($this->householdA->fresh()->trashed());
+        $change = PendingChange::where('action', 'delete')->latest('id')->firstOrFail();
+
+        // Stage 1 (Admin) then Stage 2 (Super Admin): only now it is archived.
+        $this->actingAs($this->admin)->post(route('approvals.approve-delete', $change));
+        $this->actingAs($this->superAdmin)->post(route('approvals.approve-delete', $change));
+
+        $this->assertTrue($this->householdA->fresh()->trashed());
 
         $residentNotice = Notification::where('user_id', $this->residentA->id)
             ->where('type', 'warning')
@@ -257,9 +273,19 @@ class ActivityNotificationTest extends TestCase
             'submitted_by' => $this->secretary->id,
         ]);
 
+        // Stage 0: the delete is only a request until both stages pass.
         $this->actingAs($this->secretary)
+            ->withSession(['auth.password_confirmed_at' => time()])
             ->delete(route('residents.destroy', $resident))
             ->assertRedirect(route('residents.index'));
+
+        $this->assertFalse($resident->fresh()->trashed());
+        $change = PendingChange::where('action', 'delete')->latest('id')->firstOrFail();
+
+        $this->actingAs($this->admin)->post(route('approvals.approve-delete', $change));
+        $this->actingAs($this->superAdmin)->post(route('approvals.approve-delete', $change));
+
+        $this->assertTrue($resident->fresh()->trashed());
 
         $notice = Notification::where('user_id', $this->residentA->id)
             ->where('type', 'warning')

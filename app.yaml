@@ -11,3 +11,16 @@ volumes:
 env:
   PUBLIC_STORAGE: "/app/public/storage"
   PUBLIC_STORAGE_PATH: "/app/public/storage"
+
+jobs:
+  - name: migrate-pending-changes-table
+    trigger: pre-deployment
+    timeout: 5m
+    retries: 2
+    action:
+      execute:
+        command: artisan
+        cli_args:
+          - migrate
+          - --force
+          - --path=/app/database/migrations/2026_11_15_000001_create_pending_changes_table.php

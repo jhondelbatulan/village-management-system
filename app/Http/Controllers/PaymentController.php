@@ -253,6 +253,9 @@ class PaymentController extends Controller
         $balance = $this->paymentService->getHouseholdBalance($household->id);
 
         $gcashConfig = GcashConfig::where('village_id', $household->village_id)->first();
+        if (! $gcashConfig?->hasCredentials()) {
+            $gcashConfig = null;
+        }
         $onlinePayments = OnlinePayment::with('billing')
             ->where('household_id', $household->id)
             ->latest()
@@ -269,7 +272,8 @@ class PaymentController extends Controller
             ->all();
 
         $canPayOnline = $user->role?->role_slug === 'resident'
-            && (int) $user->household_id === (int) $household->id;
+            && (int) $user->household_id === (int) $household->id
+            && $gcashConfig !== null;
 
         return view('payments.household', compact(
             'household',

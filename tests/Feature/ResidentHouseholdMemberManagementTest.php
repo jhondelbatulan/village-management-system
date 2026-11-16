@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Household;
+use App\Models\PendingChange;
 use App\Models\Resident;
 use App\Models\Role;
 use App\Models\User;
@@ -36,6 +37,10 @@ class ResidentHouseholdMemberManagementTest extends TestCase
     private User $residentUser;
 
     private User $secretary;
+
+    private User $admin;
+
+    private User $superAdmin;
 
     protected function setUp(): void
     {
@@ -77,6 +82,8 @@ class ResidentHouseholdMemberManagementTest extends TestCase
 
         $this->residentUser = $this->makeUser('resident', $this->household);
         $this->secretary = $this->makeUser('secretary');
+        $this->admin = $this->makeUser('admin');
+        $this->superAdmin = $this->makeUser('super_admin');
     }
 
     private function makeResident(Household $household, string $firstName, string $lastName): Resident
@@ -124,6 +131,14 @@ class ResidentHouseholdMemberManagementTest extends TestCase
             'email' => 'member@example.com',
             'occupation' => 'Teacher',
             'relationship_to_head' => 'Child',
+            'educational_attainment' => 'College Graduate',
+            'monthly_income_range' => '₱10,001 - ₱20,000',
+            'employment_status' => 'Employed',
+            'is_pwd' => '1',
+            'is_sss_member' => '1',
+            'is_4ps_member' => '1',
+            'skills' => 'Carpentry',
+            'blood_type' => 'O+',
         ], $overrides);
     }
 
@@ -159,12 +174,29 @@ class ResidentHouseholdMemberManagementTest extends TestCase
         $response->assertSessionHas('success');
 
         $this->member->refresh();
+        $this->assertSame('Family', $this->member->first_name, 'The proposed update must not change live data before approval.');
+        $change = PendingChange::where('target_type', 'resident')->where('target_id', $this->member->id)->latest('id')->firstOrFail();
+        $this->assertSame('pending', $change->approval_status);
+
+        $this->actingAs($this->admin)->post(route('approvals.approve-update', $change));
+        $this->assertSame('Family', $this->member->fresh()->first_name, 'Admin approval alone must not apply proposed data.');
+        $this->actingAs($this->superAdmin)->post(route('approvals.approve-update', $change));
+
+        $this->member->refresh();
         $this->assertSame('Updated', $this->member->first_name);
         $this->assertSame('M', $this->member->middle_name);
         $this->assertSame('Teacher', $this->member->occupation);
         $this->assertSame('Married', $this->member->civil_status);
         $this->assertSame('09170001111', $this->member->contact_number);
         $this->assertSame('member@example.com', $this->member->email);
+        $this->assertSame('College Graduate', $this->member->educational_attainment);
+        $this->assertSame('₱10,001 - ₱20,000', $this->member->monthly_income_range);
+        $this->assertSame('Employed', $this->member->employment_status);
+        $this->assertTrue($this->member->is_pwd);
+        $this->assertTrue($this->member->is_sss_member);
+        $this->assertTrue($this->member->is_4ps_member);
+        $this->assertSame('Carpentry', $this->member->skills);
+        $this->assertSame('O+', $this->member->blood_type);
         // The stored age always follows the edited birthdate.
         $this->assertSame(Carbon::parse('1995-05-05')->age, $this->member->age);
         // Household and village never change through this form.
@@ -180,6 +212,14 @@ class ResidentHouseholdMemberManagementTest extends TestCase
         $response->assertRedirect(route('households.my-household'));
         $response->assertSessionHas('success');
 
+        $this->assertFalse($this->member->fresh()->trashed(), 'The member stays live until both approval stages finish.');
+        $change = PendingChange::where('target_type', 'resident')->where('target_id', $this->member->id)->where('action', 'delete')->latest('id')->firstOrFail();
+        $this->assertSame('pending', $change->approval_status);
+
+        $this->actingAs($this->admin)->post(route('approvals.approve-delete', $change));
+        $this->assertFalse($this->member->fresh()->trashed(), 'Admin approval alone must not archive the member.');
+        $this->actingAs($this->superAdmin)->post(route('approvals.approve-delete', $change));
+
         $this->assertSoftDeleted('residents', ['id' => $this->member->id]);
 
         // The rest of the household is untouched.
@@ -191,7 +231,7 @@ class ResidentHouseholdMemberManagementTest extends TestCase
         // The remaining household accounts are notified about the removal.
         $this->assertDatabaseHas('notifications', [
             'user_id' => $this->residentUser->id,
-            'title' => 'Household Member Removed',
+            'title' => 'Resident Archived',
         ]);
     }
 

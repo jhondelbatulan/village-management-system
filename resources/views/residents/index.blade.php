@@ -79,16 +79,6 @@
                         <option value="transferred" {{ request('status') === 'transferred' ? 'selected' : '' }}>Transferred</option>
                     </select>
                 </div>
-                <div class="col-md-2">
-                    <label for="approval_status" class="form-label small fw-semibold">Approval</label>
-                    <select class="form-select form-select-sm" id="approval_status" name="approval_status">
-                        <option value="">All</option>
-                        <option value="draft" {{ request('approval_status') === 'draft' ? 'selected' : '' }}>Draft</option>
-                        <option value="pending" {{ request('approval_status') === 'pending' ? 'selected' : '' }}>Pending</option>
-                        <option value="approved" {{ request('approval_status') === 'approved' ? 'selected' : '' }}>Approved</option>
-                        <option value="rejected" {{ request('approval_status') === 'rejected' ? 'selected' : '' }}>Rejected</option>
-                    </select>
-                </div>
             </div>
             <div class="row g-2 mt-1">
                 <div class="col-md-2">
@@ -106,7 +96,7 @@
                     <a href="{{ route('residents.index') }}" class="btn btn-outline-secondary btn-sm">
                         <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
                     </a>
-                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'gender', 'status', 'approval_status', 'sort']))
+                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'gender', 'status', 'sort']))
                         <span class="text-muted small align-self-center ms-1">
                             <i class="bi bi-info-circle me-1"></i>{{ $residents->total() }} result(s) found
                         </span>
@@ -130,7 +120,6 @@
                         <th scope="col">Village</th>
                         <th scope="col">Household</th>
                         <th scope="col">Status</th>
-                        <th scope="col">Approval</th>
                         <th scope="col" class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -173,33 +162,53 @@
                                     <span class="badge bg-secondary">{{ ucfirst($resident->status) }}</span>
                                 @endif
                             </td>
-                            <td>
-                                @if($resident->approval_status === 'approved')
-                                    <span class="badge bg-success">Approved</span>
-                                @elseif($resident->approval_status === 'pending')
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                @elseif($resident->approval_status === 'rejected')
-                                    <span class="badge bg-danger">Rejected</span>
-                                @else
-                                    <span class="badge bg-secondary">Draft</span>
-                                @endif
-                            </td>
                             <td class="text-end">
-                                <a href="{{ route('residents.show', $resident) }}" class="btn btn-sm btn-outline-info" title="View">
+                                @php
+                                    $residentModalData = [
+                                        'resident_code' => $resident->resident_code,
+                                        'first_name' => $resident->first_name,
+                                        'middle_name' => $resident->middle_name,
+                                        'last_name' => $resident->last_name,
+                                        'suffix' => $resident->suffix,
+                                        'gender' => $resident->gender,
+                                        'birthdate' => $resident->birthdate?->format('M d, Y'),
+                                        'age' => $resident->age,
+                                        'civil_status' => $resident->civil_status,
+                                        'household' => $resident->household?->household_number,
+                                        'village' => $resident->village?->village_name,
+                                        'contact_number' => $resident->contact_number,
+                                        'email' => $resident->email,
+                                        'occupation' => $resident->occupation,
+                                        'educational_attainment' => $resident->educational_attainment,
+                                        'employment_status' => $resident->employment_status,
+                                        'monthly_income_range' => $resident->monthly_income_range,
+                                        'blood_type' => $resident->blood_type,
+                                        'skills' => $resident->skills,
+                                        'special_population' => $resident->special_population_types,
+                                        'government_memberships' => $resident->government_memberships,
+                                        'assistance' => collect(['4Ps' => $resident->is_4ps_member, 'Senior Pensioner' => $resident->is_senior_pensioner])->filter()->keys()->values(),
+                                        'profile_url' => route('residents.show', $resident),
+                                    ];
+                                @endphp
+                                <button type="button" class="btn btn-sm btn-outline-info" title="View resident information"
+                                        data-bs-toggle="modal" data-bs-target="#residentInfoModal"
+                                        data-resident="{{ base64_encode(json_encode($residentModalData)) }}">
                                     <i class="bi bi-eye"></i>
-                                </a>
-                                @if(auth()->user()->role?->role_slug === 'secretary' && in_array($resident->approval_status, ['draft', 'rejected']))
-                                    <a href="{{ route('residents.edit', $resident) }}" class="btn btn-sm btn-outline-primary" title="Edit">
+                                </button>
+                                @if(auth()->user()->role?->role_slug === 'secretary')
+                                    <a href="{{ route('residents.edit', $resident) }}" class="btn btn-sm btn-outline-primary" title="Edit resident information">
                                         <i class="bi bi-pencil"></i>
                                     </a>
                                 @endif
                                 @if(auth()->user()->role?->role_slug === 'secretary' && $resident->status === 'active')
                                     <form action="{{ route('residents.destroy', $resident) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to archive this resident?')">
+                                          data-password-confirm
+                                          data-password-confirm-message="Enter your password to submit this delete request. The resident will only be archived after Admin and Super Admin approval."
+                                          onsubmit="return confirm('Submit a delete request for this resident? They will only be archived after Admin and Super Admin approval.')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="btn btn-sm btn-outline-warning" title="Archive">
-                                            <i class="bi bi-archive"></i>
+                                        <button type="submit" class="btn btn-sm btn-outline-danger" title="Request delete approval">
+                                            <i class="bi bi-trash"></i>
                                         </button>
                                     </form>
                                 @endif
@@ -207,7 +216,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="text-center text-muted py-4">
+                            <td colspan="8" class="text-center text-muted py-4">
                                 <i class="bi bi-people fs-1 d-block mb-2"></i>
                                 No residents found.
                             </td>
@@ -275,4 +284,60 @@
         </div>
     </div>
 @endif
+
+<div class="modal fade" id="residentInfoModal" tabindex="-1" aria-labelledby="residentInfoModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h5 class="modal-title" id="residentInfoModalLabel">Resident Information</h5><div class="small text-muted" id="residentInfoCode"></div></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body"><dl class="row mb-0" id="residentInfoFields"></dl></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                <a class="btn btn-primary" id="residentFullProfileLink" href="#">Full Profile</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('residentInfoModal');
+    if (!modal) return;
+    const labels = {
+        first_name: 'First Name', middle_name: 'Middle Name', last_name: 'Last Name', suffix: 'Suffix',
+        gender: 'Gender', birthdate: 'Birthdate', age: 'Age', civil_status: 'Civil Status',
+        household: 'Household', village: 'Village', contact_number: 'Contact Number', email: 'Email',
+        occupation: 'Occupation', educational_attainment: 'Highest Educational Attainment',
+        employment_status: 'Employment Status', monthly_income_range: 'Income Range', blood_type: 'Blood Type', skills: 'Special Skills',
+        special_population: 'Special Population Classification', government_memberships: 'Government Memberships', assistance: 'Government Assistance'
+    };
+    modal.addEventListener('show.bs.modal', function (event) {
+        const button = event.relatedTarget;
+        if (!button) return;
+        const encoded = button.getAttribute('data-resident') || '';
+        const bytes = Uint8Array.from(atob(encoded), ch => ch.charCodeAt(0));
+        const data = JSON.parse(new TextDecoder().decode(bytes));
+        document.getElementById('residentInfoCode').textContent = data.resident_code || '';
+        document.getElementById('residentFullProfileLink').href = data.profile_url || '#';
+        const fields = document.getElementById('residentInfoFields');
+        fields.replaceChildren();
+        Object.entries(labels).forEach(([key, label]) => {
+            let value = data[key];
+            if (Array.isArray(value)) value = value.filter(Boolean).join(', ');
+            if (value === null || value === undefined || value === '') return;
+            const term = document.createElement('dt');
+            term.className = 'col-sm-4 text-muted fw-normal';
+            term.textContent = label;
+            const detail = document.createElement('dd');
+            detail.className = 'col-sm-8 fw-semibold';
+            detail.textContent = String(value);
+            fields.append(term, detail);
+        });
+    });
+});
+</script>
+@endpush
 @endsection

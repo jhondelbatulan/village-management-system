@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Billing;
+use App\Models\GcashConfig;
 use App\Models\OnlinePayment;
 use App\Models\PaymentType;
 use App\Models\Village;
@@ -100,6 +101,7 @@ class BillingController extends Controller
             ->sum('total_paid');
 
         $balance = $billing->total_amount - $totalPaid;
+        $gcashConfig = GcashConfig::where('village_id', $billing->village_id)->first();
 
         $canRecordPayment = $this->permissionService->canRecordPayment($user, $billing->village_id);
         $isReadOnly = $this->permissionService->isReadOnlyVillage($user, $billing->village_id);
@@ -114,10 +116,19 @@ class BillingController extends Controller
             ->latest()
             ->first();
 
+        $onlinePaymentsQuery = OnlinePayment::with('resident')
+            ->where('billing_id', $billing->id);
+        if ($user->role?->role_slug === 'resident') {
+            $onlinePaymentsQuery->where('resident_id', $user->id);
+        }
+        $onlinePayments = $onlinePaymentsQuery->latest()->get();
+        $latestOnlinePayment = $onlinePayments->first();
+
         $canPayOnline = $user->role?->role_slug === 'resident'
             && (int) $user->household_id === (int) $billing->household_id
             && $balance > 0
-            && $activeOnlinePayment === null;
+            && $activeOnlinePayment === null
+            && $gcashConfig?->hasCredentials();
 
         return view('billings.show', compact(
             'billing',
@@ -126,7 +137,9 @@ class BillingController extends Controller
             'canRecordPayment',
             'isReadOnly',
             'canPayOnline',
-            'activeOnlinePayment'
+            'activeOnlinePayment',
+            'onlinePayments',
+            'latestOnlinePayment'
         ));
     }
 

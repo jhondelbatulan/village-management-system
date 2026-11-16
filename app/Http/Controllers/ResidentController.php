@@ -10,6 +10,7 @@ use App\Models\Resident;
 use App\Models\Village;
 use App\Services\AuditLogService;
 use App\Services\NotificationService;
+use App\Services\PendingChangeService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -209,6 +210,27 @@ class ResidentController extends Controller
         $data['nationality'] = $data['nationality'] ?: 'Filipino';
         $data['is_household_head'] = $request->boolean('is_household_head');
 
+        // Secretary edits are staged: the resident is only updated after
+        // Admin approval (Stage 1) and Super Admin final approval (Stage 2).
+        // If rejected, nothing is saved.
+        if (auth()->user()?->hasRole('secretary')) {
+            if ($request->hasFile('profile_picture')) {
+                $file = $request->file('profile_picture');
+                $filename = 'pending_resident_'.$resident->id.'_'.time().'.'.$file->getClientOriginalExtension();
+                $file->storeAs('residents', $filename, 'public');
+                $data['profile_picture'] = 'residents/'.$filename;
+            }
+
+            app(PendingChangeService::class)->submitUpdate($resident, 'resident', $data);
+
+            AuditLogService::log('Submit Resident Update', 'Resident Management', "Submitted update request for resident: {$resident->full_name}");
+
+            return redirect()->route('residents.index')->with(
+                'success',
+                'Your changes have been submitted for approval. They will be saved once the Admin and Super Admin approve them.'
+            );
+        }
+
         if ($resident->approval_status === 'rejected') {
             $data['approval_status'] = 'draft';
             $data['submitted_by'] = null;
@@ -261,6 +283,21 @@ class ResidentController extends Controller
     {
         $name = $resident->full_name;
         $code = $resident->resident_code;
+
+        // Secretary delete requests are staged: the resident is only
+        // archived after Admin and Super Admin approval. If rejected, the
+        // delete is canceled and the record stays untouched.
+        if (auth()->user()?->hasRole('secretary')) {
+            app(PendingChangeService::class)->submitDelete($resident, 'resident');
+
+            AuditLogService::log('Submit Resident Delete Request', 'Resident Management', "Submitted delete request for resident: {$name} ({$code})");
+
+            return redirect()->route('residents.index')->with(
+                'success',
+                "Delete request for \"{$name}\" submitted. The resident will be archived after Admin and Super Admin approval."
+            );
+        }
+
         $resident->delete();
 
         $village = Village::find($resident->village_id);

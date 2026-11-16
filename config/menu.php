@@ -12,6 +12,8 @@ return [
             ['label' => 'Pending Approvals', 'icon' => 'bi-clipboard-check', 'route' => '#', 'children' => [
                 ['label' => 'Household Approvals', 'icon' => 'bi-house-door', 'route' => 'approvals.households'],
                 ['label' => 'Resident Approvals', 'icon' => 'bi-people', 'route' => 'approvals.residents'],
+                ['label' => 'Update Approvals', 'icon' => 'bi-pencil-square', 'route' => 'approvals.updates'],
+                ['label' => 'Delete Requests', 'icon' => 'bi-trash', 'route' => 'approvals.deletes'],
             ]],
             ['label' => 'User Management', 'icon' => 'bi-people-gear', 'route' => 'users.index'],
             ['label' => 'GIS Map', 'icon' => 'bi-map', 'route' => 'gis.index'],
@@ -56,6 +58,8 @@ return [
             ['label' => 'Pending Approvals', 'icon' => 'bi-clipboard-check', 'route' => '#', 'children' => [
                 ['label' => 'Household Approvals', 'icon' => 'bi-house-door', 'route' => 'approvals.households'],
                 ['label' => 'Resident Approvals', 'icon' => 'bi-people', 'route' => 'approvals.residents'],
+                ['label' => 'Update Approvals', 'icon' => 'bi-pencil-square', 'route' => 'approvals.updates'],
+                ['label' => 'Delete Requests', 'icon' => 'bi-trash', 'route' => 'approvals.deletes'],
             ]],
             ['label' => 'GIS Map', 'icon' => 'bi-map', 'route' => 'gis.index'],
             ['label' => 'Billings', 'icon' => 'bi-receipt', 'route' => 'billings.index'],

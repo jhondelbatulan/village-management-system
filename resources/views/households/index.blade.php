@@ -122,7 +122,6 @@
                         <th>Purok</th>
                         <th class="text-center">Members</th>
                         <th>Status</th>
-                        <th>Approval</th>
                         <th>Payment Behavior</th>
                         <th class="text-end">Actions</th>
                     </tr>
@@ -154,17 +153,6 @@
                                 @endif
                             </td>
                             <td>
-                                @if($household->approval_status === 'approved')
-                                    <span class="badge bg-success">Approved</span>
-                                @elseif($household->approval_status === 'pending')
-                                    <span class="badge bg-warning text-dark">Pending</span>
-                                @elseif($household->approval_status === 'rejected')
-                                    <span class="badge bg-danger">Rejected</span>
-                                @else
-                                    <span class="badge bg-secondary">Draft</span>
-                                @endif
-                            </td>
-                            <td>
                                 @php
                                     $pb = $household->payment_behavior;
                                     $pbColor = \App\Services\Analytics\PaymentBehaviorService::BEHAVIOR_COLORS[$pb] ?? 'secondary';
@@ -190,17 +178,18 @@
                                         <i class="bi bi-eye"></i>
                                     </a>
                                     @if(auth()->user()->role?->role_slug === 'secretary')
-                                        @if($household->approval_status === 'draft' || $household->approval_status === 'rejected')
-                                            <a href="{{ route('households.edit', $household) }}" class="btn btn-outline-warning" title="Edit">
-                                                <i class="bi bi-pencil"></i>
-                                            </a>
-                                        @endif
-                                        @if($household->approval_status === 'active')
-                                            <form action="{{ route('households.destroy', $household) }}" method="POST" class="d-inline" onsubmit="return confirm('Archive this household? All of its residents will be archived as well.')">
+                                        <a href="{{ route('households.edit', $household) }}" class="btn btn-outline-warning" title="Edit household information">
+                                            <i class="bi bi-pencil"></i>
+                                        </a>
+                                        @if($household->status === 'active')
+                                            <form action="{{ route('households.destroy', $household) }}" method="POST" class="d-inline"
+                                                  data-password-confirm
+                                                  data-password-confirm-message="Enter your password to submit this delete request. The household will only be archived after Admin and Super Admin approval."
+                                                  onsubmit="return confirm('Submit a delete request for this household? All of its residents will be archived after Admin and Super Admin approval.')">
                                                 @csrf
                                                 @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger" title="Archive">
-                                                    <i class="bi bi-archive"></i>
+                                                <button type="submit" class="btn btn-outline-danger" title="Request delete approval">
+                                                    <i class="bi bi-trash"></i>
                                                 </button>
                                             </form>
                                         @endif

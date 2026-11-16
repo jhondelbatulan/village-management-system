@@ -27,6 +27,7 @@
 !/storage/framework/views/.gitignore
 /storage/logs
 /vendor
+/bootstrap/cache/*.php
 Homestead.json
 Homestead.yaml
 Thumbs.db

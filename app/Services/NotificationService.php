@@ -184,6 +184,23 @@ class NotificationService
         return $this->notifyUserIds($userIds, $type, $title, $message, $actionUrl);
     }
 
+    /** Notify only active treasurer accounts for one village. */
+    public function notifyTreasurers(
+        int $villageId,
+        string $type,
+        string $title,
+        string $message,
+        ?string $actionUrl = null,
+    ): int {
+        $userIds = User::query()
+            ->where('status', 'active')
+            ->where('village_id', $villageId)
+            ->whereHas('role', fn ($q) => $q->where('role_slug', 'treasurer'))
+            ->pluck('id');
+
+        return $this->notifyUserIds($userIds, $type, $title, $message, $actionUrl);
+    }
+
     public function notifyUser(
         ?int $userId,
         string $type,

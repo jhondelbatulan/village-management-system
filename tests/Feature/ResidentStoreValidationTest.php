@@ -134,6 +134,25 @@ class ResidentStoreValidationTest extends TestCase
             ->assertSee('value="VIII"', false);
     }
 
+    public function test_secretary_sees_edit_action_for_approved_residents(): void
+    {
+        $resident = Resident::create([
+            'village_id' => $this->village->id,
+            'household_id' => $this->household->id,
+            'resident_code' => 'RES-' . Str::upper(Str::random(8)),
+            'first_name' => 'Juan',
+            'last_name' => 'Dela Cruz',
+            'gender' => 'Male',
+            'status' => 'active',
+            'approval_status' => 'approved',
+        ]);
+
+        $this->actingAs($this->secretary)
+            ->get(route('residents.index'))
+            ->assertOk()
+            ->assertSee('href="' . route('residents.edit', $resident) . '"', false);
+    }
+
     public function test_resident_cannot_be_added_to_household_before_final_approval(): void
     {
         $unapprovedHousehold = Household::create([

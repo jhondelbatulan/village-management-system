@@ -124,6 +124,10 @@
                         <label class="form-label text-muted small">Total Amount</label>
                         <div class="fw-semibold">₱{{ number_format((float) ($onlinePayment->billing?->total_amount ?? 0), 2) }}</div>
                     </div>
+                    <div class="col-md-6">
+                        <label class="form-label text-muted small">Current Balance</label>
+                        <div class="fw-bold {{ $currentBalance > 0 ? 'text-danger' : 'text-success' }}">₱{{ number_format($currentBalance, 2) }}</div>
+                    </div>
                     <div class="col-12">
                         <label class="form-label text-muted small">Household</label>
                         <div class="fw-semibold">
@@ -168,17 +172,17 @@
                             onclick="return confirm('Approve this online payment and record it?');">
                         <i class="bi bi-check-circle me-1"></i>Approve &amp; Record Payment
                     </button>
-                    <small class="text-muted d-block mt-1">Redirects you to Record Payment with details filled in automatically.</small>
+                    <small class="text-muted d-block mt-1">The bill balance and receipt update only after you approve this request.</small>
                 </form>
 
                 <hr>
 
                 <form action="{{ route('online-payments.decline', $onlinePayment) }}" method="POST">
                     @csrf
-                    <label for="declined_reason" class="form-label fw-semibold">Decline Reason <span class="text-muted">(optional)</span></label>
+                    <label for="declined_reason" class="form-label fw-semibold">Decline Reason <span class="text-danger">*</span></label>
                     <textarea class="form-control @error('declined_reason') is-invalid @enderror mb-2"
                               id="declined_reason" name="declined_reason" rows="2" maxlength="500"
-                              placeholder="e.g. Screenshot is unclear, amount does not match...">{{ old('declined_reason') }}</textarea>
+                              placeholder="e.g. Screenshot is unclear, amount does not match..." required>{{ old('declined_reason') }}</textarea>
                     @error('declined_reason') <div class="invalid-feedback">{{ $message }}</div> @enderror
                     <button type="submit" class="btn btn-outline-danger w-100"
                             onclick="return confirm('Decline this online payment? The resident will be notified.');">

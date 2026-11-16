@@ -9,6 +9,26 @@ use Illuminate\Validation\Rule;
 
 class UpdateResidentRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $booleanFields = [
+            'voter_status', 'is_household_head', 'is_scholarship',
+            'is_pwd', 'is_solo_parent', 'is_senior_citizen', 'is_youth', 'is_student', 'is_ofw', 'is_infant',
+            'is_pagibig_member', 'is_philhealth_member', 'is_sss_member', 'is_gsis_member',
+            'is_4ps_member', 'is_senior_pensioner', 'is_national_id_holder', 'is_senior_id_holder',
+            'is_pwd_id_holder', 'is_solo_parent_id_holder', 'is_indigenous', 'is_veteran',
+            'is_disaster_volunteer', 'is_village_volunteer', 'is_tupad_beneficiary', 'is_akap_beneficiary',
+            'is_educational_assistance', 'is_emergency_assistance', 'is_slp_beneficiary',
+        ];
+
+        $normalized = [];
+        foreach ($booleanFields as $field) {
+            $normalized[$field] = $this->boolean($field);
+        }
+
+        $this->merge($normalized);
+    }
+
     public function authorize(): bool
     {
         return true;
@@ -18,12 +38,18 @@ class UpdateResidentRequest extends FormRequest
     {
         $resident = $this->route('resident');
         $currentHouseholdId = $resident instanceof \App\Models\Resident ? $resident->household_id : null;
+        $educationalAttainment = ['No Formal Education','Preschool','Elementary Level','Elementary Graduate','High School Level','High School Graduate','Vocational/Technical','Senior High Graduate','College Level','College Graduate','Post Graduate'];
+        $educationLevels = ['Not Enrolled','Elementary','Junior High School','Senior High School','Vocational/Technical','College/University','Post Graduate'];
+        $employmentStatuses = ['Employed','Self-Employed','Unemployed','Retired','Student','Homemaker','Disabled'];
+        $incomeSources = ['Salary','Business','Farming/Agriculture','Fishing','Remittance','Pension','Freelance','Government Aid','Other'];
+        $incomeRanges = ['Below ₱5,000','₱5,000 - ₱10,000','₱10,001 - ₱20,000','₱20,001 - ₱40,000','₱40,001 - ₱60,000','₱60,001 - ₱100,000','Above ₱100,000'];
 
         return [
             'household_id' => [
                 'required',
                 Rule::exists('households', 'id')->where(fn ($query) => $query
                     ->where('approval_status', 'approved')
+                    ->when($this->user()?->hasRole('secretary'), fn ($q) => $q->where('village_id', $this->user()->village_id))
                     ->orWhere('id', $currentHouseholdId ?? 0)),
             ],
             'first_name' => ['required', 'string', 'max:255', new ProperName],
@@ -35,9 +61,9 @@ class UpdateResidentRequest extends FormRequest
             'civil_status' => ['required', 'in:Single,Married,Widowed,Separated,Divorced'],
             'nationality' => ['nullable', 'string', 'max:100', new SafeText],
             'occupation' => ['nullable', 'string', 'max:255', new SafeText],
-            'educational_attainment' => ['nullable', 'string', 'max:255'],
+            'educational_attainment' => ['nullable', 'string', 'max:255', Rule::in(array_merge($educationalAttainment, [$resident?->educational_attainment]))],
             'religion' => ['nullable', 'string', 'max:100', new SafeText],
-            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9+\-\s()]{7,20}$/'],
+            'contact_number' => ['nullable', 'string', 'max:20', 'regex:/^[0-9]{7,20}$/'],
             'email' => ['nullable', 'email', 'max:255'],
             'profile_picture' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
             'relationship_to_head' => ['nullable', 'string', 'max:100', new SafeText],
@@ -45,20 +71,20 @@ class UpdateResidentRequest extends FormRequest
             'is_household_head' => ['nullable', 'boolean'],
             'status' => ['required', 'in:active,inactive,deceased,transferred'],
             // Education
-            'education_level' => ['nullable', 'string', 'max:100'],
+            'education_level' => ['nullable', 'string', 'max:100', Rule::in(array_merge($educationLevels, [$resident?->education_level]))],
             'school_name' => ['nullable', 'string', 'max:255', new SafeText],
             'grade_level' => ['nullable', 'string', 'max:100', new SafeText],
             'is_scholarship' => ['nullable', 'boolean'],
             'scholarship_type' => ['nullable', 'string', 'max:255', new SafeText],
             // Employment
-            'employment_status' => ['nullable', 'string', 'max:50'],
+            'employment_status' => ['nullable', 'string', 'max:50', Rule::in(array_merge($employmentStatuses, [$resident?->employment_status]))],
             'employer_name' => ['nullable', 'string', 'max:255', new SafeText],
             'job_title' => ['nullable', 'string', 'max:255', new SafeText],
             'years_of_experience' => ['nullable', 'integer', 'min:0', 'max:60'],
             // Income
-            'income_source' => ['nullable', 'string', 'max:100'],
+            'income_source' => ['nullable', 'string', 'max:100', Rule::in(array_merge($incomeSources, [$resident?->income_source]))],
             'monthly_income' => ['nullable', 'numeric', 'min:0'],
-            'monthly_income_range' => ['nullable', 'string', 'max:100'],
+            'monthly_income_range' => ['nullable', 'string', 'max:100', Rule::in(array_merge($incomeRanges, [$resident?->monthly_income_range]))],
             // Special Population
             'is_pwd' => ['nullable', 'boolean'],
             'pwd_type' => ['nullable', 'string', 'max:255', new SafeText],
