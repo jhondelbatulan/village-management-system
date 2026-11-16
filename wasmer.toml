@@ -9,8 +9,10 @@ name = "run"
 module = "php/php:php"
 runner = "wasi"
 
+# Bind on 0.0.0.0 (not localhost) so the Wasmer Edge web gateway can reach
+# the built-in PHP server inside the instance sandbox.
 [command.annotations.wasi]
-main-args = ["-t", "/app/public", "-S", "localhost:8080"]
+main-args = ["-t", "/app/public", "-S", "0.0.0.0:8080"]
 
 # Run Laravel CLI commands from Wasmer deployment jobs. Keeping this separate
 # from `run` ensures Artisan arguments do not get appended to the web server.
