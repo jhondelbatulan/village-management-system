@@ -69,6 +69,76 @@
     overlay?.addEventListener('click', closeSidebar);
     window.addEventListener('resize', handleResize);
 
+    /* Desktop: collapse the sidebar to icons only (session-level toggle) */
+    const collapseBtn = document.getElementById('sidebarCollapse');
+    collapseBtn?.addEventListener('click', function () {
+        document.body.classList.toggle('sidebar-collapsed');
+        const collapsed = document.body.classList.contains('sidebar-collapsed');
+        collapseBtn.querySelector('i')?.classList.toggle('bi-layout-sidebar', !collapsed);
+        collapseBtn.querySelector('i')?.classList.toggle('bi-layout-sidebar-inset', collapsed);
+        // Let embedded maps re-measure after the width transition.
+        setTimeout(function () {
+            window.dispatchEvent(new Event('resize'));
+        }, 350);
+    });
+
+    /**
+     * Dashboard "Show more details" toggle. One button reveals every
+     * secondary analytics region (`.dash-detail`) at once so the default
+     * view stays focused on the essential cards only.
+     */
+    document.addEventListener('click', function (e) {
+        const btn = e.target && e.target.closest ? e.target.closest('[data-toggle-dash-details]') : null;
+        if (!btn) return;
+
+        const regions = document.querySelectorAll('.dash-detail');
+        if (!regions.length) return;
+
+        const expand = btn.getAttribute('aria-expanded') !== 'true';
+        regions.forEach(function (region) {
+            const instance = bootstrap.Collapse.getOrCreateInstance(region, { toggle: false });
+            if (expand) instance.show();
+            else instance.hide();
+        });
+
+        btn.setAttribute('aria-expanded', expand ? 'true' : 'false');
+        const label = btn.querySelector('[data-dash-detail-label]');
+        if (label) label.textContent = expand ? 'Hide details' : 'Show more details';
+        const icon = btn.querySelector('[data-dash-detail-icon]');
+        if (icon) icon.className = expand ? 'bi bi-chevron-up me-1' : 'bi bi-chevron-down me-1';
+
+        // Charts inside the revealed regions need a moment to re-measure.
+        setTimeout(function () {
+            window.dispatchEvent(new Event('resize'));
+        }, 350);
+    });
+
+    /**
+     * Small online/offline status indicator in the navbar. GIS pages listen
+     * for the `mvms:connection` event to swap to saved offline map tiles.
+     */
+    function updateConnectionStatus() {
+        const el = document.getElementById('connectionStatus');
+        const online = navigator.onLine !== false;
+        if (el) {
+            el.dataset.state = online ? 'online' : 'offline';
+            const text = el.querySelector('.conn-text');
+            if (text) text.textContent = online ? 'Online' : 'Offline';
+            el.setAttribute(
+                'title',
+                online
+                    ? 'Online — live map imagery available'
+                    : 'Offline — saved map tiles are being used'
+            );
+        }
+        document.dispatchEvent(new CustomEvent('mvms:connection', { detail: { online: online } }));
+    }
+
+    window.addEventListener('online', updateConnectionStatus);
+    window.addEventListener('offline', updateConnectionStatus);
+    updateConnectionStatus();
+    window.mvmsConnectionStatus = updateConnectionStatus;
+
     updateCurrentDate();
     updateCurrentTime();
     setInterval(updateCurrentTime, 1000);

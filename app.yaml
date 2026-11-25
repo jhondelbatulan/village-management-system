@@ -4,15 +4,16 @@ owner: jhondelbatulan
 package: .
 app_id: da_n73IatAUB3YL
 
-# Return detailed error information from the edge gateway while
-# diagnosing workload failures.
-debug: true
+debug: false
 
 volumes:
   - name: village-uploads
     mount: /app/public/storage
 
 env:
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  DB_CONNECTION: "mysql"
   PUBLIC_STORAGE: "/app/public/storage"
   PUBLIC_STORAGE_PATH: "/app/public/storage"
 
@@ -27,4 +28,19 @@ jobs:
         cli_args:
           - migrate
           - --force
-          - --path=/app/database/migrations/2026_11_15_000001_create_pending_changes_table.php
+          - --path=database/migrations/2026_11_15_000001_create_pending_changes_table.php
+        env:
+          DB_CONNECTION: "mysql"
+  - name: migrate-notification-archive
+    trigger: pre-deployment
+    timeout: 5m
+    retries: 2
+    action:
+      execute:
+        command: artisan
+        cli_args:
+          - migrate
+          - --force
+          - --path=database/migrations/2026_11_25_000001_add_archived_at_to_notifications_table.php
+        env:
+          DB_CONNECTION: "mysql"

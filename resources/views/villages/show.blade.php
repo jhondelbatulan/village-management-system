@@ -257,16 +257,31 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     @if($village->latitude && $village->longitude)
     var map = L.map('village-map').setView([{{ $village->latitude }}, {{ $village->longitude }}], 14);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(map);
+    var onlineBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(map);
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', { minZoom: 10, maxZoom: 18, maxNativeZoom: 16, attribution: 'Saved offline imagery &copy; Esri' });
+    document.addEventListener('mvms:connection', function (e) {
+        var online = !e.detail || e.detail.online !== false;
+        if (!online) {
+            if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+            if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+        } else {
+            if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+            if (!map.hasLayer(onlineBaseLayer)) onlineBaseLayer.addTo(map);
+        }
+    });
+    if (navigator.onLine === false) {
+        if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+        offlineLayer.addTo(map);
+    }
     var icon = L.divIcon({
         className: 'gis-marker',
         html: '<div style="width:18px;height:18px;background:#1a4b8c;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5);"></div>',

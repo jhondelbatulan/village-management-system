@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Village Officers - ' . $village->village_name)
 
@@ -7,7 +7,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
             <h4 class="page-title mb-1">
-                <i class="bi bi-person-badge me-1"></i>{{ $village->village_name }} — Officers
+                <i class="bi bi-person-badge me-1"></i>{{ $village->village_name }} â€” Officers
             </h4>
             <p class="page-subtitle text-muted mb-0">Manage village officers and their terms.</p>
         </div>
@@ -115,8 +115,8 @@
                             </td>
                             <td class="fw-semibold">{{ $officer->full_name }}</td>
                             <td><span class="badge bg-primary">{{ $officer->position }}</span></td>
-                            <td>{{ $officer->term_start ? \Carbon\Carbon::parse($officer->term_start)->format('M d, Y') : '—' }}</td>
-                            <td>{{ $officer->term_end ? \Carbon\Carbon::parse($officer->term_end)->format('M d, Y') : '—' }}</td>
+                            <td>{{ $officer->term_start ? \Carbon\Carbon::parse($officer->term_start)->format('M d, Y') : 'â€”' }}</td>
+                            <td>{{ $officer->term_end ? \Carbon\Carbon::parse($officer->term_end)->format('M d, Y') : 'â€”' }}</td>
                             <td class="text-center">
                                 @if($officer->status === 'active')
                                     <span class="badge bg-success">Active</span>
@@ -131,7 +131,7 @@
                                     <i class="bi bi-pencil"></i>
                                 </button>
                                 <form action="{{ route('villages.officers.destroy', ['village' => $village, 'officer' => $officer]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Are you sure you want to remove this officer?')">
+                                      data-confirm="Are you sure you want to remove this officer?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove">

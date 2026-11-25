@@ -57,7 +57,7 @@
                     @if($notification->action_url)
                     <a href="{{ $notification->action_url }}" class="btn btn-sm btn-link text-decoration-none p-0 small">View details</a>
                     @endif
-                    <form method="POST" action="{{ route('notifications.destroy', $notification->id) }}" style="display:inline;" onsubmit="return confirm('Delete this notification?');">
+                    <form method="POST" action="{{ route('notifications.destroy', $notification->id) }}" style="display:inline;" data-confirm="Delete this notification?">
                         @csrf @method('DELETE')
                         <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none p-0 small">Delete</button>
                     </form>
@@ -72,5 +72,55 @@
         @endforelse
     </div>
 </div>
+
+@php($archivedCount = $archived->count())
+
+@if($archivedCount > 0)
+<div class="card border-0 shadow-sm mt-4">
+    <div class="card-body py-2 px-3">
+        <button class="btn btn-link text-decoration-none text-muted w-100 text-start p-0 d-flex justify-content-between align-items-center"
+                type="button" data-bs-toggle="collapse" data-bs-target="#archivedNotifications"
+                aria-expanded="false" aria-controls="archivedNotifications">
+            <span class="small fw-semibold">
+                <i class="bi bi-archive me-2"></i>Archived ({{ $archivedCount }})
+            </span>
+            <span class="small text-muted">
+                Older than 1 month · auto-deleted after 2 months
+                <i class="bi bi-chevron-down ms-2"></i>
+            </span>
+        </button>
+        <div class="collapse mt-2" id="archivedNotifications">
+            <div class="border-top pt-1">
+                @foreach($archived as $notification)
+                <div class="d-flex align-items-start gap-3 py-2 border-bottom">
+                    <span class="badge bg-secondary rounded-circle p-2 mt-1 flex-shrink-0">
+                        <i class="bi {{ $notification->icon ?? 'bi-bell' }} text-white"></i>
+                    </span>
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <h6 class="mb-0 text-muted">{{ $notification->title }}</h6>
+                                @if($notification->message)
+                                    <p class="text-muted small mb-0">{{ $notification->message }}</p>
+                                @endif
+                            </div>
+                            <div class="text-end flex-shrink-0 ms-2">
+                                <small class="text-muted" title="{{ $notification->created_at->format('F d, Y h:i A') }}">
+                                    {{ $notification->created_at->diffForHumans() }}
+                                </small>
+                            </div>
+                        </div>
+                        <form method="POST" action="{{ route('notifications.destroy', $notification->id) }}" style="display:inline;" data-confirm="Delete this notification?">
+                            @csrf @method('DELETE')
+                            <button type="submit" class="btn btn-sm btn-link text-danger text-decoration-none p-0 small">Delete</button>
+                        </form>
+                    </div>
+                </div>
+                @endforeach
+            </div>
+        </div>
+    </div>
+</div>
+@endif
 
 @endsection

@@ -104,7 +104,26 @@
                 </thead>
                 <tbody>
                     @forelse($billings as $billing)
-                        <tr>
+                        @php
+                            $paid = (float) $billing->payments->sum('total_paid');
+                            $billingData = [
+                                'billing_number' => $billing->billing_number,
+                                'household' => $billing->household?->household_number,
+                                'head' => $billing->household?->household_head_name,
+                                'village' => $billing->village?->village_name,
+                                'type' => $billing->paymentType?->payment_name,
+                                'period' => $billing->billing_period,
+                                'due_display' => $billing->due_date->format('M d, Y'),
+                                'amount' => number_format((float) $billing->total_amount, 2),
+                                'paid' => number_format($paid, 2),
+                                'remaining' => number_format((float) $billing->total_amount - $paid, 2),
+                                'status_label' => $billing->status_label,
+                                'status_badge' => $billing->status_badge,
+                                'remarks' => $billing->remarks,
+                                'show_url' => route('billings.show', $billing),
+                            ];
+                        @endphp
+                        <tr data-billing="{{ json_encode($billingData) }}">
                             <td>
                                 <span class="fw-semibold text-primary">{{ $billing->billing_number }}</span>
                             </td>
@@ -124,9 +143,10 @@
                                 <span class="badge {{ $billing->status_badge }}">{{ $billing->status_label }}</span>
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('billings.show', $billing) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="View"
+                                        data-bs-toggle="modal" data-bs-target="#billingViewModal">
                                     <i class="bi bi-eye"></i>
-                                </a>
+                                </button>
                             </td>
                         </tr>
                     @empty
@@ -147,4 +167,111 @@
     </div>
     @endif
 </div>
+
+{{-- Quick billing info modal --}}
+<div class="modal fade" id="billingViewModal" tabindex="-1" aria-labelledby="billingViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div>
+                    <h6 class="modal-title fw-semibold" id="billingViewLabel">Billing Details</h6>
+                    <small class="text-muted" id="billViewNumber">—</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <span class="badge" id="billViewStatus">—</span>
+                    <span class="badge bg-light text-dark" id="billViewVillage">—</span>
+                </div>
+
+                <div class="row g-2 small mb-3">
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Amount</div>
+                            <div class="fw-bold" id="billViewAmount">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Paid</div>
+                            <div class="fw-bold text-success" id="billViewPaid">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Remaining</div>
+                            <div class="fw-bold text-danger" id="billViewRemaining">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 text-muted">Household</dt>
+                    <dd class="col-sm-8 fw-semibold" id="billViewHousehold">—</dd>
+                    <dt class="col-sm-4 text-muted">Head</dt>
+                    <dd class="col-sm-8 fw-semibold" id="billViewHead">—</dd>
+                    <dt class="col-sm-4 text-muted">Payment Type</dt>
+                    <dd class="col-sm-8 fw-semibold" id="billViewType">—</dd>
+                    <dt class="col-sm-4 text-muted">Billing Period</dt>
+                    <dd class="col-sm-8 fw-semibold" id="billViewPeriod">—</dd>
+                    <dt class="col-sm-4 text-muted">Due Date</dt>
+                    <dd class="col-sm-8 fw-semibold" id="billViewDue">—</dd>
+                    <dt class="col-sm-4 text-muted">Remarks</dt>
+                    <dd class="col-sm-8" id="billViewRemarks">—</dd>
+                </dl>
+            </div>
+            <div class="modal-footer py-2">
+                <a href="#" id="billViewFull" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open full page
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = (value == null || value === '') ? '—' : value;
+    }
+
+    document.addEventListener('click', function (e) {
+        var trigger = e.target.closest('[data-bs-target="#billingViewModal"]');
+        if (!trigger) return;
+
+        var row = trigger.closest('tr[data-billing]');
+        if (!row) return;
+
+        var d;
+        try { d = JSON.parse(row.getAttribute('data-billing')); }
+        catch (error) { console.error('Billing row data could not be parsed:', error); return; }
+
+        setText('billViewNumber', 'Billing #' + (d.billing_number || ''));
+        setText('billViewAmount', d.amount ? '₱' + d.amount : '');
+        setText('billViewPaid', d.paid != null ? '₱' + d.paid : '');
+        setText('billViewRemaining', d.remaining != null ? '₱' + d.remaining : '');
+        setText('billViewHousehold', d.household);
+        setText('billViewHead', d.head);
+        setText('billViewType', d.type);
+        setText('billViewPeriod', d.period);
+        setText('billViewDue', d.due_display);
+        setText('billViewRemarks', d.remarks);
+        setText('billViewVillage', d.village);
+
+        var status = document.getElementById('billViewStatus');
+        if (status) {
+            status.textContent = d.status_label || '—';
+            status.className = 'badge ' + (d.status_badge || 'bg-secondary');
+        }
+
+        var full = document.getElementById('billViewFull');
+        if (full) full.href = d.show_url || '#';
+    });
+});
+</script>
+@endpush

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Edit Payment Config - ' . $village->village_name)
 
@@ -211,7 +211,7 @@
                                 @endif
                             </td>
                             <td><span class="badge bg-light text-dark">{{ ucfirst($type->frequency) }}</span></td>
-                            <td class="text-end">₱{{ number_format($type->default_amount, 2) }}</td>
+                            <td class="text-end">â‚±{{ number_format($type->default_amount, 2) }}</td>
                             <td class="text-center">
                                 @if($type->is_active)
                                     <span class="badge bg-success">Active</span>
@@ -226,7 +226,7 @@
                                 </button>
                                 @if($type->is_active)
                                 <form action="{{ route('payment-config.destroy-type', $type) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Deactivate this payment type?')">
+                                      data-confirm="Deactivate this payment type?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Deactivate">
@@ -284,7 +284,7 @@
                         <div class="col-md-6">
                             <label for="add_default_amount" class="form-label fw-semibold">Default Amount <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <span class="input-group-text">₱</span>
+                                <span class="input-group-text">â‚±</span>
                                 <input type="number" step="0.01" class="form-control" id="add_default_amount"
                                        name="default_amount" value="0.00" min="0" required>
                             </div>
@@ -333,7 +333,7 @@
                         <div class="col-md-6">
                             <label for="edit_default_amount_{{ $type->id }}" class="form-label fw-semibold">Default Amount <span class="text-danger">*</span></label>
                             <div class="input-group">
-                                <span class="input-group-text">₱</span>
+                                <span class="input-group-text">â‚±</span>
                                 <input type="number" step="0.01" class="form-control" id="edit_default_amount_{{ $type->id }}"
                                        name="default_amount" value="{{ $type->default_amount }}" min="0" required>
                             </div>

@@ -224,17 +224,32 @@
 </form>
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
 @endpush
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var latVal = {{ $household->latitude ?: ($household->village?->latitude ?: '9.2372') }};
     var lngVal = {{ $household->longitude ?: ($household->village?->longitude ?: '125.5415') }};
     var zoom = {{ ($household->latitude || $household->village?->latitude) ? 15 : 13 }};
     var pickerMap = L.map('map-picker').setView([latVal, lngVal], zoom);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(pickerMap);
+    var onlineBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(pickerMap);
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', { minZoom: 10, maxZoom: 18, maxNativeZoom: 16, attribution: 'Saved offline imagery &copy; Esri' });
+    document.addEventListener('mvms:connection', function (e) {
+        var online = !e.detail || e.detail.online !== false;
+        if (!online) {
+            if (pickerMap.hasLayer(onlineBaseLayer)) pickerMap.removeLayer(onlineBaseLayer);
+            if (!pickerMap.hasLayer(offlineLayer)) offlineLayer.addTo(pickerMap);
+        } else {
+            if (pickerMap.hasLayer(offlineLayer)) pickerMap.removeLayer(offlineLayer);
+            if (!pickerMap.hasLayer(onlineBaseLayer)) onlineBaseLayer.addTo(pickerMap);
+        }
+    });
+    if (navigator.onLine === false) {
+        if (pickerMap.hasLayer(onlineBaseLayer)) pickerMap.removeLayer(onlineBaseLayer);
+        offlineLayer.addTo(pickerMap);
+    }
     var pickerMarker = null;
     var latIn = document.getElementById('latitude');
     var lngIn = document.getElementById('longitude');

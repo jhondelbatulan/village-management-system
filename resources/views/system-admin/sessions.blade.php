@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Active Sessions')
 
@@ -34,7 +34,7 @@
                 <p class="text-muted mb-0 small">{{ $sessions->count() }} active session(s) currently online.</p>
             </div>
             <form action="{{ route('system-admin.sessions.force-logout-all') }}" method="POST"
-                  onsubmit="return confirm('Are you sure you want to force logout ALL users? This will terminate every active session.')">
+                  data-confirm="Are you sure you want to force logout ALL users? This will terminate every active session.">
                 @csrf
                 <button type="submit" class="btn btn-danger btn-sm">
                     <i class="bi bi-box-arrow-right me-1"></i>Force Logout All
@@ -82,20 +82,20 @@
                                     ];
                                     $roleColor = $roleColors[$session->user->role?->role_slug ?? ''] ?? 'secondary';
                                 @endphp
-                                <span class="badge bg-{{ $roleColor }}">{{ $session->user->role?->role_name ?? '—' }}</span>
+                                <span class="badge bg-{{ $roleColor }}">{{ $session->user->role?->role_name ?? 'â€”' }}</span>
                             </td>
-                            <td><code>{{ $session->ip_address ?? '—' }}</code></td>
+                            <td><code>{{ $session->ip_address ?? 'â€”' }}</code></td>
                             <td>
                                 <small class="text-muted text-truncate d-inline-block" style="max-width: 150px;" title="{{ $session->browser }}">
-                                    {{ $session->browser ?? '—' }}
+                                    {{ $session->browser ?? 'â€”' }}
                                 </small>
                             </td>
                             <td>
-                                <small class="text-muted">{{ $session->last_activity ? $session->last_activity->diffForHumans() : '—' }}</small>
+                                <small class="text-muted">{{ $session->last_activity ? $session->last_activity->diffForHumans() : 'â€”' }}</small>
                             </td>
                             <td class="text-end">
                                 <form action="{{ route('system-admin.sessions.terminate', $session->id) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Are you sure you want to terminate this session?')">
+                                      data-confirm="Are you sure you want to terminate this session?">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Terminate Session">

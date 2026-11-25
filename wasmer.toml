@@ -8,7 +8,7 @@ entrypoint = "run"
 "php/php" = "=8.3.400"
 
 [fs]
-"/app/" = "."
+"/app/" = "wasmer-deploy"
 
 [[command]]
 name = "run"

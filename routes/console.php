@@ -10,3 +10,4 @@ Artisan::command('inspire', function () {
 
 Schedule::command('payments:process-overdue')->daily();
 Schedule::command('payments:recalculate-predictions')->daily();
+Schedule::command('notifications:prune')->daily();

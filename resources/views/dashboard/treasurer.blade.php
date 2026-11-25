@@ -24,7 +24,7 @@
     <div class="col-12 col-md-6 col-xl">
         <x-analytics.summary-card
             title="Collected This Month"
-            :value="'₱'.number_format($paymentStats['collected'] ?? 0, 2)"
+            :value="'₱'.number_format($paymentStats['this_month_collected'] ?? 0, 2)"
             icon="bi-cash-stack"
             color="success"
             :previousValue="$paymentStats['previous'] ?? null"
@@ -116,6 +116,13 @@
 </div>
 @endif
 
+<div class="text-center mb-4">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle-dash-details aria-expanded="false">
+        <i class="bi bi-chevron-down me-1" data-dash-detail-icon></i><span data-dash-detail-label>Show more details</span>
+    </button>
+</div>
+
+<div class="collapse dash-detail">
 @if($dashboardWidgets['analytics_summary'] ?? true)
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
@@ -137,6 +144,7 @@
     </div>
 </div>
 @endif
+</div>
 
 <div class="row g-4 mb-4">
     <div class="col-12">
@@ -179,6 +187,7 @@
     </div>
 </div>
 
+<div class="collapse dash-detail">
 @if($dashboardWidgets['analytics_summary'] ?? true)
 <div class="row g-4 mb-4">
     <div class="col-lg-6">
@@ -282,6 +291,7 @@
     </div>
 </div>
 @endif
+</div>
 
 @push('scripts')
 <script src="{{ asset('assets/js/chart.umd.js') }}"></script>

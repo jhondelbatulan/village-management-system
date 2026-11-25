@@ -26,7 +26,7 @@
     <div class="col-lg-6">
         <div class="card border-0 shadow-sm">
             <div class="card-body p-4">
-                <form action="{{ route('billings.generate') }}" method="POST" data-password-confirm data-password-confirm-message="Enter your treasurer password to generate these billings.">
+                <form action="{{ route('billings.generate') }}" method="POST" data-confirm="Generate billings for this period?" data-password-confirm data-password-confirm-message="Enter your treasurer password to generate these billings.">
                     @csrf
                     <div class="mb-3">
                         <label for="village_id" class="form-label fw-semibold">Village <span class="text-danger">*</span></label>
@@ -57,7 +57,7 @@
                         This will generate billings for all <strong>approved active households</strong> in the selected village.
                         Duplicate billings (same household + type + period) will be skipped.
                     </div>
-                    <button type="submit" class="btn btn-primary w-100" onclick="return confirm('Generate billings for this period?')">
+                    <button type="submit" class="btn btn-primary w-100">
                         <i class="bi bi-lightning me-1"></i>Generate Billings
                     </button>
                 </form>

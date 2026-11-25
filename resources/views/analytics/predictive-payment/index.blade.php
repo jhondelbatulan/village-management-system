@@ -10,10 +10,10 @@
     </div>
     <div class="d-flex gap-2">
         @if(auth()->user()->role?->role_slug === 'super_admin')
-        <form action="{{ route('analytics.predictive-payment.recalculate') }}" method="POST" class="d-inline">
+        <form action="{{ route('analytics.predictive-payment.recalculate') }}" method="POST" class="d-inline" data-confirm="Recalculate all payment predictions?">
             @csrf
             @if($villageId)<input type="hidden" name="village_id" value="{{ $villageId }}">@endif
-            <button type="submit" class="btn btn-sm btn-outline-primary" onclick="return confirm('Recalculate all payment predictions?')">
+            <button type="submit" class="btn btn-sm btn-outline-primary">
                 <i class="bi bi-arrow-clockwise me-1"></i>Recalculate
             </button>
         </form>

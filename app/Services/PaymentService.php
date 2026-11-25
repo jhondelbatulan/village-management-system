@@ -318,7 +318,7 @@ class PaymentService
             $billings->whereRaw(SqlHelper::dateFormat('billing_period', '%Y').' = ?', [$year]);
         }
 
-        $payments = HouseholdPayment::where('village_id', $villageId);
+        $payments = HouseholdPayment::where('village_id', $villageId)->where('payment_status', 'paid');
 
         return [
             'total_billed' => (float) $billings->clone()->sum('total_amount'),
@@ -338,7 +338,7 @@ class PaymentService
     public function getSystemWideStats(): array
     {
         $billings = Billing::query();
-        $payments = HouseholdPayment::query();
+        $payments = HouseholdPayment::query()->where('payment_status', 'paid');
 
         return [
             'total_billed' => (float) $billings->clone()->sum('total_amount'),
@@ -395,6 +395,7 @@ class PaymentService
             ->where('billing_period', $currentMonth);
 
         $payments = HouseholdPayment::where('village_id', $villageId)
+            ->where('payment_status', 'paid')
             ->whereMonth('payment_date', now()->month)
             ->whereYear('payment_date', now()->year);
 
@@ -418,6 +419,7 @@ class PaymentService
 
         $monthlyTypeIds = PaymentType::where('village_id', $villageId)
             ->where('frequency', 'monthly')
+            ->where('payment_name', 'like', '%dues%')
             ->pluck('id')
             ->all();
 

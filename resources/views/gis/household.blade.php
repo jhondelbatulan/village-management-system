@@ -96,10 +96,10 @@
 </div>
 
 @push('scripts')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script src="https://unpkg.com/leaflet-fullscreen@1.0.2/dist/Leaflet.fullscreen.min.js"></script>
-<link rel="stylesheet" href="https://unpkg.com/leaflet-fullscreen@1.0.2/dist/leaflet.fullscreen.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
+<script src="{{ asset('assets/vendor/leaflet-fullscreen/Leaflet.fullscreen.min.js') }}"></script>
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet-fullscreen/leaflet.fullscreen.css') }}" />
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
@@ -119,6 +119,15 @@ document.addEventListener('DOMContentLoaded', function() {
     // capture that is cloud-free over Comagascas, La Union and Calibunan.
     // Wayback serves real imagery through z18 — z19 returns 404, which is
     // what produced the "map data not available" message when zooming in.
+    // Saved offline imagery shipped with the application (public/assets/tiles)
+    // so the map keeps working without an internet connection.
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', {
+        minZoom: 10,
+        maxZoom: 18,
+        maxNativeZoom: 16,
+        attribution: 'Saved offline imagery &copy; Esri',
+        zIndex: 0,
+    });
     var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         maxZoom: 18,
@@ -132,10 +141,38 @@ document.addEventListener('DOMContentLoaded', function() {
     satelliteLayer.addTo(map);
 
     L.control.layers(
-        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer, 'Offline Satellite (Saved)': offlineLayer },
         null,
         { position: 'topleft', collapsed: window.innerWidth < 768 }
     ).addTo(map);
+
+    // Offline fallback: swap to the saved tiles when the connection drops
+    // and restore the preferred online layer when it comes back.
+    var activeBase = satelliteLayer;
+
+    map.on('baselayerchange', function (e) {
+        if (e.layer !== offlineLayer) activeBase = e.layer;
+    });
+
+    function applyConnectionState(online) {
+        if (!online) {
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+            if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+        } else {
+            if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+            if (activeBase !== offlineLayer && !map.hasLayer(activeBase)) activeBase.addTo(map);
+        }
+    }
+
+    document.addEventListener('mvms:connection', function (e) {
+        applyConnectionState(!e.detail || e.detail.online !== false);
+    });
+
+    if (navigator.onLine === false) {
+        applyConnectionState(false);
+    }
+
 
     var ownVillage = <?php echo json_encode($village && $village->latitude !== null && $village->longitude !== null ? [
         'id' => $village->id,

@@ -11,10 +11,11 @@ class PaymentAnalyticsService
 {
     public function getSystemStats(): array
     {
-        $totalCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')->sum('total_paid');
-        $thisMonthCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')
+        // Only fully paid amounts count as collected revenue.
+        $totalCollected = (float) HouseholdPayment::where('payment_status', 'paid')->sum('total_paid');
+        $thisMonthCollected = (float) HouseholdPayment::where('payment_status', 'paid')
             ->where('payment_date', '>=', now()->startOfMonth())->sum('total_paid');
-        $previousMonthCollected = (float) HouseholdPayment::where('payment_status', '!=', 'cancelled')
+        $previousMonthCollected = (float) HouseholdPayment::where('payment_status', 'paid')
             ->where('payment_date', '>=', now()->subMonth()->startOfMonth())
             ->where('payment_date', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
 
@@ -40,13 +41,14 @@ class PaymentAnalyticsService
 
     public function getVillageStats(int $villageId): array
     {
+        // Only fully paid amounts count as collected revenue.
         $totalCollected = (float) HouseholdPayment::where('village_id', $villageId)
-            ->where('payment_status', '!=', 'cancelled')->sum('total_paid');
+            ->where('payment_status', 'paid')->sum('total_paid');
         $thisMonthCollected = (float) HouseholdPayment::where('village_id', $villageId)
-            ->where('payment_status', '!=', 'cancelled')
+            ->where('payment_status', 'paid')
             ->where('payment_date', '>=', now()->startOfMonth())->sum('total_paid');
         $previousMonthCollected = (float) HouseholdPayment::where('village_id', $villageId)
-            ->where('payment_status', '!=', 'cancelled')
+            ->where('payment_status', 'paid')
             ->where('payment_date', '>=', now()->subMonth()->startOfMonth())
             ->where('payment_date', '<=', now()->subMonth()->endOfMonth())->sum('total_paid');
 
@@ -80,7 +82,8 @@ class PaymentAnalyticsService
 
     public function getMonthlyTrend(?int $villageId = null, int $months = 12): array
     {
-        $query = HouseholdPayment::where('created_at', '>=', now()->subMonths($months)->startOfMonth());
+        $query = HouseholdPayment::where('created_at', '>=', now()->subMonths($months)->startOfMonth())
+            ->where('payment_status', 'paid');
 
         if ($villageId) {
             $query->where('village_id', $villageId);

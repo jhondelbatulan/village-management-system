@@ -296,7 +296,7 @@ class DashboardController extends Controller
             ->pluck('id');
         $monthlyHouseRentalCollected = (float) HouseholdPayment::where('village_id', $villageId)
             ->whereIn('payment_type_id', $monthlyRentalTypeIds)
-            ->where('payment_status', '!=', 'cancelled')
+            ->where('payment_status', 'paid')
             ->whereMonth('payment_date', now()->month)
             ->whereYear('payment_date', now()->year)
             ->sum('total_paid');

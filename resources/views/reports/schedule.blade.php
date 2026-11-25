@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Report Schedules')
 
@@ -88,7 +88,7 @@
                     <td class="small text-muted">{{ $schedule->last_run_at?->format('M d, Y') ?? 'Never' }}</td>
                     <td><span class="badge bg-success">Active</span></td>
                     <td>
-                        <form action="{{ route('reports.schedule.destroy', $schedule) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this schedule?')">
+                        <form action="{{ route('reports.schedule.destroy', $schedule) }}" method="POST" class="d-inline" data-confirm="Remove this schedule?">
                             @csrf @method('DELETE')
                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove"><i class="bi bi-trash"></i></button>
                         </form>

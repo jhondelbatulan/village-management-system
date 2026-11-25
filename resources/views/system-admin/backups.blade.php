@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Backup & Restore')
 
@@ -10,7 +10,7 @@
             <p class="page-subtitle text-muted mb-0">Manage database backups and restoration.</p>
         </div>
         <form action="{{ route('system-admin.backups.create') }}" method="POST"
-              onsubmit="return confirm('Are you sure you want to create a new backup now?')">
+              data-confirm="Are you sure you want to create a new backup now?">
             @csrf
             <button type="submit" class="btn btn-primary btn-sm">
                 <i class="bi bi-plus-lg me-1"></i>Create Backup
@@ -85,7 +85,7 @@
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
                         <p class="stat-label text-muted mb-1">Disk Free</p>
-                        <h3 class="stat-value mb-0">{{ $backupStats['disk_free'] ?? '—' }}</h3>
+                        <h3 class="stat-value mb-0">{{ $backupStats['disk_free'] ?? 'â€”' }}</h3>
                     </div>
                     <div class="stat-icon bg-warning-subtle text-warning">
                         <i class="bi bi-device-hdd"></i>
@@ -124,7 +124,7 @@
                                     <span class="fw-semibold">{{ $backup->filename }}</span>
                                 </div>
                             </td>
-                            <td><span class="text-muted">{{ $backup->size_formatted ?? '—' }}</span></td>
+                            <td><span class="text-muted">{{ $backup->size_formatted ?? 'â€”' }}</span></td>
                             <td>
                                 <small class="text-muted">{{ $backup->created_at->format('M d, Y H:i:s') }}</small>
                             </td>
@@ -149,14 +149,14 @@
                                         <i class="bi bi-download"></i>
                                     </a>
                                     <form action="{{ route('system-admin.backups.restore', $backup->id) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to restore this backup? This will overwrite the current database.')">
+                                          data-confirm="Are you sure you want to restore this backup? This will overwrite the current database.">
                                         @csrf
                                         <button type="submit" class="btn btn-outline-warning" title="Restore">
                                             <i class="bi bi-arrow-counterclockwise"></i>
                                         </button>
                                     </form>
                                     <form action="{{ route('system-admin.backups.destroy', $backup->id) }}" method="POST" class="d-inline"
-                                          onsubmit="return confirm('Are you sure you want to delete this backup? This action cannot be undone.')">
+                                          data-confirm="Are you sure you want to delete this backup? This action cannot be undone.">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-outline-danger" title="Delete">
@@ -247,10 +247,10 @@
                     This is useful when deploying the system fresh while keeping your village structure.
                 </p>
                 <ul class="text-muted small mb-0 mt-1">
-                    <li>Households &amp; Residents — all records deleted</li>
-                    <li>Billings &amp; Payments — all transactions deleted</li>
-                    <li>Announcements &amp; Events — all posts and responses deleted</li>
-                    <li class="text-success fw-semibold">Villages, Users, Roles, Settings — <u>kept</u></li>
+                    <li>Households &amp; Residents â€” all records deleted</li>
+                    <li>Billings &amp; Payments â€” all transactions deleted</li>
+                    <li>Announcements &amp; Events â€” all posts and responses deleted</li>
+                    <li class="text-success fw-semibold">Villages, Users, Roles, Settings â€” <u>kept</u></li>
                 </ul>
             </div>
             <div class="flex-shrink-0">

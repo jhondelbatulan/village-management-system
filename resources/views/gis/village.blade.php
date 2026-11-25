@@ -216,7 +216,8 @@
 </div>
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet-fullscreen/leaflet.fullscreen.css') }}" />
 <style>
     .gis-page .app-content { padding: 0 !important; padding-top: var(--mvms-navbar-height) !important; }
     #stats-panel { transition: width 0.3s ease; }
@@ -268,7 +269,8 @@
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}" defer></script>
+<script src="{{ asset('assets/vendor/leaflet-fullscreen/Leaflet.fullscreen.min.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var loadingEl = document.getElementById('map-loading');
@@ -297,6 +299,16 @@ document.addEventListener('DOMContentLoaded', function() {
         preferCanvas: true,
     }).setView([center.lat, center.lng], 15);
 
+    // Saved offline imagery stored inside the application (public/assets/tiles)
+    // so the village map keeps working without an internet connection.
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', {
+        minZoom: 10,
+        maxZoom: 18,
+        maxNativeZoom: 16,
+        attribution: 'Saved offline imagery &copy; Esri',
+        zIndex: 0,
+    });
+
     // Satellite imagery (default) and the original street map, switchable
     // live through the layer control below — no page reload, position kept.
     //
@@ -317,10 +329,37 @@ document.addEventListener('DOMContentLoaded', function() {
     satelliteLayer.addTo(map);
 
     L.control.layers(
-        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer, 'Offline Satellite (Saved)': offlineLayer },
         null,
         { position: 'topleft', collapsed: window.innerWidth < 768 }
     ).addTo(map);
+
+    // Offline fallback: swap to the saved tiles whenever the connection drops
+    // and restore the preferred online layer when it comes back.
+    var activeBase = satelliteLayer;
+
+    map.on('baselayerchange', function (e) {
+        if (e.layer !== offlineLayer) activeBase = e.layer;
+    });
+
+    function applyConnectionState(online) {
+        if (!online) {
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+            if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+        } else {
+            if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+            if (activeBase !== offlineLayer && !map.hasLayer(activeBase)) activeBase.addTo(map);
+        }
+    }
+
+    document.addEventListener('mvms:connection', function (e) {
+        applyConnectionState(!e.detail || e.detail.online !== false);
+    });
+
+    if (navigator.onLine === false) {
+        applyConnectionState(false);
+    }
 
     var tilesLoading = 0;
     map.on('tileload', function() {

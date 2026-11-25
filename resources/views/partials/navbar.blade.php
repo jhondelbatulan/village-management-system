@@ -3,6 +3,10 @@
         <button class="btn btn-link sidebar-toggle d-lg-none" id="sidebarToggle" type="button" aria-label="Toggle sidebar">
             <i class="bi bi-list fs-4"></i>
         </button>
+        <button class="btn btn-link sidebar-toggle d-none d-lg-inline-flex" id="sidebarCollapse" type="button"
+                aria-label="Collapse sidebar" title="Collapse / expand sidebar">
+            <i class="bi bi-layout-sidebar fs-5"></i>
+        </button>
         <div class="navbar-brand-info d-flex align-items-center">
             <img src="{{ $branding->getLogoUrl() }}" alt="Logo" class="navbar-logo me-2" style="height:32px;width:32px;object-fit:contain;border-radius:6px;">
             <div>
@@ -20,6 +24,12 @@
             <i class="bi bi-clock me-1"></i>
             <span id="currentTime" class="fw-semibold"></span>
         </div>
+
+        <span class="conn-status me-2" id="connectionStatus" data-state="online" role="status"
+              title="Network connection status — saved map tiles stay available offline">
+            <span class="conn-dot"></span>
+            <span class="conn-text d-none d-md-inline">Online</span>
+        </span>
 
         <div class="dropdown me-2" id="notificationDropdown">
             <button class="btn btn-link position-relative notification-btn" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Notifications">
@@ -52,7 +62,7 @@
             <ul class="dropdown-menu dropdown-menu-end shadow">
                 <li><h6 class="dropdown-header">{{ $navRoleLabel ?? $roleLabel }}</h6></li>
                 <li><a class="dropdown-item" href="{{ route('profile.index') }}"><i class="bi bi-person me-2"></i>Profile</a></li>
-                <li><a class="dropdown-item" href="{{ route('settings.personal') }}"><i class="bi bi-gear me-2"></i>Settings</a></li>
+                <li><a class="dropdown-item" href="{{ route('settings.personal') }}"><i class="bi bi-palette me-2"></i>Personalization</a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li>
                     <form action="{{ route('logout') }}" method="POST">

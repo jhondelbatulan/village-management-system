@@ -134,7 +134,8 @@
 </div>
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet-fullscreen/leaflet.fullscreen.css') }}" />
 <style>
     .gis-page .app-content { padding: 0 !important; padding-top: var(--mvms-navbar-height) !important; }
     #stats-panel { transition: width 0.3s ease; }
@@ -194,7 +195,8 @@
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" defer></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}" defer></script>
+<script src="{{ asset('assets/vendor/leaflet-fullscreen/Leaflet.fullscreen.min.js') }}" defer></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var loadingEl = document.getElementById('map-loading');
@@ -223,6 +225,23 @@ document.addEventListener('DOMContentLoaded', function() {
         preferCanvas: true,
     }).setView([center.lat, center.lng], 12);
 
+    // Saved offline imagery stored inside the application (public/assets/tiles).
+    // Same Esri World Imagery Wayback release as the online satellite layer, so
+    // the view is seamless when the connection drops. z10–z16 tiles are shipped
+    // with the deployment; higher zooms upscale the z16 tiles instead of
+    // showing a blank map.
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', {
+        minZoom: 10,
+        maxZoom: 18,
+        maxNativeZoom: 16,
+        attribution: 'Saved offline imagery &copy; Esri',
+        zIndex: 0,
+    });
+
+    // Village geography shipped with the application as GeoJSON
+    // (public/assets/geo/villages.geojson) — available without internet.
+    var extentLayer = L.layerGroup().addTo(map);
+
     // Satellite imagery (default) and the original street map, switchable
     // live through the layer control below — no page reload, position kept.
     //
@@ -243,10 +262,68 @@ document.addEventListener('DOMContentLoaded', function() {
     satelliteLayer.addTo(map);
 
     L.control.layers(
-        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
-        null,
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer, 'Offline Satellite (Saved)': offlineLayer },
+        { 'Village Household Extents': extentLayer },
         { position: 'topleft', collapsed: window.innerWidth < 768 }
     ).addTo(map);
+
+    // Load the locally stored village GeoJSON (real coordinates recorded in
+    // the database) as a polygon overlay — it never depends on the internet.
+    fetch('{{ asset('assets/geo/villages.geojson') }}')
+        .then(function (r) { return r.json(); })
+        .then(function (geojson) {
+            L.geoJSON(geojson, {
+                filter: function (feature) {
+                    return feature.properties && feature.properties.feature_type === 'mapped_household_extent';
+                },
+                style: {
+                    color: '#1a73e8',
+                    weight: 1.5,
+                    opacity: 0.7,
+                    dashArray: '6 4',
+                    fillColor: '#1a73e8',
+                    fillOpacity: 0.06,
+                },
+            }).eachLayer(function (layer) {
+                var props = layer.feature.properties || {};
+                layer.bindTooltip(
+                    (props.village_name || 'Village') + ' — registered household extent',
+                    { sticky: true }
+                );
+                layer.addTo(extentLayer);
+            });
+        })
+        .catch(function () { /* geography overlay is optional */ });
+
+    // --- Online / offline handling ---------------------------------------
+    // The map must never go blank without a connection: when the browser goes
+    // offline we swap whatever base layer is active for the saved tiles, and
+    // restore the preferred online layer once the connection returns.
+    var activeBase = satelliteLayer;
+
+    map.on('baselayerchange', function (e) {
+        if (e.layer !== offlineLayer) activeBase = e.layer;
+    });
+
+    function applyConnectionState(online) {
+        if (!online) {
+            if (map.hasLayer(satelliteLayer)) map.removeLayer(satelliteLayer);
+            if (map.hasLayer(streetLayer)) map.removeLayer(streetLayer);
+            if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+        } else {
+            if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+            if (activeBase !== offlineLayer && !map.hasLayer(activeBase)) activeBase.addTo(map);
+        }
+    }
+
+    document.addEventListener('mvms:connection', function (e) {
+        applyConnectionState(!e.detail || e.detail.online !== false);
+    });
+
+    if (navigator.onLine === false) {
+        applyConnectionState(false);
+    }
+    // ----------------------------------------------------------------------
 
     var tilesLoading = 0;
     map.on('tileload', function() {

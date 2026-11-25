@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', $event->title)
 
@@ -156,12 +156,12 @@
                                             @if($p->household)
                                                 Block {{ $p->household->block_number ?? 'N/A' }} - Lot {{ $p->household->lot_number ?? 'N/A' }}
                                             @else
-                                                —
+                                                â€”
                                             @endif
                                         </td>
-                                        <td>{{ $p->household?->household_number ?? '—' }}</td>
+                                        <td>{{ $p->household?->household_number ?? 'â€”' }}</td>
                                         @if($event->village_id === null)
-                                            <td class="small">{{ $p->household?->village?->village_name ?? '—' }}</td>
+                                            <td class="small">{{ $p->household?->village?->village_name ?? 'â€”' }}</td>
                                         @endif
                                         <td>
                                             @if($p->status === 'present')
@@ -172,8 +172,8 @@
                                                 <span class="badge bg-warning text-dark">Excused</span>
                                             @endif
                                         </td>
-                                        <td class="small">{{ $p->remarks ?? '—' }}</td>
-                                        <td class="small">{{ $p->recorder?->full_name ?? '—' }}</td>
+                                        <td class="small">{{ $p->remarks ?? 'â€”' }}</td>
+                                        <td class="small">{{ $p->recorder?->full_name ?? 'â€”' }}</td>
                                         @if($role === 'secretary')
                                             <td class="text-end">
                                                 <div class="btn-group btn-group-sm">
@@ -186,7 +186,7 @@
                                                             data-remarks="{{ $p->remarks ?? '' }}">
                                                         <i class="bi bi-pencil"></i>
                                                     </button>
-                                                    <form action="{{ route('events.participations.destroy', [$event, $p]) }}" method="POST" class="d-inline" onsubmit="return confirm('Remove this participation?')">
+                                                    <form action="{{ route('events.participations.destroy', [$event, $p]) }}" method="POST" class="d-inline" data-confirm="Remove this participation?">
                                                         @csrf
                                                         @method('DELETE')
                                                         <button type="submit" class="btn btn-outline-danger" title="Remove">
@@ -225,15 +225,15 @@
                     <dd class="col-sm-7 fw-semibold">{{ $event->event_date->format('M d, Y') }}</dd>
                     <dt class="col-sm-5 text-muted">Time</dt>
                     <dd class="col-sm-7 fw-semibold">
-                        {{ $event->start_time?->format('h:i A') ?? '—' }}
-                        @if($event->end_time) – {{ $event->end_time->format('h:i A') }} @endif
+                        {{ $event->start_time?->format('h:i A') ?? 'â€”' }}
+                        @if($event->end_time) â€“ {{ $event->end_time->format('h:i A') }} @endif
                     </dd>
                     <dt class="col-sm-5 text-muted">Venue</dt>
-                    <dd class="col-sm-7 fw-semibold">{{ $event->venue ?? '—' }}</dd>
+                    <dd class="col-sm-7 fw-semibold">{{ $event->venue ?? 'â€”' }}</dd>
                     <dt class="col-sm-5 text-muted">Max Participants</dt>
                     <dd class="col-sm-7 fw-semibold">{{ $event->max_participants ?? 'Unlimited' }}</dd>
                     <dt class="col-sm-5 text-muted">Created By</dt>
-                    <dd class="col-sm-7 fw-semibold">{{ $event->creator?->full_name ?? '—' }}</dd>
+                    <dd class="col-sm-7 fw-semibold">{{ $event->creator?->full_name ?? 'â€”' }}</dd>
                 </dl>
             </div>
         </div>
@@ -281,7 +281,7 @@
                                 <i class="bi bi-check-circle me-1"></i> Event Completed
                             </button>
                         </form>
-                        <form action="{{ route('events.cancel', $event) }}" method="POST" onsubmit="return confirm('Cancel this event?')">
+                        <form action="{{ route('events.cancel', $event) }}" method="POST" data-confirm="Cancel this event?">
                             @csrf
                             @method('PATCH')
                             <button type="submit" class="btn btn-outline-danger w-100">
@@ -289,7 +289,7 @@
                             </button>
                         </form>
                     @endif
-                    <form action="{{ route('events.destroy', $event) }}" method="POST" onsubmit="return confirm('Delete this event?')">
+                    <form action="{{ route('events.destroy', $event) }}" method="POST" data-confirm="Delete this event?">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger w-100">
@@ -328,7 +328,7 @@
                                 <option value="">Select Household</option>
                                 @foreach($pickerHouseholds as $household)
                                     <option value="{{ $household->id }}">
-                                        Block {{ $household->block_number ?? 'N/A' }} - Lot {{ $household->lot_number ?? 'N/A' }} ({{ $household->household_number }}){{ $event->village_id === null ? ' — ' . ($household->village?->village_name ?? '') : '' }}
+                                        Block {{ $household->block_number ?? 'N/A' }} - Lot {{ $household->lot_number ?? 'N/A' }} ({{ $household->household_number }}){{ $event->village_id === null ? ' â€” ' . ($household->village?->village_name ?? '') : '' }}
                                     </option>
                                 @endforeach
                             </select>

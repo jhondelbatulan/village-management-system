@@ -1,0 +1,186 @@
+{
+    "type": "FeatureCollection",
+    "name": "Multi-Village Management System — village geography",
+    "generated_at": "2026-11-23T02:46:08+00:00",
+    "source": "villages and households tables (registered coordinates)",
+    "note": "Legal village boundary polygons are not recorded in the system. Polygon features describe the spatial extent of registered household coordinates only.",
+    "features": [
+        {
+            "type": "Feature",
+            "id": "village-3",
+            "properties": {
+                "feature_type": "village_center",
+                "village_id": 3,
+                "village_name": "Angel Village (Calibunan)",
+                "village_code": "CAL",
+                "address": "Calibunan, Cabadbaran City, Agusan del Norte",
+                "latitude": 9.1020374,
+                "longitude": 125.5364167
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    125.5364167,
+                    9.1020374
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "extent-3",
+            "properties": {
+                "feature_type": "mapped_household_extent",
+                "village_id": 3,
+                "village_name": "Angel Village (Calibunan)",
+                "village_code": "CAL",
+                "household_points": 4,
+                "description": "Extent derived from the registered household coordinates of Angel Village (Calibunan). Not an official legal boundary."
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            125.53595131,
+                            9.10215665
+                        ],
+                        [
+                            125.53596151,
+                            9.10208215
+                        ],
+                        [
+                            125.53607225,
+                            9.10188987
+                        ],
+                        [
+                            125.53604775,
+                            9.10229508
+                        ],
+                        [
+                            125.53595131,
+                            9.10215665
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "village-1",
+            "properties": {
+                "feature_type": "village_center",
+                "village_id": 1,
+                "village_name": "Cabadbaran Ressettlement Village (Comagascas)",
+                "village_code": "COM",
+                "address": "Comagascas, Cabadbaran City, Agusan del Norte",
+                "latitude": 9.1410287,
+                "longitude": 125.5654164
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    125.5654164,
+                    9.1410287
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "extent-1",
+            "properties": {
+                "feature_type": "mapped_household_extent",
+                "village_id": 1,
+                "village_name": "Cabadbaran Ressettlement Village (Comagascas)",
+                "village_code": "COM",
+                "household_points": 5,
+                "description": "Extent derived from the registered household coordinates of Cabadbaran Ressettlement Village (Comagascas). Not an official legal boundary."
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            125.56460114,
+                            9.14074273
+                        ],
+                        [
+                            125.56460779,
+                            9.14047585
+                        ],
+                        [
+                            125.56468673,
+                            9.14047802
+                        ],
+                        [
+                            125.56480545,
+                            9.14062515
+                        ],
+                        [
+                            125.56461718,
+                            9.14082217
+                        ],
+                        [
+                            125.56460114,
+                            9.14074273
+                        ]
+                    ]
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "village-2",
+            "properties": {
+                "feature_type": "village_center",
+                "village_id": 2,
+                "village_name": "JCA Village (Panlaisan, La Union)",
+                "village_code": "LAU",
+                "address": "La Union, Cabadbaran City, Agusan del Norte",
+                "latitude": 9.0973516,
+                "longitude": 125.5481766
+            },
+            "geometry": {
+                "type": "Point",
+                "coordinates": [
+                    125.5481766,
+                    9.0973516
+                ]
+            }
+        },
+        {
+            "type": "Feature",
+            "id": "extent-2",
+            "properties": {
+                "feature_type": "mapped_household_extent",
+                "village_id": 2,
+                "village_name": "JCA Village (Panlaisan, La Union)",
+                "village_code": "LAU",
+                "household_points": 3,
+                "description": "Extent derived from the registered household coordinates of JCA Village (Panlaisan, La Union). Not an official legal boundary."
+            },
+            "geometry": {
+                "type": "Polygon",
+                "coordinates": [
+                    [
+                        [
+                            125.54787008,
+                            9.09741212
+                        ],
+                        [
+                            125.54791689,
+                            9.09710589
+                        ],
+                        [
+                            125.54805636,
+                            9.09698994
+                        ],
+                        [
+                            125.54787008,
+                            9.09741212
+                        ]
+                    ]
+                ]
+            }
+        }
+    ]
+}

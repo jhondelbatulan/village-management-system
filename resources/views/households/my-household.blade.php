@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'My Household')
 
@@ -8,7 +8,7 @@
         <div>
             <h4 class="page-title mb-1">My Household</h4>
             <p class="page-subtitle text-muted mb-0">
-                {{ $household->household_number }} | {{ $household->village?->village_name ?? '—' }}
+                {{ $household->household_number }} | {{ $household->village?->village_name ?? 'â€”' }}
             </p>
         </div>
     </div>
@@ -51,7 +51,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body text-center">
                 <i class="bi bi-cash-stack fs-2 text-success d-block mb-2"></i>
-                <h5 class="mb-1">₱{{ number_format($balance['paid'], 2) }}</h5>
+                <h5 class="mb-1">â‚±{{ number_format($balance['paid'], 2) }}</h5>
                 <small class="text-muted">Total Paid</small>
             </div>
         </div>
@@ -60,7 +60,7 @@
         <div class="card border-0 shadow-sm h-100">
             <div class="card-body text-center">
                 <i class="bi bi-exclamation-circle fs-2 {{ ($balance['outstanding'] ?? 0) > 0 ? 'text-danger' : 'text-success' }} d-block mb-2"></i>
-                <h5 class="mb-1 {{ ($balance['outstanding'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">₱{{ number_format($balance['outstanding'], 2) }}</h5>
+                <h5 class="mb-1 {{ ($balance['outstanding'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">â‚±{{ number_format($balance['outstanding'], 2) }}</h5>
                 <small class="text-muted">Outstanding Balance</small>
             </div>
         </div>
@@ -81,31 +81,31 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Village</label>
-                        <div class="fw-semibold">{{ $household->village?->village_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->village?->village_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Block Number</label>
-                        <div class="fw-semibold">{{ $household->block_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->block_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Lot Number</label>
-                        <div class="fw-semibold">{{ $household->lot_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->lot_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Household Head</label>
-                        <div class="fw-semibold">{{ $household->household_head_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->household_head_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Contact Number</label>
-                        <div class="fw-semibold">{{ $household->contact_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->contact_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Purok</label>
-                        <div class="fw-semibold">{{ $household->purok ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->purok ?? 'â€”' }}</div>
                     </div>
                     <div class="col-12">
                         <label class="form-label text-muted small">Address</label>
-                        <div class="fw-semibold">{{ $household->address ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->address ?? 'â€”' }}</div>
                     </div>
                 </div>
             </div>
@@ -144,23 +144,23 @@
                                     @elseif($resident->gender === 'Female')
                                         <span class="text-danger"><i class="bi bi-gender-female me-1"></i>Female</span>
                                     @else
-                                        <span class="text-secondary">{{ $resident->gender ?? '—' }}</span>
+                                        <span class="text-secondary">{{ $resident->gender ?? 'â€”' }}</span>
                                     @endif
                                 </td>
-                                <td>{{ $resident->age ?? '—' }}</td>
-                                <td>{{ $resident->civil_status ?? '—' }}</td>
+                                <td>{{ $resident->age ?? 'â€”' }}</td>
+                                <td>{{ $resident->civil_status ?? 'â€”' }}</td>
                                 <td>
                                     @if($resident->relationship_to_head)
                                         <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">{{ $resident->relationship_to_head }}</span>
                                     @else
-                                        —
+                                        â€”
                                     @endif
                                 </td>
                                 <td>
                                     @if(isset($resident->status) && $resident->status === 'active')
                                         <span class="badge bg-success">Active</span>
                                     @else
-                                        <span class="badge bg-secondary">—</span>
+                                        <span class="badge bg-secondary">â€”</span>
                                     @endif
                                 </td>
                                 <td class="text-end text-nowrap">
@@ -181,7 +181,7 @@
                                         <form action="{{ route('households.members.destroy', $resident) }}"
                                               method="POST"
                                               class="d-inline"
-                                              onsubmit="return confirm('Remove {{ $resident->full_name ?? ($resident->first_name . ' ' . $resident->last_name) }} from your household? This cannot be undone.')">
+                                              data-confirm="Remove {{ $resident->full_name ?? ($resident->first_name . ' ' . $resident->last_name) }} from your household? This cannot be undone.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Remove this member">
@@ -228,8 +228,8 @@
                                 <td class="fw-semibold">
                                     {{ $member->full_name ?? $member->first_name . ' ' . $member->last_name }}
                                 </td>
-                                <td>{{ $member->relationship_to_head ?? '—' }}</td>
-                                <td>{{ $member->created_at?->diffForHumans() ?? '—' }}</td>
+                                <td>{{ $member->relationship_to_head ?? 'â€”' }}</td>
+                                <td>{{ $member->created_at?->diffForHumans() ?? 'â€”' }}</td>
                                 <td>
                                     @if($member->approval_status === 'admin_approved')
                                         <span class="badge bg-info">Admin Approved - Awaiting Final Approval</span>
@@ -276,10 +276,10 @@
                             @foreach($billings->take(5) as $billing)
                             <tr>
                                 <td class="fw-semibold">{{ $billing->billing_number }}</td>
-                                <td>{{ $billing->paymentType?->payment_name ?? '—' }}</td>
+                                <td>{{ $billing->paymentType?->payment_name ?? 'â€”' }}</td>
                                 <td>{{ $billing->billing_period }}</td>
                                 <td>{{ $billing->due_date->format('M d, Y') }}</td>
-                                <td class="text-end">₱{{ number_format($billing->total_amount, 2) }}</td>
+                                <td class="text-end">â‚±{{ number_format($billing->total_amount, 2) }}</td>
                                 <td class="text-center">
                                     <span class="badge {{ $billing->status_badge }}">{{ $billing->status_label }}</span>
                                 </td>
@@ -335,12 +335,12 @@
             <div class="card-body px-4 pb-4">
                 <div class="d-flex justify-content-between mb-3">
                     <span class="text-muted">Total Paid</span>
-                    <span class="fw-bold text-success">₱{{ number_format($balance['paid'], 2) }}</span>
+                    <span class="fw-bold text-success">â‚±{{ number_format($balance['paid'], 2) }}</span>
                 </div>
                 <div class="d-flex justify-content-between mb-3">
                     <span class="text-muted">Outstanding</span>
                     <span class="fw-bold {{ ($balance['outstanding'] ?? 0) > 0 ? 'text-danger' : 'text-success' }}">
-                        ₱{{ number_format($balance['outstanding'], 2) }}
+                        â‚±{{ number_format($balance['outstanding'], 2) }}
                     </span>
                 </div>
                 <hr>
@@ -365,7 +365,7 @@
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <span>Village</span>
-                        <span class="badge bg-primary rounded-pill">{{ $household->village?->village_name ?? '—' }}</span>
+                        <span class="badge bg-primary rounded-pill">{{ $household->village?->village_name ?? 'â€”' }}</span>
                     </li>
                     <li class="list-group-item d-flex justify-content-between align-items-center px-0">
                         <span>Members</span>
@@ -389,16 +389,31 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         @if($household->latitude && $household->longitude)
         var map = L.map('household-map').setView([{{ $household->latitude }}, {{ $household->longitude }}], 16);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(map);
+        var onlineBaseLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: 'OpenStreetMap', maxZoom: 19 }).addTo(map);
+        var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', { minZoom: 10, maxZoom: 18, maxNativeZoom: 16, attribution: 'Saved offline imagery &copy; Esri' });
+        document.addEventListener('mvms:connection', function (e) {
+            var online = !e.detail || e.detail.online !== false;
+            if (!online) {
+                if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+                if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+            } else {
+                if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+                if (!map.hasLayer(onlineBaseLayer)) onlineBaseLayer.addTo(map);
+            }
+        });
+        if (navigator.onLine === false) {
+            if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+            offlineLayer.addTo(map);
+        }
         var icon = L.divIcon({
             className: 'gis-marker',
             html: '<div style="width:16px;height:16px;background:#28a745;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5);"></div>',

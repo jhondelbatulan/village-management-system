@@ -127,7 +127,7 @@
                             </button>
                         </form>
                     @endif
-                    <form action="{{ route('announcements.destroy', $announcement) }}" method="POST" onsubmit="return confirm('Delete this announcement?')">
+                    <form action="{{ route('announcements.destroy', $announcement) }}" method="POST" data-confirm="Delete this announcement?">
                         @csrf
                         @method('DELETE')
                         <button type="submit" class="btn btn-danger w-100">

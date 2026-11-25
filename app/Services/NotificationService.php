@@ -34,6 +34,7 @@ class NotificationService
     public function getUnreadForUser(int $userId, int $limit = 10): Collection
     {
         return Notification::forUser($userId)
+            ->active()
             ->unread()
             ->latest()
             ->limit($limit)
@@ -43,7 +44,17 @@ class NotificationService
     public function getRecentForUser(int $userId, int $limit = 20): Collection
     {
         return Notification::forUser($userId)
+            ->active()
             ->latest()
+            ->limit($limit)
+            ->get();
+    }
+
+    public function getArchivedForUser(int $userId, int $limit = 50): Collection
+    {
+        return Notification::forUser($userId)
+            ->archived()
+            ->latest('archived_at')
             ->limit($limit)
             ->get();
     }
@@ -51,6 +62,7 @@ class NotificationService
     public function getUnreadCount(int $userId): int
     {
         return Notification::forUser($userId)
+            ->active()
             ->unread()
             ->count();
     }
@@ -65,6 +77,7 @@ class NotificationService
     public function markAllAsRead(int $userId): int
     {
         return Notification::forUser($userId)
+            ->active()
             ->unread()
             ->update(['read_at' => now()]);
     }

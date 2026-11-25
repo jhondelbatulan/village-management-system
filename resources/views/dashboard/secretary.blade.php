@@ -65,6 +65,13 @@
     </div>
 </div>
 
+<div class="text-center mb-4">
+    <button type="button" class="btn btn-sm btn-outline-secondary" data-toggle-dash-details aria-expanded="false">
+        <i class="bi bi-chevron-down me-1" data-dash-detail-icon></i><span data-dash-detail-label>Show more details</span>
+    </button>
+</div>
+
+<div class="collapse dash-detail">
 @if($dashboardWidgets['analytics_summary'] ?? true)
 <div class="row g-4 mb-4">
     <div class="col-lg-8">
@@ -86,6 +93,7 @@
     </div>
 </div>
 @endif
+</div>
 
 @if($dashboardWidgets['system_notices'] ?? true)
 <div class="row g-4 mb-4">
@@ -135,6 +143,7 @@
 </div>
 @endif
 
+<div class="collapse dash-detail">
 @if($dashboardWidgets['population_summary'] ?? true || $dashboardWidgets['household_summary'] ?? true)
 <div class="row g-4 mb-4">
     <div class="col-lg-4">
@@ -171,6 +180,7 @@
     </div>
 </div>
 @endif
+</div>
 
 @if($dashboardWidgets['household_summary'] ?? true || $dashboardWidgets['calendar'] ?? true)
 <div class="row g-4 mb-4">

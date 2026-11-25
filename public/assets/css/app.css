@@ -1004,3 +1004,143 @@ body.animation-none *::after {
     animation-duration: 0s !important;
 }
 body.animation-reduced * { transition-duration: 0.1s !important; }
+
+/* ===== CONNECTION STATUS (offline map awareness) ===== */
+.conn-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--mvms-secondary);
+    padding: 0.25rem 0.6rem;
+    border-radius: 999px;
+    background: rgba(108, 117, 125, 0.1);
+    line-height: 1;
+    white-space: nowrap;
+    user-select: none;
+}
+.conn-status .conn-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #198754;
+    box-shadow: 0 0 0 3px rgba(25, 135, 84, 0.15);
+}
+.conn-status[data-state='offline'] {
+    color: #b02a37;
+    background: rgba(220, 53, 69, 0.12);
+}
+.conn-status[data-state='offline'] .conn-dot {
+    background: #dc3545;
+    box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.15);
+}
+body.theme-dark .conn-status { background: rgba(255, 255, 255, 0.08); color: #aaa; }
+body.theme-dark .conn-status[data-state='offline'] { color: #f1a9ab; }
+
+/* ===== MINIMALIST DESIGN SYSTEM POLISH ===== */
+
+/* Consistent page header across management pages */
+.page-header .page-title {
+    font-size: 1.35rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+}
+.page-header .page-subtitle {
+    font-size: 0.875rem;
+}
+
+/* Compact, scannable tables */
+.table td {
+    padding: 0.6rem 0.75rem;
+    vertical-align: middle;
+    font-size: 0.9rem;
+}
+.table td .fw-semibold {
+    font-size: 0.9rem;
+}
+.table > :not(caption) > * > * {
+    padding: 0.6rem 0.75rem;
+}
+
+/* Consistent row actions: fixed-width icon buttons, one visual weight */
+.table .btn-group .btn,
+.table .d-inline-flex .btn,
+.table td .d-inline .btn {
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+}
+.table .btn-group .btn + .btn,
+.table td .d-inline .btn + .btn {
+    margin-left: 0.3rem;
+}
+
+/* Modal consistency */
+.modal-content {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 12px 40px rgba(15, 52, 96, 0.18);
+}
+.modal-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 0.9rem 1.15rem;
+}
+.modal-body {
+    padding: 1.15rem;
+}
+.modal-footer {
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    padding: 0.75rem 1.15rem;
+}
+.modal-title {
+    font-size: 1rem;
+    font-weight: 600;
+}
+
+/* Form sections: group related fields without extra card chrome */
+.form-section {
+    padding-bottom: 1rem;
+    margin-bottom: 1rem;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+.form-section:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+    padding-bottom: 0;
+}
+.form-section-title {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--mvms-primary);
+    margin-bottom: 0.75rem;
+}
+body.theme-dark .form-section { border-bottom-color: rgba(255, 255, 255, 0.08); }
+
+/* Breathing room between stacked content blocks */
+.app-content > .card + .card,
+.app-content > .card + .mt-4,
+.app-content > .mt-4 + .card {
+    margin-top: 1rem;
+}
+
+/* Subtle chart container so charts read as one unit, not scattered boxes */
+.chart-frame {
+    position: relative;
+    width: 100%;
+}
+
+/* Offline-capable map: keep saved tiles visually seamless with online imagery */
+.leaflet-container {
+    background: #e9ecef;
+}
+.offline-map-note {
+    font-size: 0.7rem;
+    color: var(--mvms-secondary);
+}

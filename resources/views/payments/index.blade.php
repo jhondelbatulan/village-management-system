@@ -122,7 +122,29 @@
                 </thead>
                 <tbody>
                     @forelse($payments as $payment)
-                        <tr>
+                        @php
+                            $paymentData = [
+                                'receipt' => $payment->receipt_number,
+                                'billing' => $payment->billing?->billing_number,
+                                'household' => $payment->household?->household_number,
+                                'head' => $payment->household?->household_head_name,
+                                'village' => $payment->village?->village_name,
+                                'type' => $payment->paymentType?->payment_name,
+                                'date_display' => $payment->payment_date->format('M d, Y'),
+                                'amount' => number_format((float) $payment->amount, 2),
+                                'penalty' => number_format((float) $payment->penalty, 2),
+                                'discount' => number_format((float) $payment->discount, 2),
+                                'total_paid' => number_format((float) $payment->total_paid, 2),
+                                'method' => $payment->payment_method_label,
+                                'reference' => $payment->reference_number,
+                                'remarks' => $payment->remarks,
+                                'status_label' => $payment->status_label,
+                                'status_badge' => $payment->status_badge,
+                                'show_url' => route('payments.show', $payment),
+                                'receipt_url' => route('payments.receipt', $payment),
+                            ];
+                        @endphp
+                        <tr data-payment="{{ json_encode($paymentData) }}">
                             <td>
                                 <span class="fw-semibold text-primary">{{ $payment->receipt_number }}</span>
                             </td>
@@ -142,9 +164,10 @@
                                 <span class="badge {{ $payment->status_badge }}">{{ $payment->status_label }}</span>
                             </td>
                             <td class="text-end">
-                                <a href="{{ route('payments.show', $payment) }}" class="btn btn-sm btn-outline-primary" title="View">
+                                <button type="button" class="btn btn-sm btn-outline-primary" title="View"
+                                        data-bs-toggle="modal" data-bs-target="#paymentViewModal">
                                     <i class="bi bi-eye"></i>
-                                </a>
+                                </button>
                                 <a href="{{ route('payments.receipt', $payment) }}" class="btn btn-sm btn-outline-success" title="Receipt" target="_blank">
                                     <i class="bi bi-receipt"></i>
                                 </a>
@@ -168,4 +191,123 @@
     </div>
     @endif
 </div>
+
+{{-- Quick payment info modal --}}
+<div class="modal fade" id="paymentViewModal" tabindex="-1" aria-labelledby="paymentViewLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header py-2">
+                <div>
+                    <h6 class="modal-title fw-semibold" id="paymentViewLabel">Payment Details</h6>
+                    <small class="text-muted" id="payViewReceipt">—</small>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="d-flex align-items-center gap-2 mb-3 flex-wrap">
+                    <span class="badge" id="payViewStatus">—</span>
+                    <span class="badge bg-light text-dark" id="payViewVillage">—</span>
+                </div>
+
+                <div class="row g-2 small mb-3">
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Amount</div>
+                            <div class="fw-bold" id="payViewAmount">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Penalty / Discount</div>
+                            <div class="fw-bold" id="payViewAdjust">—</div>
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="bg-light rounded p-2 text-center">
+                            <div class="text-muted">Total Paid</div>
+                            <div class="fw-bold text-success" id="payViewTotal">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <dl class="row mb-0 small">
+                    <dt class="col-sm-4 text-muted">Billing #</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewBilling">—</dd>
+                    <dt class="col-sm-4 text-muted">Household</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewHousehold">—</dd>
+                    <dt class="col-sm-4 text-muted">Head</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewHead">—</dd>
+                    <dt class="col-sm-4 text-muted">Payment Type</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewType">—</dd>
+                    <dt class="col-sm-4 text-muted">Payment Date</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewDate">—</dd>
+                    <dt class="col-sm-4 text-muted">Method</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewMethod">—</dd>
+                    <dt class="col-sm-4 text-muted">Reference #</dt>
+                    <dd class="col-sm-8 fw-semibold" id="payViewReference">—</dd>
+                    <dt class="col-sm-4 text-muted">Remarks</dt>
+                    <dd class="col-sm-8" id="payViewRemarks">—</dd>
+                </dl>
+            </div>
+            <div class="modal-footer py-2">
+                <a href="#" id="payViewReceiptLink" class="btn btn-outline-success btn-sm" target="_blank">
+                    <i class="bi bi-receipt me-1"></i> Receipt
+                </a>
+                <a href="#" id="payViewFull" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-box-arrow-up-right me-1"></i> Open full page
+                </a>
+                <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    function setText(id, value) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = (value == null || value === '') ? '—' : value;
+    }
+
+    document.addEventListener('click', function (e) {
+        var trigger = e.target.closest('[data-bs-target="#paymentViewModal"]');
+        if (!trigger) return;
+
+        var row = trigger.closest('tr[data-payment]');
+        if (!row) return;
+
+        var d;
+        try { d = JSON.parse(row.getAttribute('data-payment')); }
+        catch (error) { console.error('Payment row data could not be parsed:', error); return; }
+
+        setText('payViewReceipt', 'Receipt #' + (d.receipt || ''));
+        setText('payViewAmount', d.amount ? '₱' + d.amount : '');
+        setText('payViewAdjust', '₱' + (d.penalty || '0.00') + ' / ₱' + (d.discount || '0.00'));
+        setText('payViewTotal', d.total_paid ? '₱' + d.total_paid : '');
+        setText('payViewBilling', d.billing);
+        setText('payViewHousehold', d.household);
+        setText('payViewHead', d.head);
+        setText('payViewType', d.type);
+        setText('payViewDate', d.date_display);
+        setText('payViewMethod', d.method);
+        setText('payViewReference', d.reference);
+        setText('payViewRemarks', d.remarks);
+        setText('payViewVillage', d.village);
+
+        var status = document.getElementById('payViewStatus');
+        if (status) {
+            status.textContent = d.status_label || '—';
+            status.className = 'badge ' + (d.status_badge || 'bg-secondary');
+        }
+
+        var full = document.getElementById('payViewFull');
+        if (full) full.href = d.show_url || '#';
+
+        var receipt = document.getElementById('payViewReceiptLink');
+        if (receipt) receipt.href = d.receipt_url || '#';
+    });
+});
+</script>
+@endpush

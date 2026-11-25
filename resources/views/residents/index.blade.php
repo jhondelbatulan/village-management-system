@@ -26,11 +26,32 @@
     <div class="card-body p-3">
         <form action="{{ route('residents.index') }}" method="GET">
             <div class="row g-2 align-items-end">
-                <div class="col-md-2">
+                <div class="col-md-5">
                     <label for="search" class="form-label small fw-semibold">Search</label>
                     <input type="text" class="form-control form-control-sm" id="search" name="search"
                            placeholder="Name or code..." value="{{ request('search') }}">
                 </div>
+                <div class="col-md-7 d-flex flex-wrap gap-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm"
+                            data-bs-toggle="collapse" data-bs-target="#residentFilters"
+                            aria-expanded="{{ request()->hasAny(['village_id', 'block_number', 'lot_number', 'gender', 'status', 'sort']) ? 'true' : 'false' }}">
+                        <i class="bi bi-sliders me-1"></i> More filters
+                    </button>
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="bi bi-funnel me-1"></i> Filter
+                    </button>
+                    <a href="{{ route('residents.index') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
+                    </a>
+                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'gender', 'status', 'sort']))
+                        <span class="text-muted small align-self-center ms-1">
+                            <i class="bi bi-info-circle me-1"></i>{{ $residents->total() }} result(s) found
+                        </span>
+                    @endif
+                </div>
+            </div>
+            <div class="collapse mt-3 {{ request()->hasAny(['village_id', 'block_number', 'lot_number', 'gender', 'status', 'sort']) ? 'show' : '' }}" id="residentFilters">
+            <div class="row g-2">
                 <div class="col-md-2">
                     <label for="village_id" class="form-label small fw-semibold">Village</label>
                     <select class="form-select form-select-sm" id="village_id" name="village_id">
@@ -79,8 +100,6 @@
                         <option value="transferred" {{ request('status') === 'transferred' ? 'selected' : '' }}>Transferred</option>
                     </select>
                 </div>
-            </div>
-            <div class="row g-2 mt-1">
                 <div class="col-md-2">
                     <label for="sort" class="form-label small fw-semibold">Sort</label>
                     <select class="form-select form-select-sm" id="sort" name="sort">
@@ -89,19 +108,7 @@
                         <option value="za" {{ request('sort') === 'za' ? 'selected' : '' }}>Z – A (Last Name)</option>
                     </select>
                 </div>
-                <div class="col-md-4 d-flex align-items-end gap-2">
-                    <button type="submit" class="btn btn-primary btn-sm">
-                        <i class="bi bi-funnel me-1"></i> Filter
-                    </button>
-                    <a href="{{ route('residents.index') }}" class="btn btn-outline-secondary btn-sm">
-                        <i class="bi bi-arrow-counterclockwise me-1"></i> Reset
-                    </a>
-                    @if(request()->hasAny(['search', 'village_id', 'block_number', 'lot_number', 'gender', 'status', 'sort']))
-                        <span class="text-muted small align-self-center ms-1">
-                            <i class="bi bi-info-circle me-1"></i>{{ $residents->total() }} result(s) found
-                        </span>
-                    @endif
-                </div>
+            </div>
             </div>
         </form>
     </div>
@@ -115,8 +122,6 @@
                     <tr>
                         <th scope="col">Code</th>
                         <th scope="col">Name</th>
-                        <th scope="col">Gender</th>
-                        <th scope="col">Age</th>
                         <th scope="col">Village</th>
                         <th scope="col">Household</th>
                         <th scope="col">Status</th>
@@ -138,8 +143,6 @@
                                     </div>
                                 </div>
                             </td>
-                            <td>{{ $resident->gender ?? '—' }}</td>
-                            <td>{{ $resident->age ?? '—' }}</td>
                             <td>{{ $resident->village?->village_name ?? '—' }}</td>
                             <td>
                                 @if($resident->household)
@@ -204,7 +207,7 @@
                                     <form action="{{ route('residents.destroy', $resident) }}" method="POST" class="d-inline"
                                           data-password-confirm
                                           data-password-confirm-message="Enter your password to submit this delete request. The resident will only be archived after Admin and Super Admin approval."
-                                          onsubmit="return confirm('Submit a delete request for this resident? They will only be archived after Admin and Super Admin approval.')">
+                                          data-confirm="Submit a delete request for this resident? They will only be archived after Admin and Super Admin approval.">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="btn btn-sm btn-outline-danger" title="Request delete approval">
@@ -216,7 +219,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="text-center text-muted py-4">
+                            <td colspan="6" class="text-center text-muted py-4">
                                 <i class="bi bi-people fs-1 d-block mb-2"></i>
                                 No residents found.
                             </td>
@@ -266,7 +269,7 @@
                                         <td class="text-end">
                                             @if(auth()->user()->role?->role_slug === 'secretary')
                                                 <form action="{{ route('residents.restore', $resident) }}" method="POST" class="d-inline"
-                                                      onsubmit="return confirm('Restore this resident?')">
+                                                      data-confirm="Restore this resident?">
                                                     @csrf
                                                     <button type="submit" class="btn btn-sm btn-outline-success" title="Restore">
                                                         <i class="bi bi-arrow-counterclockwise"></i> Restore

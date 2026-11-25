@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'User Management')
 
@@ -60,8 +60,8 @@
                     <label class="form-label fw-semibold">Sort</label>
                     <select name="sort" class="form-select">
                         <option value="">Newest First</option>
-                        <option value="az" {{ request('sort') == 'az' ? 'selected' : '' }}>A – Z</option>
-                        <option value="za" {{ request('sort') == 'za' ? 'selected' : '' }}>Z – A</option>
+                        <option value="az" {{ request('sort') == 'az' ? 'selected' : '' }}>A â€“ Z</option>
+                        <option value="za" {{ request('sort') == 'za' ? 'selected' : '' }}>Z â€“ A</option>
                     </select>
                 </div>
                 <div class="col-md-3 d-flex align-items-end gap-2">
@@ -109,12 +109,12 @@
                                 </td>
                                 <td>{{ $user->username }}</td>
                                 <td><span class="badge bg-primary">{{ $user->role?->role_name }}</span></td>
-                                <td>{{ $user->village?->village_name ?? '—' }}</td>
+                                <td>{{ $user->village?->village_name ?? 'â€”' }}</td>
                                 <td>
                                     @if($user->household)
-                                        <span class="text-muted">Blk {{ $user->household->block_number ?? '—' }}, Lot {{ $user->household->lot_number ?? '—' }}</span>
+                                        <span class="text-muted">Blk {{ $user->household->block_number ?? 'â€”' }}, Lot {{ $user->household->lot_number ?? 'â€”' }}</span>
                                     @else
-                                        <span class="text-muted">—</span>
+                                        <span class="text-muted">â€”</span>
                                     @endif
                                 </td>
                                 <td>
@@ -142,7 +142,7 @@
                                             </button>
                                         </form>
                                         <form action="{{ route('users.destroy', $user) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your password to delete this user account."
-                                              onsubmit="return confirm('Are you sure you want to permanently delete this user? This action cannot be undone.')">
+                                              data-confirm="Are you sure you want to permanently delete this user? This action cannot be undone.">
                                             @csrf
                                             @method('DELETE')
                                             <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">

@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Village Documents - ' . $village->village_name)
 
@@ -7,7 +7,7 @@
     <div class="d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-3">
         <div>
             <h4 class="page-title mb-1">
-                <i class="bi bi-file-earmark-text me-1"></i>{{ $village->village_name }} — Documents
+                <i class="bi bi-file-earmark-text me-1"></i>{{ $village->village_name }} â€” Documents
             </h4>
             <p class="page-subtitle text-muted mb-0">Manage village documents and files.</p>
         </div>
@@ -83,7 +83,7 @@
                     @forelse($documents as $document)
                         <tr>
                             <td class="fw-semibold">{{ $document->title }}</td>
-                            <td>{{ Str::limit($document->description ?? '', 60) ?: '—' }}</td>
+                            <td>{{ Str::limit($document->description ?? '', 60) ?: 'â€”' }}</td>
                             <td class="text-center">
                                 @php $ext = strtoupper(pathinfo($document->file_path, PATHINFO_EXTENSION)); @endphp
                                 @if($ext === 'PDF')
@@ -94,7 +94,7 @@
                                     <span class="badge bg-success">{{ $ext }}</span>
                                 @endif
                             </td>
-                            <td>{{ $document->uploader?->full_name ?? '—' }}</td>
+                            <td>{{ $document->uploader?->full_name ?? 'â€”' }}</td>
                             <td>{{ $document->created_at->format('M d, Y') }}</td>
                             <td class="text-end">
                                 <a href="{{ route('villages.documents.download', ['village' => $village, 'document' => $document]) }}"
@@ -103,7 +103,7 @@
                                 </a>
                                 @if($canManageDocuments)
                                 <form action="{{ route('villages.documents.destroy', ['village' => $village, 'document' => $document]) }}" method="POST" class="d-inline"
-                                      onsubmit="return confirm('Are you sure you want to delete this document? This action cannot be undone.')">
+                                      data-confirm="Are you sure you want to delete this document? This action cannot be undone.">
                                     @csrf
                                     @method('DELETE')
                                     <button type="submit" class="btn btn-sm btn-outline-danger" title="Delete">

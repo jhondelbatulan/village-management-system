@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Edit Village')
 
@@ -160,7 +160,7 @@
                     <div class="col-md-4">
                         <div class="position-relative border rounded p-2 text-center">
                             <img src="{{ $photo->photo_url }}" alt="Village Photo" class="img-fluid rounded" style="height:150px;object-fit:cover;width:100%;">
-                            <form action="{{ route('villages.photos.delete', [$village, $photo]) }}" method="POST" class="mt-2" onsubmit="return confirm('Delete this photo?')">
+                            <form action="{{ route('villages.photos.delete', [$village, $photo]) }}" method="POST" class="mt-2" data-confirm="Delete this photo?">
                                 @csrf
                                 @method('DELETE')
                                 <button type="submit" class="btn btn-sm btn-outline-danger w-100">
@@ -200,7 +200,7 @@
 </div>
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
 <style>
     .map-picker-container { cursor: crosshair; }
     .map-picker-container:hover { border-color: var(--mvms-primary); }
@@ -208,7 +208,7 @@
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     var latVal = {{ $village->latitude ? $village->latitude : '9.2372' }};
@@ -218,9 +218,18 @@ document.addEventListener('DOMContentLoaded', function() {
     var pickerMap = L.map('village-map-picker').setView([latVal, lngVal], zoom);
 
     // Satellite imagery (default) and the street map, switchable live through
-    // the layer control — no page reload, position and pins are kept.
+    // the layer control â€” no page reload, position and pins are kept.
     // Esri World Imagery Wayback (release WB_2026_R04) is cloud-free over the
     // three villages and serves real imagery through z18 only.
+    // Saved offline imagery shipped with the application (public/assets/tiles)
+    // so the map keeps working without an internet connection.
+    var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', {
+        minZoom: 10,
+        maxZoom: 18,
+        maxNativeZoom: 16,
+        attribution: 'Saved offline imagery &copy; Esri',
+        zIndex: 0,
+    });
     var satelliteLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
         maxZoom: 18,
@@ -234,10 +243,38 @@ document.addEventListener('DOMContentLoaded', function() {
     satelliteLayer.addTo(pickerMap);
 
     L.control.layers(
-        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer },
+        { 'Satellite View': satelliteLayer, 'Street Map': streetLayer, 'Offline Satellite (Saved)': offlineLayer },
         null,
         { position: 'topleft', collapsed: window.innerWidth < 768 }
     ).addTo(pickerMap);
+
+    // Offline fallback: swap to the saved tiles when the connection drops
+    // and restore the preferred online layer when it comes back.
+    var activeBase = satelliteLayer;
+
+    pickerMap.on('baselayerchange', function (e) {
+        if (e.layer !== offlineLayer) activeBase = e.layer;
+    });
+
+    function applyConnectionState(online) {
+        if (!online) {
+            if (pickerMap.hasLayer(satelliteLayer)) pickerMap.removeLayer(satelliteLayer);
+            if (pickerMap.hasLayer(streetLayer)) pickerMap.removeLayer(streetLayer);
+            if (!pickerMap.hasLayer(offlineLayer)) offlineLayer.addTo(pickerMap);
+        } else {
+            if (pickerMap.hasLayer(offlineLayer)) pickerMap.removeLayer(offlineLayer);
+            if (activeBase !== offlineLayer && !pickerMap.hasLayer(activeBase)) activeBase.addTo(pickerMap);
+        }
+    }
+
+    document.addEventListener('mvms:connection', function (e) {
+        applyConnectionState(!e.detail || e.detail.online !== false);
+    });
+
+    if (navigator.onLine === false) {
+        applyConnectionState(false);
+    }
+
 
     var pickerMarker = null;
     var latIn = document.getElementById('latitude');

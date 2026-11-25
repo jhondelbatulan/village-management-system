@@ -200,12 +200,12 @@ class EventAnnouncementDeleteTest extends TestCase
         $this->actingAs($this->admin)
             ->get(route('announcements.show', $this->announcement))
             ->assertOk()
-            ->assertSee("confirm('Delete this announcement?')", false);
+            ->assertSee('data-confirm="Delete this announcement?"', false);
 
         $this->actingAs($this->superAdmin)
             ->get(route('announcements.show', $this->announcement))
             ->assertOk()
-            ->assertDontSee("confirm('Delete this announcement?')", false);
+            ->assertDontSee('data-confirm="Delete this announcement?"', false);
     }
 
     public function test_non_creator_cannot_edit_or_update_someone_elses_event(): void

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Notification;
 use App\Services\NotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -16,10 +17,14 @@ class NotificationController extends Controller
 
     public function index(): View
     {
+        // The scheduler may not run on every host, so also prune on page load.
+        Notification::prune();
+
         $notifications = $this->notificationService->getRecentForUser(auth()->id(), 50);
+        $archived = $this->notificationService->getArchivedForUser(auth()->id(), 50);
         $unreadCount = $this->notificationService->getUnreadCount(auth()->id());
 
-        return view('notifications.index', compact('notifications', 'unreadCount'));
+        return view('notifications.index', compact('notifications', 'archived', 'unreadCount'));
     }
 
     public function fetchUnread(): JsonResponse

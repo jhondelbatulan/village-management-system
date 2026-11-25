@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Password Security')
 
@@ -119,7 +119,7 @@
                                     </small>
                                 </div>
                                 <form action="{{ route('system-admin.password-security.unlock', $lockedUser->id) }}" method="POST"
-                                      onsubmit="return confirm('Unlock this account?')">
+                                      data-confirm="Unlock this account?">
                                     @csrf
                                     <button type="submit" class="btn btn-sm btn-outline-success">
                                         <i class="bi bi-unlock me-1"></i>Unlock

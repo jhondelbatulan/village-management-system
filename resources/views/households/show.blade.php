@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('title', 'Household - ' . $household->household_number)
 
@@ -7,7 +7,7 @@
     <div>
         <h1 class="page-title mb-1">{{ $household->household_number }}</h1>
         <p class="page-subtitle text-muted mb-0">
-{{ $household->village?->village_name ?? '—' }}
+{{ $household->village?->village_name ?? 'â€”' }}
             @if($household->status === 'active')
                 <span class="badge bg-success ms-2">Active</span>
             @elseif($household->status === 'inactive')
@@ -33,11 +33,11 @@
             <i class="bi bi-arrow-left me-1"></i> Back
         </a>
         @if(in_array(auth()->user()->role?->role_slug, ['secretary', 'admin', 'super_admin']))
-            <form action="{{ route('households.toggle-status', $household) }}" method="POST" class="d-inline">
+            <form action="{{ route('households.toggle-status', $household) }}" method="POST" class="d-inline"
+                  data-confirm="{{ $household->status === 'active' ? 'Deactivate' : 'Activate' }} this household? {{ $household->status === 'active' ? 'All linked user accounts will be deactivated.' : 'Linked user accounts will be reactivated.' }}">
                 @csrf
                 @method('PATCH')
-                <button type="submit" class="btn {{ $household->status === 'active' ? 'btn-warning' : 'btn-success' }}"
-                        onclick="return confirm('{{ $household->status === 'active' ? 'Deactivate' : 'Activate' }} this household? {{ $household->status === 'active' ? 'All linked user accounts will be deactivated.' : 'Linked user accounts will be reactivated.' }}')">
+                <button type="submit" class="btn {{ $household->status === 'active' ? 'btn-warning' : 'btn-success' }}">
                     <i class="bi bi-{{ $household->status === 'active' ? 'pause-circle' : 'play-circle' }} me-1"></i>
                     {{ $household->status === 'active' ? 'Deactivate' : 'Activate' }}
                 </button>
@@ -68,7 +68,7 @@
         @endif
         @if(auth()->user()->role?->role_slug === 'super_admin')
                                          <form action="{{ route('households.force-delete', $household) }}" method="POST" class="d-inline" data-password-confirm data-password-confirm-message="Enter your super admin password to permanently delete this household."
-                  onsubmit="return confirm('Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone and will remove all of its billing, payment, and participation records.')">
+                  data-confirm="Permanently delete household {{ $household->household_number }} and all of its residents? This cannot be undone and will remove all of its billing, payment, and participation records.">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="btn btn-outline-danger">
@@ -109,39 +109,39 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Village</label>
-                        <div class="fw-semibold">{{ $household->village?->village_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->village?->village_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Block Number</label>
-                        <div class="fw-semibold">{{ $household->block_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->block_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Lot Number</label>
-                        <div class="fw-semibold">{{ $household->lot_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->lot_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Household Head</label>
-                        <div class="fw-semibold">{{ $household->household_head_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->household_head_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Contact Number</label>
-                        <div class="fw-semibold">{{ $household->contact_number ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->contact_number ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Purok</label>
-                        <div class="fw-semibold">{{ $household->purok ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->purok ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-12">
                         <label class="form-label text-muted small">Address</label>
-                        <div class="fw-semibold">{{ $household->address ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->address ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Latitude</label>
-                        <div class="fw-semibold">{{ $household->latitude ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->latitude ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Longitude</label>
-                        <div class="fw-semibold">{{ $household->longitude ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->longitude ?? 'â€”' }}</div>
                     </div>
                 </div>
             </div>
@@ -157,19 +157,19 @@
                 <div class="row g-3">
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Family Count</label>
-                        <div class="fw-semibold">{{ $household->household_type ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->household_type ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">House Ownership</label>
-                        <div class="fw-semibold">{{ $household->house_ownership ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->house_ownership ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">House Material</label>
-                        <div class="fw-semibold">{{ ucwords(str_replace('_', ' ', $household->house_status ?? '')) ?: '—' }}</div>
+                        <div class="fw-semibold">{{ ucwords(str_replace('_', ' ', $household->house_status ?? '')) ?: 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Registration Date</label>
-                        <div class="fw-semibold">{{ $household->registration_date ? $household->registration_date->format('M d, Y') : '—' }}</div>
+                        <div class="fw-semibold">{{ $household->registration_date ? $household->registration_date->format('M d, Y') : 'â€”' }}</div>
                     </div>
                     <div class="col-md-4">
                         <label class="form-label text-muted small">Status</label>
@@ -217,26 +217,26 @@
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Submitted By</label>
-                        <div class="fw-semibold">{{ $household->submittedBy?->full_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->submittedBy?->full_name ?? 'â€”' }}</div>
                     </div>
                     @if($household->admin_approved_by)
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Admin Approved By</label>
-                        <div class="fw-semibold">{{ $household->adminApprovedBy?->full_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->adminApprovedBy?->full_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Admin Approval Date</label>
-                        <div class="fw-semibold">{{ $household->admin_approved_at?->format('M d, Y h:i A') ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->admin_approved_at?->format('M d, Y h:i A') ?? 'â€”' }}</div>
                     </div>
                     @endif
                     @if($household->approved_by && $household->approval_status !== 'admin_approved')
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Final Approved/Rejected By</label>
-                        <div class="fw-semibold">{{ $household->approvedBy?->full_name ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->approvedBy?->full_name ?? 'â€”' }}</div>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label text-muted small">Final Decision Date</label>
-                        <div class="fw-semibold">{{ $household->approved_at?->format('M d, Y h:i A') ?? '—' }}</div>
+                        <div class="fw-semibold">{{ $household->approved_at?->format('M d, Y h:i A') ?? 'â€”' }}</div>
                     </div>
                     @endif
                     @if($household->remarks)
@@ -294,13 +294,13 @@
                 <div class="row g-3 text-center">
                     <div class="col-4">
                         <div class="stat-card p-2">
-                            <div class="fs-5 fw-bold text-success">₱{{ number_format($household->paid_total, 2) }}</div>
+                            <div class="fs-5 fw-bold text-success">â‚±{{ number_format($household->paid_total, 2) }}</div>
                             <small class="text-muted">Total Paid</small>
                         </div>
                     </div>
                     <div class="col-4">
                         <div class="stat-card p-2">
-                            <div class="fs-5 fw-bold text-danger">₱{{ number_format($household->outstanding_balance, 2) }}</div>
+                            <div class="fs-5 fw-bold text-danger">â‚±{{ number_format($household->outstanding_balance, 2) }}</div>
                             <small class="text-muted">Outstanding</small>
                         </div>
                     </div>
@@ -398,25 +398,25 @@
                     @forelse($household->residents as $resident)
                         <tr>
                             <td>
-                                <span class="badge bg-light text-dark">{{ $resident->resident_code ?? '—' }}</span>
+                                <span class="badge bg-light text-dark">{{ $resident->resident_code ?? 'â€”' }}</span>
                             </td>
                             <td class="fw-semibold">
                                 <a href="#" class="text-decoration-none text-body"
                                    data-bs-toggle="modal" data-bs-target="#memberDetailsModal"
                                    data-name="{{ $resident->full_name ?? trim($resident->first_name . ' ' . $resident->last_name) }}"
-                                   data-code="{{ $resident->resident_code ?? '—' }}"
-                                   data-gender="{{ $resident->gender ?? '—' }}"
-                                   data-age="{{ $resident->age ?? '—' }}"
-                                   data-birthdate="{{ $resident->birthdate?->format('M d, Y') ?? '—' }}"
-                                   data-civil="{{ $resident->civil_status ?? '—' }}"
-                                   data-relationship="{{ $resident->relationship_to_head ?? '—' }}"
-                                   data-occupation="{{ $resident->occupation ?? '—' }}"
-                                   data-education="{{ $resident->educational_attainment ?? '—' }}"
-                                   data-income-range="{{ $resident->monthly_income_range ?? '—' }}"
-                                   data-blood="{{ $resident->blood_type ?? '—' }}"
-                                   data-contact="{{ $resident->contact_number ?? '—' }}"
-                                   data-email="{{ $resident->email ?? '—' }}"
-                                   data-status="{{ $resident->status ? ucfirst($resident->status) : '—' }}"
+                                   data-code="{{ $resident->resident_code ?? 'â€”' }}"
+                                   data-gender="{{ $resident->gender ?? 'â€”' }}"
+                                   data-age="{{ $resident->age ?? 'â€”' }}"
+                                   data-birthdate="{{ $resident->birthdate?->format('M d, Y') ?? 'â€”' }}"
+                                   data-civil="{{ $resident->civil_status ?? 'â€”' }}"
+                                   data-relationship="{{ $resident->relationship_to_head ?? 'â€”' }}"
+                                   data-occupation="{{ $resident->occupation ?? 'â€”' }}"
+                                   data-education="{{ $resident->educational_attainment ?? 'â€”' }}"
+                                   data-income-range="{{ $resident->monthly_income_range ?? 'â€”' }}"
+                                   data-blood="{{ $resident->blood_type ?? 'â€”' }}"
+                                   data-contact="{{ $resident->contact_number ?? 'â€”' }}"
+                                   data-email="{{ $resident->email ?? 'â€”' }}"
+                                   data-status="{{ $resident->status ? ucfirst($resident->status) : 'â€”' }}"
                                    data-profile="{{ route('residents.show', $resident) }}">
                                     {{ $resident->full_name ?? $resident->first_name . ' ' . $resident->last_name }}
                                     <i class="bi bi-box-arrow-up-right small text-muted ms-1"></i>
@@ -428,16 +428,16 @@
                                 @elseif($resident->gender === 'Female')
                                     <span class="text-danger"><i class="bi bi-gender-female me-1"></i>Female</span>
                                 @else
-                                    <span class="text-secondary">{{ $resident->gender ?? '—' }}</span>
+                                    <span class="text-secondary">{{ $resident->gender ?? 'â€”' }}</span>
                                 @endif
                             </td>
-                            <td>{{ $resident->age ?? '—' }}</td>
-                            <td>{{ $resident->civil_status ?? '—' }}</td>
+                            <td>{{ $resident->age ?? 'â€”' }}</td>
+                            <td>{{ $resident->civil_status ?? 'â€”' }}</td>
                             <td>
                                 @if($resident->relationship_to_head)
                                     <span class="badge bg-primary bg-opacity-10 text-primary border border-primary">{{ $resident->relationship_to_head }}</span>
                                 @else
-                                    —
+                                    â€”
                                 @endif
                             </td>
                             <td>
@@ -446,7 +446,7 @@
                                 @elseif(isset($resident->status) && $resident->status === 'inactive')
                                     <span class="badge bg-warning text-dark">Inactive</span>
                                 @else
-                                    <span class="badge bg-light text-dark">—</span>
+                                    <span class="badge bg-light text-dark">â€”</span>
                                 @endif
                             </td>
                         </tr>
@@ -476,23 +476,23 @@
             </div>
             <div class="modal-body">
                 <div class="text-center mb-3">
-                    <div class="fw-bold fs-5" id="mdName">—</div>
-                    <span class="badge bg-light text-dark border" id="mdCode">—</span>
+                    <div class="fw-bold fs-5" id="mdName">â€”</div>
+                    <span class="badge bg-light text-dark border" id="mdCode">â€”</span>
                 </div>
                 <table class="table table-sm mb-0">
                     <tbody>
-                        <tr><th class="fw-semibold" style="width: 42%;">Gender</th><td id="mdGender">—</td></tr>
-                        <tr><th class="fw-semibold">Age</th><td id="mdAge">—</td></tr>
-                        <tr><th class="fw-semibold">Birthdate</th><td id="mdBirthdate">—</td></tr>
-                        <tr><th class="fw-semibold">Civil Status</th><td id="mdCivil">—</td></tr>
-                        <tr><th class="fw-semibold">Relationship to Head</th><td id="mdRelationship">—</td></tr>
-                        <tr><th class="fw-semibold">Occupation</th><td id="mdOccupation">—</td></tr>
-                        <tr><th class="fw-semibold">Educational Attainment</th><td id="mdEducation">—</td></tr>
-                        <tr><th class="fw-semibold">Income Range</th><td id="mdIncomeRange">—</td></tr>
-                        <tr><th class="fw-semibold">Blood Type</th><td id="mdBlood">—</td></tr>
-                        <tr><th class="fw-semibold">Contact Number</th><td id="mdContact">—</td></tr>
-                        <tr><th class="fw-semibold">Email</th><td id="mdEmail">—</td></tr>
-                        <tr><th class="fw-semibold">Status</th><td id="mdStatus">—</td></tr>
+                        <tr><th class="fw-semibold" style="width: 42%;">Gender</th><td id="mdGender">â€”</td></tr>
+                        <tr><th class="fw-semibold">Age</th><td id="mdAge">â€”</td></tr>
+                        <tr><th class="fw-semibold">Birthdate</th><td id="mdBirthdate">â€”</td></tr>
+                        <tr><th class="fw-semibold">Civil Status</th><td id="mdCivil">â€”</td></tr>
+                        <tr><th class="fw-semibold">Relationship to Head</th><td id="mdRelationship">â€”</td></tr>
+                        <tr><th class="fw-semibold">Occupation</th><td id="mdOccupation">â€”</td></tr>
+                        <tr><th class="fw-semibold">Educational Attainment</th><td id="mdEducation">â€”</td></tr>
+                        <tr><th class="fw-semibold">Income Range</th><td id="mdIncomeRange">â€”</td></tr>
+                        <tr><th class="fw-semibold">Blood Type</th><td id="mdBlood">â€”</td></tr>
+                        <tr><th class="fw-semibold">Contact Number</th><td id="mdContact">â€”</td></tr>
+                        <tr><th class="fw-semibold">Email</th><td id="mdEmail">â€”</td></tr>
+                        <tr><th class="fw-semibold">Status</th><td id="mdStatus">â€”</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -557,11 +557,11 @@
 @endsection
 
 @push('styles')
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="{{ asset('assets/vendor/leaflet/leaflet.css') }}" />
 @endpush
 
 @push('scripts')
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="{{ asset('assets/vendor/leaflet/leaflet.js') }}"></script>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const approvalSelect = document.getElementById('approval_status');
@@ -578,11 +578,26 @@
 
         @if($household->latitude && $household->longitude)
         var map = L.map('household-map').setView([{{ $household->latitude }}, {{ $household->longitude }}], 16);
-        // Satellite imagery (Esri World Imagery Wayback) — fixed, dated capture.
-        L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
+        // Satellite imagery (Esri World Imagery Wayback) â€” fixed, dated capture.
+        var onlineBaseLayer = L.tileLayer('https://wayback.maptiles.arcgis.com/arcgis/rest/services/World_Imagery/WMTS/1.0.0/GoogleMapsCompatible/MapServer/tile/49059/{z}/{y}/{x}', {
             attribution: 'Tiles &copy; Esri &mdash; Source: Esri, Maxar, Earthstar Geographics, and the GIS User Community',
             maxZoom: 18
         }).addTo(map);
+        var offlineLayer = L.tileLayer('{{ asset('assets/tiles/satellite') }}/{z}/{x}/{y}.jpg', { minZoom: 10, maxZoom: 18, maxNativeZoom: 16, attribution: 'Saved offline imagery &copy; Esri' });
+        document.addEventListener('mvms:connection', function (e) {
+            var online = !e.detail || e.detail.online !== false;
+            if (!online) {
+                if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+                if (!map.hasLayer(offlineLayer)) offlineLayer.addTo(map);
+            } else {
+                if (map.hasLayer(offlineLayer)) map.removeLayer(offlineLayer);
+                if (!map.hasLayer(onlineBaseLayer)) onlineBaseLayer.addTo(map);
+            }
+        });
+        if (navigator.onLine === false) {
+            if (map.hasLayer(onlineBaseLayer)) map.removeLayer(onlineBaseLayer);
+            offlineLayer.addTo(map);
+        }
         var icon = L.divIcon({
             className: 'gis-marker',
             html: '<div style="width:16px;height:16px;background:#28a745;border:3px solid #fff;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,.5);"></div>',
@@ -618,7 +633,7 @@
                 Object.keys(fields).forEach(function (key) {
                     var el = document.getElementById(fields[key]);
                     if (el) {
-                        el.textContent = link.getAttribute('data-' + key) || '—';
+                        el.textContent = link.getAttribute('data-' + key) || 'â€”';
                     }
                 });
 

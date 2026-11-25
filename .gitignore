@@ -13,6 +13,7 @@
 /.zed
 /auth.json
 /node_modules
+/wasmer-deploy/
 /public/build
 /public/hot
 /public/storage

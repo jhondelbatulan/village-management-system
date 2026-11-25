@@ -166,10 +166,9 @@
                 <h6 class="mb-0 fw-semibold"><i class="bi bi-clipboard-check me-2 text-warning"></i>Review Request</h6>
             </div>
             <div class="card-body px-4 pb-4">
-                <form action="{{ route('online-payments.approve', $onlinePayment) }}" method="POST" class="mb-3">
+                <form action="{{ route('online-payments.approve', $onlinePayment) }}" method="POST" class="mb-3" data-confirm="Approve this online payment and record it?">
                     @csrf
-                    <button type="submit" class="btn btn-success w-100"
-                            onclick="return confirm('Approve this online payment and record it?');">
+                    <button type="submit" class="btn btn-success w-100">
                         <i class="bi bi-check-circle me-1"></i>Approve &amp; Record Payment
                     </button>
                     <small class="text-muted d-block mt-1">The bill balance and receipt update only after you approve this request.</small>
@@ -177,15 +176,14 @@
 
                 <hr>
 
-                <form action="{{ route('online-payments.decline', $onlinePayment) }}" method="POST">
+                <form action="{{ route('online-payments.decline', $onlinePayment) }}" method="POST" data-confirm="Decline this online payment? The resident will be notified.">
                     @csrf
                     <label for="declined_reason" class="form-label fw-semibold">Decline Reason <span class="text-danger">*</span></label>
                     <textarea class="form-control @error('declined_reason') is-invalid @enderror mb-2"
                               id="declined_reason" name="declined_reason" rows="2" maxlength="500"
                               placeholder="e.g. Screenshot is unclear, amount does not match..." required>{{ old('declined_reason') }}</textarea>
                     @error('declined_reason') <div class="invalid-feedback">{{ $message }}</div> @enderror
-                    <button type="submit" class="btn btn-outline-danger w-100"
-                            onclick="return confirm('Decline this online payment? The resident will be notified.');">
+                    <button type="submit" class="btn btn-outline-danger w-100">
                         <i class="bi bi-x-circle me-1"></i>Decline Request
                     </button>
                 </form>

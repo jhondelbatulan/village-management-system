@@ -151,9 +151,9 @@
         @endif
         @if($resident->remarks)<p><span class="text-muted me-2">Remarks</span>{{ $resident->remarks }}</p>@endif
         @if(auth()->user()->hasRole('secretary') && in_array($resident->approval_status, ['draft', 'rejected']))
-            <form action="{{ route('residents.submit', $resident) }}" method="POST">
+            <form action="{{ route('residents.submit', $resident) }}" method="POST" data-confirm="Submit this resident for admin review?">
                 @csrf
-                <button type="submit" class="btn btn-warning" onclick="return confirm('Submit this resident for admin review?')"><i class="bi bi-send me-1"></i>Submit for Approval</button>
+                <button type="submit" class="btn btn-warning"><i class="bi bi-send me-1"></i>Submit for Approval</button>
             </form>
         @endif
         @if((auth()->user()->hasRole('admin') && $resident->approval_status === 'pending') || (auth()->user()->hasRole('super_admin') && $resident->approval_status === 'admin_approved'))
